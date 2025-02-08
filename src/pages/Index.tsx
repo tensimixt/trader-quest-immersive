@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import TradingGlobe from '../components/TradingGlobe';
 import PredictionCard from '../components/PredictionCard';
@@ -142,13 +143,13 @@ const Index = () => {
 
         {/* Main Grid */}
         <div className="grid grid-cols-12 gap-4 h-[90vh]">
-          {/* Left Column - Globe and Stats */}
-          <div className="col-span-8 grid grid-rows-2 gap-4">
-            {/* Globe Section */}
+          {/* Left Column - Charts and Stats */}
+          <div className="col-span-8 grid grid-rows-[150px_1fr] gap-4">
+            {/* Mini Globe Section */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative row-span-1 bat-glow"
+              className="glass-card rounded-2xl overflow-hidden relative bat-glow"
             >
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               <div className="h-full relative">
@@ -156,46 +157,87 @@ const Index = () => {
               </div>
             </motion.div>
 
-            {/* Stats Matrix */}
+            {/* Stats Matrix and Chat */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative"
+              className="glass-card rounded-2xl overflow-hidden relative p-6"
             >
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-              <div className="p-6 relative h-full flex items-center">
-                <div className="grid grid-cols-3 gap-6 w-full">
-                  {[
-                    { 
-                      label: 'THREAT_INDEX', 
-                      value: marketStats.totalVolume.toLocaleString(), 
-                      icon: <Activity className="w-6 h-6" />,
-                      color: 'text-emerald-400'
-                    },
-                    { 
-                      label: 'SIGNAL_STRENGTH', 
-                      value: `${marketStats.avgConfidence}%`, 
-                      icon: <TrendingUp className="w-6 h-6" />,
-                      color: 'text-sky-400'
-                    },
-                    { 
-                      label: 'ASSET_SECURITY', 
-                      value: marketStats.upPredictions, 
-                      icon: <DollarSign className="w-6 h-6" />,
-                      color: 'text-purple-400'
-                    }
-                  ].map((stat, index) => (
-                    <div key={stat.label} className="text-center">
-                      <div className="flex items-center justify-center mb-4">
-                        <div className={`w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center ${stat.color}`}>
-                          {stat.icon}
-                        </div>
+              
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-6 mb-6">
+                {[
+                  { 
+                    label: 'THREAT_INDEX', 
+                    value: marketStats.totalVolume.toLocaleString(), 
+                    icon: <Activity className="w-6 h-6" />,
+                    color: 'text-emerald-400'
+                  },
+                  { 
+                    label: 'SIGNAL_STRENGTH', 
+                    value: `${marketStats.avgConfidence}%`, 
+                    icon: <TrendingUp className="w-6 h-6" />,
+                    color: 'text-sky-400'
+                  },
+                  { 
+                    label: 'ASSET_SECURITY', 
+                    value: marketStats.upPredictions, 
+                    icon: <DollarSign className="w-6 h-6" />,
+                    color: 'text-purple-400'
+                  }
+                ].map((stat, index) => (
+                  <div key={stat.label} className="text-center">
+                    <div className="flex items-center justify-center mb-4">
+                      <div className={`w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center ${stat.color}`}>
+                        {stat.icon}
                       </div>
-                      <p className="text-emerald-400/70 font-mono text-sm tracking-wider mb-2">{stat.label}</p>
-                      <p className="text-2xl font-bold text-white">{stat.value}</p>
                     </div>
+                    <p className="text-emerald-400/70 font-mono text-sm tracking-wider mb-2">{stat.label}</p>
+                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Chat Interface */}
+              <div className="h-[calc(100%-180px)] flex flex-col">
+                <div className="flex items-center gap-2 mb-4">
+                  <Terminal className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-xl font-bold text-white">COMMAND_INTERFACE</h2>
+                </div>
+                <div 
+                  ref={chatContainerRef}
+                  className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4"
+                >
+                  {chatHistory.map((msg, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'}`}>
+                        <p className="text-sm text-white font-mono">{msg.message}</p>
+                        <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
+                <form onSubmit={handleUserMessage} className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Enter command, Master Wayne..."
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
               </div>
             </motion.div>
           </div>
@@ -239,3 +281,4 @@ const Index = () => {
 };
 
 export default Index;
+
