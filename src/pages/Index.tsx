@@ -271,37 +271,74 @@ const Index = () => {
               <AnimatePresence mode="wait">
                 <motion.div 
                   key={isHistoryView ? 'history' : 'intel'}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex items-center gap-2 mb-4"
+                  initial={{ 
+                    opacity: 0,
+                    scale: 0.9,
+                    y: 20
+                  }}
+                  animate={{ 
+                    opacity: 1,
+                    scale: 1,
+                    y: 0,
+                    transition: {
+                      duration: 0.5,
+                      ease: [0.19, 1.0, 0.22, 1.0]
+                    }
+                  }}
+                  exit={{ 
+                    opacity: 0,
+                    scale: 1.1,
+                    y: -20,
+                    transition: {
+                      duration: 0.3
+                    }
+                  }}
+                  className="relative"
                 >
-                  {isHistoryView ? (
-                    <>
-                      <History className="w-5 h-5 text-blue-400" />
+                  <div className="flex items-center gap-2 mb-4">
+                    <motion.div
+                      animate={{
+                        rotate: isHistoryView ? [0, 180, 360] : 0,
+                      }}
+                      transition={{
+                        duration: 0.5,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      {isHistoryView ? (
+                        <History className="w-5 h-5 text-blue-400" />
+                      ) : (
+                        <Eye className="w-5 h-5 text-emerald-400" />
+                      )}
+                    </motion.div>
+                    <motion.div
+                      layout
+                      className="relative"
+                    >
                       <motion.h2 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="text-xl font-bold text-white"
+                        className="text-xl font-bold text-white flex items-center gap-2"
                       >
-                        MARKET_HISTORY
+                        {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.2 }}
+                          className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
+                        />
                       </motion.h2>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-5 h-5 text-emerald-400" />
-                      <motion.h2 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="text-xl font-bold text-white"
-                      >
-                        MARKET_INTEL
-                      </motion.h2>
-                    </>
-                  )}
+                      <motion.div 
+                        className="absolute -bottom-1 left-0 right-0 h-[2px]"
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        style={{
+                          background: isHistoryView 
+                            ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
+                            : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
+                        }}
+                      />
+                    </motion.div>
+                  </div>
                 </motion.div>
               </AnimatePresence>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
