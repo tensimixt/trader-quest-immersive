@@ -5,7 +5,7 @@ import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import PredictionCard from '@/components/PredictionCard';
 
-// Sample market call texts with structured data
+// Sample market calls with structured data
 const marketCalls = [
   {
     traderProfile: "Alpha Trader",
@@ -63,15 +63,15 @@ const Index = () => {
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
-  const [currentMarketCall, setCurrentMarketCall] = useState(marketCalls[0]);
+  const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Simulate market calls coming in only to MARKET_INTEL
+  // Simulate market calls coming in
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
-      setCurrentMarketCall(randomCall);
+      setPredictions(prev => [randomCall, ...prev].slice(0, 3)); // Keep last 3 predictions
     }, 15000); // New market call every 15 seconds
 
     return () => clearInterval(interval);
@@ -85,7 +85,6 @@ const Index = () => {
     const timestamp = new Date().toLocaleTimeString();
     setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
     
-    // Clear input and scroll to bottom
     setUserInput("");
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -204,14 +203,23 @@ const Index = () => {
                 <Eye className="w-5 h-5 text-emerald-400" />
                 <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
               </div>
-              <div className="flex-1 relative">
-                <PredictionCard
-                  symbol={currentMarketCall.market}
-                  prediction={currentMarketCall.direction === "LONG" ? "up" : "down"}
-                  confidence={currentMarketCall.confidence}
-                  timestamp={new Date().toLocaleTimeString()}
-                  traderText={currentMarketCall.analysis}
-                />
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                {predictions.map((prediction, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <PredictionCard
+                      symbol={prediction.market}
+                      prediction={prediction.direction === "LONG" ? "up" : "down"}
+                      confidence={prediction.confidence}
+                      timestamp={new Date().toLocaleTimeString()}
+                      traderText={prediction.analysis}
+                    />
+                  </motion.div>
+                ))}
               </div>
             </div>
           </motion.div>
@@ -222,4 +230,3 @@ const Index = () => {
 };
 
 export default Index;
-
