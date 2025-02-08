@@ -104,58 +104,60 @@ const Index = () => {
           </motion.div>
         </div>
 
-        {/* Stats Row */}
-        <div className="flex flex-wrap lg:flex-nowrap gap-4 mb-16">
-          {[
-            { label: 'VOLUME_INDEX', value: marketStats.totalVolume.toLocaleString(), icon: <Activity /> },
-            { label: 'CONFIDENCE_MATRIX', value: `${marketStats.avgConfidence}%`, icon: <TrendingUp /> },
-            { label: 'BULLISH_SIGNALS', value: marketStats.upPredictions, icon: <DollarSign /> }
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="glass-card relative overflow-hidden group flex-1 min-w-[300px]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
-              
-              <div className="p-8 relative">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-emerald-400/70 font-mono text-sm tracking-wider">{stat.label}</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                    {stat.icon}
-                  </div>
-                </div>
-                <p className="text-4xl font-bold text-white mb-2">{stat.value}</p>
-                <div className="h-1 w-full bg-emerald-500/20 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "100%" }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-500/0"
-                  />
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
           {/* Globe Section */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card rounded-2xl overflow-hidden relative min-h-[800px]"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
-            <div className="p-8 relative">
-              <TradingGlobe />
+          <div className="space-y-8">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-card rounded-2xl overflow-hidden relative min-h-[600px]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+              <div className="p-8 relative">
+                <TradingGlobe />
+              </div>
+            </motion.div>
+
+            {/* Stats Row Below Globe */}
+            <div className="flex flex-wrap lg:flex-nowrap gap-4">
+              {[
+                { label: 'VOLUME_INDEX', value: marketStats.totalVolume.toLocaleString(), icon: <Activity /> },
+                { label: 'CONFIDENCE_MATRIX', value: `${marketStats.avgConfidence}%`, icon: <TrendingUp /> },
+                { label: 'BULLISH_SIGNALS', value: marketStats.upPredictions, icon: <DollarSign /> }
+              ].map((stat, index) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="glass-card relative overflow-hidden group flex-1 min-w-[250px]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+                  
+                  <div className="p-6 relative">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-emerald-400/70 font-mono text-sm tracking-wider">{stat.label}</span>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                        {stat.icon}
+                      </div>
+                    </div>
+                    <p className="text-4xl font-bold text-white mb-2">{stat.value}</p>
+                    <div className="h-1 w-full bg-emerald-500/20 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-500/0"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </motion.div>
+          </div>
 
           {/* Predictions Section */}
           <motion.div
@@ -163,7 +165,7 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
-            <div className="glass-card p-8 mb-8 relative overflow-hidden">
+            <div className="glass-card p-8 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
               <h2 className="text-2xl font-bold text-white mb-4 relative">MARKET_PREDICTIONS</h2>
