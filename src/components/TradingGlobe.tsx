@@ -282,126 +282,160 @@ const TradingGlobe = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <div ref={containerRef} className="w-full h-[400px]" />
-      
       <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-4xl mx-auto"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
       >
-        <div className="glass-card p-4 border border-purple-500/20 backdrop-blur-xl mb-6">
-          <div className="h-[200px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#9b87f5" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#9b87f5" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="gridGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="rgba(155, 135, 245, 0.1)"/>
-                    <stop offset="100%" stopColor="rgba(155, 135, 245, 0.05)"/>
-                  </linearGradient>
-                </defs>
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#8E9196"
-                  tick={{ fill: '#8E9196', fontSize: 12 }}
-                  tickLine={{ stroke: '#8E9196' }}
-                  axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
-                  dy={10}
-                />
-                <YAxis 
-                  stroke="#8E9196"
-                  tick={{ fill: '#8E9196', fontSize: 12 }}
-                  tickLine={{ stroke: '#8E9196' }}
-                  axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
-                  dx={-10}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                    border: '1px solid rgba(155, 135, 245, 0.2)',
-                    borderRadius: '8px',
-                    backdropFilter: 'blur(4px)',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                    padding: '12px'
-                  }}
-                  labelStyle={{ color: '#8E9196', marginBottom: '4px', fontSize: '12px' }}
-                  itemStyle={{ color: '#9b87f5', fontSize: '14px', padding: '4px 0' }}
-                  cursor={{ stroke: '#9b87f5', strokeWidth: 1, strokeDasharray: '4 4' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#9b87f5"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorValue)"
-                  animationDuration={1500}
-                  animationEasing="ease-in-out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+        <div className="relative">
+          <div ref={containerRef} className="w-full h-[400px] rounded-xl overflow-hidden" />
+          <div className="absolute bottom-4 left-4 flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-green-400 text-sm font-mono">ACTIVE</span>
           </div>
         </div>
 
-        <div className="glass-card p-4 border border-green-500/20 backdrop-blur-xl">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-green-400 text-sm font-mono">MARKET INTELLIGENCE</span>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="glass-card p-6 rounded-xl backdrop-blur-xl border border-purple-500/20">
+            <h3 className="text-xl font-semibold mb-2 text-purple-300">Market Activity</h3>
+            <div className="mt-4">
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#9b87f5" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#9b87f5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="time" 
+                      stroke="#8E9196"
+                      tick={{ fill: '#8E9196', fontSize: 12 }}
+                      tickLine={{ stroke: '#8E9196' }}
+                      axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      stroke="#8E9196"
+                      tick={{ fill: '#8E9196', fontSize: 12 }}
+                      tickLine={{ stroke: '#8E9196' }}
+                      axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
+                      dx={-10}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        border: '1px solid rgba(155, 135, 245, 0.2)',
+                        borderRadius: '8px',
+                        backdropFilter: 'blur(4px)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        padding: '12px'
+                      }}
+                      labelStyle={{ color: '#8E9196', marginBottom: '4px', fontSize: '12px' }}
+                      itemStyle={{ color: '#9b87f5', fontSize: '14px', padding: '4px 0' }}
+                      cursor={{ stroke: '#9b87f5', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#9b87f5"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorValue)"
+                      animationDuration={1500}
+                      animationEasing="ease-in-out"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <MessageCircle className="text-green-400 w-5 h-5" />
           </div>
-          
-          <div 
-            ref={chatContainerRef}
-            className="space-y-4 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/20 scrollbar-track-transparent mb-4"
-          >
-            {chatHistory.map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`flex items-start space-x-3 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
-              >
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full ${item.isUser ? 'bg-blue-500/20' : 'bg-green-500/20'} flex items-center justify-center`}>
-                  <MessageCircle className={`w-4 h-4 ${item.isUser ? 'text-blue-400' : 'text-green-400'}`} />
-                </div>
-                <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
-                  <div className={`text-sm font-mono ${item.isUser ? 'text-blue-300' : 'text-green-300'}`}>
-                    {item.message}
+
+          <div className="glass-card p-6 rounded-xl border border-green-500/20 backdrop-blur-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-green-400 text-sm font-mono">AI ANALYST</span>
+              </div>
+              <MessageCircle className="text-green-400 w-5 h-5" />
+            </div>
+            
+            <div 
+              ref={chatContainerRef}
+              className="h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/20 scrollbar-track-transparent space-y-4"
+            >
+              {chatHistory.map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex items-start space-x-3 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
+                >
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full ${item.isUser ? 'bg-blue-500/20' : 'bg-green-500/20'} flex items-center justify-center`}>
+                    <MessageCircle className={`w-4 h-4 ${item.isUser ? 'text-blue-400' : 'text-green-400'}`} />
                   </div>
-                  <div className={`text-xs mt-1 ${item.isUser ? 'text-blue-500/50' : 'text-green-500/50'}`}>
-                    {item.timestamp}
+                  <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
+                    <div className={`text-sm font-mono ${item.isUser ? 'text-blue-300' : 'text-green-300'}`}>
+                      {item.message}
+                    </div>
+                    <div className={`text-xs mt-1 ${item.isUser ? 'text-blue-500/50' : 'text-green-500/50'}`}>
+                      {item.timestamp}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
           </div>
-          
-          <div className="border-t border-green-500/20 pt-4">
-            <form onSubmit={handleUserMessage} className="flex items-center space-x-2">
+        </div>
+      </motion.div>
+
+      <div className="glass-card p-6 rounded-xl border border-purple-500/20 backdrop-blur-xl">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-semibold text-purple-300">Trading Console</h3>
+          <form onSubmit={handleUserMessage} className="flex-1 max-w-md ml-4">
+            <div className="relative">
               <Input
                 type="text"
                 placeholder="Ask about market conditions..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                className="flex-1 bg-transparent border-green-500/20 text-green-300 placeholder:text-green-500/50"
+                className="w-full bg-black/30 border-purple-500/20 text-purple-300 placeholder:text-purple-500/50"
               />
               <button
                 type="submit"
-                className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center hover:bg-green-500/30 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center hover:bg-purple-500/30 transition-colors"
               >
-                <Send className="w-4 h-4 text-green-400" />
+                <Send className="w-4 h-4 text-purple-400" />
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
-      </motion.div>
+        
+        <div className="grid grid-cols-3 gap-6">
+          {[1, 2, 3].map((index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="glass-card p-4 rounded-lg border border-purple-500/10"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-purple-300 font-mono">MARKET SIGNAL {index}</span>
+                <Activity className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className="text-2xl font-bold text-purple-200 mb-1">
+                {Math.floor(Math.random() * 1000)}
+              </div>
+              <div className="text-xs text-purple-400">
+                Updated {new Date().toLocaleTimeString()}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
