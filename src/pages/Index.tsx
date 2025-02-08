@@ -117,7 +117,7 @@ const Index = () => {
         animate={{ opacity: 1 }}
         className="container mx-auto p-4 h-screen flex flex-col"
       >
-        {/* Header - Wayne Enterprises Command Center */}
+        {/* Header */}
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -143,21 +143,23 @@ const Index = () => {
 
         {/* Main Grid */}
         <div className="grid grid-cols-12 gap-4 h-[90vh]">
-          {/* Left Column - Charts and Stats */}
-          <div className="col-span-8 grid grid-rows-[150px_1fr] gap-4">
-            {/* Mini Globe Section */}
+          {/* Left Column - Snake Monitor */}
+          <div className="col-span-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative bat-glow"
+              className="glass-card rounded-2xl overflow-hidden relative bat-glow h-[200px]"
             >
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               <div className="h-full relative">
                 <TradingGlobe />
               </div>
             </motion.div>
+          </div>
 
-            {/* Stats Matrix and Chat */}
+          {/* Middle Column - Charts and Stats */}
+          <div className="col-span-5 flex flex-col gap-4">
+            {/* Stats Matrix */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -166,7 +168,7 @@ const Index = () => {
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-3 gap-6">
                 {[
                   { 
                     label: 'THREAT_INDEX', 
@@ -198,9 +200,16 @@ const Index = () => {
                   </div>
                 ))}
               </div>
+            </motion.div>
 
-              {/* Chat Interface */}
-              <div className="h-[calc(100%-180px)] flex flex-col">
+            {/* Chat Interface */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1"
+            >
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+              <div className="h-full flex flex-col">
                 <div className="flex items-center gap-2 mb-4">
                   <Terminal className="w-5 h-5 text-emerald-400" />
                   <h2 className="text-xl font-bold text-white">COMMAND_INTERFACE</h2>
