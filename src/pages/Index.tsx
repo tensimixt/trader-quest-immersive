@@ -1,9 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
+import { Shield, Eye, Network, Terminal, Send, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import PredictionCard from '@/components/PredictionCard';
+import { useToast } from '@/components/ui/use-toast';
+
+// Sample market intelligence updates
+const marketIntelligence = [
+  "Blackrock acquires 12,000 BTC in latest strategic move",
+  "Ethereum Foundation announces major protocol upgrade",
+  "MicroStrategy increases Bitcoin holdings by 8,000 BTC",
+  "JP Morgan updates crypto trading desk infrastructure",
+  "Major DeFi protocol reports record-breaking TVL"
+];
 
 // Sample market calls with structured data
 const marketCalls = [
@@ -60,9 +70,10 @@ const marketCalls = [
 ];
 
 const Index = () => {
+  const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, type?: 'chat' | 'intel' | 'history' }>>([]);
   const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -71,8 +82,27 @@ const Index = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
-      setPredictions(prev => [randomCall, ...prev].slice(0, 100)); // Keep last 100 predictions
-    }, 15000); // New market call every 15 seconds
+      setPredictions(prev => [randomCall, ...prev].slice(0, 100));
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Simulate market intelligence updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
+      const timestamp = new Date().toLocaleTimeString();
+      setChatHistory(prev => [...prev, { 
+        message: randomIntel, 
+        timestamp, 
+        type: 'intel'
+      }]);
+      
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 20000);
 
     return () => clearInterval(interval);
   }, []);
@@ -81,23 +111,59 @@ const Index = () => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    // Add user message to chat
     const timestamp = new Date().toLocaleTimeString();
-    setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
     
-    setUserInput("");
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    // Add user message to chat
+    setChatHistory(prev => [...prev, { 
+      message: userInput, 
+      timestamp, 
+      isUser: true, 
+      type: 'chat' 
+    }]);
+    
+    // Check if user is requesting trader history
+    if (userInput.toLowerCase().includes('history') || userInput.toLowerCase().includes('previous calls')) {
+      const traderHistory = predictions.slice(0, 10).map(p => ({
+        market: p.market,
+        direction: p.direction,
+        confidence: p.confidence,
+        roi: p.roi,
+        timestamp: new Date().toLocaleTimeString()
+      }));
+
+      setTimeout(() => {
+        setChatHistory(prev => [...prev, { 
+          message: JSON.stringify(traderHistory, null, 2),
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'history'
+        }]);
+        
+        toast({
+          title: "Trader History Retrieved",
+          description: "Displaying last 10 trading calls",
+          className: "bg-emerald-500/20 text-white border-emerald-500/20"
+        });
+        
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 1000);
+    } else {
+      // Normal chat response
+      setTimeout(() => {
+        const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
+        setChatHistory(prev => [...prev, { 
+          message: aiResponse, 
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'chat'
+        }]);
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 1000);
     }
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
-      setChatHistory(prev => [...prev, { message: aiResponse, timestamp: new Date().toLocaleTimeString() }]);
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
-    }, 1000);
+    setUserInput("");
   };
 
   return (
@@ -159,8 +225,22 @@ const Index = () => {
                       className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                        msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
+                        msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
                         msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
                       }`}>
+                        {msg.type === 'intel' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <Network className="w-3 h-3 text-purple-400" />
+                            <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
+                          </div>
+                        )}
+                        {msg.type === 'history' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <History className="w-3 h-3 text-blue-400" />
+                            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+                          </div>
+                        )}
                         <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
                         <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
                       </div>
