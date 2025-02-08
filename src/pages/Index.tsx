@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
+import { Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
@@ -267,7 +266,6 @@ const Index = () => {
                   />
                 </div>
               </div>
-              <Shield className="w-6 h-6 text-emerald-400" />
               <h1 className="text-4xl font-bold text-white tracking-wider">
                 COPE<span className="text-emerald-400">NET</span>
               </h1>
