@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield } from 'lucide-react';
 
 interface PredictionCardProps {
   symbol: string;
@@ -11,92 +11,114 @@ interface PredictionCardProps {
   traderText?: string;
 }
 
-const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText = "Looking bullish on the 4h timeframe with strong support levels and increasing volume." }: PredictionCardProps) => {
+const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="prediction-card"
+      transition={{ duration: 0.5 }}
+      className="prediction-card relative overflow-hidden"
     >
-      <div className="flex items-center justify-between mb-4">
+      {/* Animated background line */}
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 animate-pulse" />
+      
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <User className="w-5 h-5 text-purple-400" />
+          <div className="relative">
+            <User className="w-8 h-8 text-emerald-400" />
+            <div className="absolute -bottom-1 -right-1">
+              <Shield className="w-4 h-4 text-emerald-500" />
+            </div>
+          </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-200">Trader Profile</h4>
-            <p className="text-xs text-gray-400">Expert Level</p>
+            <h4 className="text-sm font-medium text-emerald-400">TRADER.SYS</h4>
+            <p className="text-xs text-emerald-400/50 font-mono">[AUTHORIZED]</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-400">{timestamp}</span>
+          <Clock className="w-4 h-4 text-emerald-400/70" />
+          <span className="text-sm font-mono text-emerald-400/70">{timestamp}</span>
         </div>
       </div>
       
+      {/* Market Info Section */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-2xl font-bold text-white">{symbol}</h3>
+          <h3 className="text-2xl font-bold text-white font-mono tracking-wider">{symbol}</h3>
           <div className="flex items-center mt-1 space-x-2">
-            <BarChart2 className="w-4 h-4 text-blue-400" />
-            <span className="text-sm text-blue-400">Market Active</span>
+            <BarChart2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400 font-mono">SIGNAL_ACTIVE</span>
           </div>
         </div>
         {prediction === 'up' ? (
           <div className="flex flex-col items-end">
-            <ArrowUpCircle className="w-8 h-8 text-green-500 mb-1" />
-            <span className="text-xs text-green-400">Bullish Signal</span>
+            <ArrowUpCircle className="w-10 h-10 text-emerald-500 animate-pulse" />
+            <span className="text-xs text-emerald-400 font-mono mt-1">LONG_POSITION</span>
           </div>
         ) : (
           <div className="flex flex-col items-end">
-            <ArrowDownCircle className="w-8 h-8 text-red-500 mb-1" />
-            <span className="text-xs text-red-400">Bearish Signal</span>
+            <ArrowDownCircle className="w-10 h-10 text-red-500 animate-pulse" />
+            <span className="text-xs text-red-400 font-mono mt-1">SHORT_POSITION</span>
           </div>
         )}
       </div>
 
-      <div className="mb-6 p-4 rounded-lg bg-white/5 border border-white/10">
+      {/* Analysis Section */}
+      <div className="mb-6 p-4 rounded-lg bg-black/40 border border-emerald-500/20">
         <div className="flex items-center space-x-2 mb-2">
-          <MessageSquare className="w-4 h-4 text-blue-400" />
-          <span className="text-sm font-medium text-blue-400">Trader's Analysis</span>
+          <MessageSquare className="w-4 h-4 text-emerald-400" />
+          <span className="text-sm font-medium text-emerald-400 font-mono">ANALYSIS.LOG</span>
         </div>
-        <p className="text-sm text-gray-300 leading-relaxed">
+        <p className="text-sm text-emerald-400/70 font-mono leading-relaxed">
           {traderText}
         </p>
       </div>
       
+      {/* Metrics Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Target className="w-4 h-4 text-purple-400" />
-            <span className="text-sm text-gray-300">Confidence</span>
+            <Target className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400/70 font-mono">CONFIDENCE_RATING</span>
           </div>
-          <span className="text-lg font-semibold text-purple-400">{confidence}%</span>
+          <span className="text-lg font-bold text-emerald-400 font-mono">{confidence}%</span>
         </div>
         
-        <div className="w-full bg-white/10 rounded-full h-2">
-          <div
-            className={`h-2 rounded-full ${
-              prediction === 'up' ? 'bg-green-500' : 'bg-red-500'
+        {/* Progress Bar */}
+        <div className="w-full bg-black/40 rounded-full h-1.5 relative overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${confidence}%` }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className={`h-full rounded-full ${
+              prediction === 'up' ? 'bg-emerald-500' : 'bg-red-500'
             }`}
-            style={{ width: `${confidence}%` }}
           />
         </div>
         
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center space-x-2">
-            <DollarSign className="w-4 h-4 text-green-400" />
-            <span className="text-sm text-gray-300">Current ROI</span>
+        {/* Additional Metrics */}
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-emerald-500/10">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-400/70 font-mono">SIGNAL</span>
+            </div>
+            <span className="text-xs font-medium text-emerald-400 font-mono">
+              {confidence > 80 ? 'STRONG' : 'MODERATE'}
+            </span>
           </div>
-          <span className={`text-sm font-medium ${prediction === 'up' ? 'text-green-400' : 'text-red-400'}`}>
-            {prediction === 'up' ? '+' : '-'}${Math.floor(Math.random() * 1000)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Signal Strength</span>
-          <span className={`font-medium ${confidence > 80 ? 'text-green-400' : 'text-yellow-400'}`}>
-            {confidence > 80 ? 'Strong' : 'Moderate'}
-          </span>
+          
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-emerald-500/10">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-400/70 font-mono">ROI</span>
+            </div>
+            <span className={`text-xs font-medium font-mono ${prediction === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
+              {prediction === 'up' ? '+' : '-'}${Math.floor(Math.random() * 1000)}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>
