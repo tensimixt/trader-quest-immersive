@@ -4,13 +4,48 @@ import { motion } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-// Sample market call texts
+// Sample market call texts with structured data
 const marketCalls = [
-  "Strong bullish divergence detected on BTC/USD. RSI showing oversold conditions.",
-  "ETH breaking key resistance at $2,450. Volume profile confirms breakout.",
-  "LINK forming cup and handle pattern. Target: $18.50",
-  "BTC showing bearish divergence on 4H timeframe. Exercise caution.",
-  "SOL/USD: Multiple timeframe analysis suggests accumulation phase.",
+  {
+    traderProfile: "Alpha Trader",
+    market: "BTC/USD",
+    direction: "LONG",
+    entryPrice: "43,250",
+    timeframe: "4H",
+    analysis: "Strong bullish divergence detected. RSI showing oversold conditions."
+  },
+  {
+    traderProfile: "Crypto Whale",
+    market: "ETH/USD",
+    direction: "LONG",
+    entryPrice: "2,450",
+    timeframe: "1D",
+    analysis: "Breaking key resistance. Volume profile confirms breakout."
+  },
+  {
+    traderProfile: "Smart Money",
+    market: "LINK/USD",
+    direction: "LONG",
+    entryPrice: "18.50",
+    timeframe: "2H",
+    analysis: "Forming cup and handle pattern."
+  },
+  {
+    traderProfile: "Market Oracle",
+    market: "BTC/USD",
+    direction: "SHORT",
+    entryPrice: "44,800",
+    timeframe: "4H",
+    analysis: "Showing bearish divergence on 4H timeframe."
+  },
+  {
+    traderProfile: "Trend Hunter",
+    market: "SOL/USD",
+    direction: "LONG",
+    entryPrice: "95.20",
+    timeframe: "1H",
+    analysis: "Multiple timeframe analysis suggests accumulation phase."
+  },
 ];
 
 const Index = () => {
@@ -21,20 +56,26 @@ const Index = () => {
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // Format market call for display
+  const formatMarketCall = (call: typeof marketCalls[0]) => {
+    return `${call.traderProfile} | ${call.market} | ${call.direction} | $${call.entryPrice} | ${call.timeframe}\n${call.analysis}`;
+  };
+
   // Simulate market calls coming in
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
+      const formattedCall = formatMarketCall(randomCall);
       
       // Add to chat history
       setChatHistory(prev => [...prev, { 
-        message: randomCall, 
+        message: formattedCall, 
         timestamp: new Date().toLocaleTimeString(),
         isMarketCall: true 
       }]);
       
       // Update market intel
-      setMarketIntel(randomCall);
+      setMarketIntel(formattedCall);
       
       if (chatContainerRef.current) {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -133,7 +174,7 @@ const Index = () => {
                             ? 'bg-purple-500/20 border border-purple-500/30' 
                             : 'bg-white/5'
                       }`}>
-                        <p className="text-sm text-white font-mono">{msg.message}</p>
+                        <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
                         <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
                       </div>
                     </motion.div>
@@ -176,7 +217,7 @@ const Index = () => {
                 <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
               </div>
               <div className="flex-1 relative">
-                <div className="absolute inset-0 flex items-center justify-center text-emerald-400/50 font-mono">
+                <div className="absolute inset-0 flex items-center justify-center text-emerald-400/50 font-mono whitespace-pre-line">
                   {marketIntel || "[AWAITING MARKET DATA]"}
                 </div>
               </div>
