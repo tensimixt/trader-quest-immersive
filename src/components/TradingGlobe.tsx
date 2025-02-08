@@ -117,7 +117,7 @@ const TradingGlobe = () => {
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     containerRef.current.appendChild(renderer.domElement);
 
-    // Create globe with glowing effect
+    // Enhanced globe with more interactive elements
     const sphereGeometry = new THREE.SphereGeometry(5, 50, 50);
     const sphereMaterial = new THREE.MeshPhongMaterial({
       color: 0x88ccff,
@@ -126,7 +126,7 @@ const TradingGlobe = () => {
       wireframe: true,
     });
     
-    // Add glow effect with fixed uniform types
+    // Add glow effect
     const glowGeometry = new THREE.SphereGeometry(5.2, 50, 50);
     const glowMaterial = new THREE.ShaderMaterial({
       uniforms: {
@@ -163,7 +163,7 @@ const TradingGlobe = () => {
     scene.add(glowMesh);
     sphereRef.current = sphere;
 
-    // Add more data points for a richer visualization
+    // Add interactive data points
     const dataPointsGeometry = new THREE.BufferGeometry();
     const dataPoints = [];
     const colors = [];
@@ -180,7 +180,7 @@ const TradingGlobe = () => {
         radius * Math.cos(theta)
       );
 
-      // Add varying colors for data points
+      // Dynamic colors for data points
       const hue = i / 200;
       color.setHSL(hue, 1, 0.5);
       colors.push(color.r, color.g, color.b);
@@ -208,15 +208,14 @@ const TradingGlobe = () => {
     pointLight.position.set(10, 10, 10);
     scene.add(pointLight);
 
-    // Add pulse effect to point light
+    // Add pulsating effect to point light
     const pulseLight = () => {
       pointLight.intensity = 2 + Math.sin(Date.now() * 0.002) * 0.5;
     };
 
-    // Camera position
     camera.position.z = 15;
 
-    // Controls with smooth damping
+    // Smooth controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -224,14 +223,14 @@ const TradingGlobe = () => {
     controls.maxDistance = 30;
     controls.minDistance = 10;
 
-    // Animation loop with enhanced effects
+    // Enhanced animation loop
     const animate = () => {
       requestAnimationFrame(animate);
       if (sphereRef.current) {
         sphereRef.current.rotation.y += 0.001;
         dataPointsCloud.rotation.y += 0.001;
         
-        // Add slight wobble effect
+        // Add subtle wobble effect
         sphereRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.1;
         dataPointsCloud.position.y = sphereRef.current.position.y;
       }
@@ -242,7 +241,6 @@ const TradingGlobe = () => {
     };
     animate();
 
-    // Handle resize
     const handleResize = () => {
       if (!containerRef.current) return;
       camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
