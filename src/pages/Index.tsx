@@ -91,7 +91,14 @@ const Index = () => {
   const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
-  const [filteredHistory, setFilteredHistory] = useState<Array<any>>([]);
+  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6).map(call => ({
+    market: call.market,
+    direction: call.direction,
+    confidence: call.confidence,
+    roi: call.roi,
+    trader: call.traderProfile,
+    timestamp: call.timestamp
+  })));
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -141,15 +148,22 @@ const Index = () => {
       userInput.toLowerCase().includes('previous');
 
     if (isHistoryQuery) {
-      // Initialize with 6 entries immediately for smoother transition
-      setFilteredHistory(predictions.slice(0, 6));
       setIsHistoryView(true);
       
       const query = userInput.toLowerCase();
-      let filtered = [...predictions];
+      let filtered = [...marketCalls];
 
       if (query.includes('btc')) {
         filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
+      }
+      if (query.includes('eth')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('eth'));
+      }
+      if (query.includes('doge')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('doge'));
+      }
+      if (query.includes('trx')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('trx'));
       }
       if (query.includes('trader')) {
         const traderName = query.split('trader')[1]?.split(' ')[1];
@@ -171,7 +185,7 @@ const Index = () => {
           confidence: p.confidence,
           roi: p.roi,
           trader: p.traderProfile,
-          timestamp: new Date().toLocaleTimeString()
+          timestamp: p.timestamp
         }));
 
         setFilteredHistory(historyData);
@@ -328,7 +342,7 @@ const Index = () => {
                     y: 0,
                     transition: {
                       duration: 0.5,
-                      ease: [0.19, 1.0, 0.22, 1.0]
+                      ease: "easeInOut"
                     }
                   }}
                   exit={{ 
