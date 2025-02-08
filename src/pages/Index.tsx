@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import TradingGlobe from '../components/TradingGlobe';
 import PredictionCard from '../components/PredictionCard';
@@ -84,95 +85,100 @@ const Index = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto py-16 px-4"
+        className="container mx-auto p-4 h-screen flex flex-col"
       >
-        {/* Header Section */}
-        <div className="mb-16">
-          <motion.div 
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="text-center relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0 blur-xl" />
-            <h1 className="text-6xl font-bold mb-6 text-white relative">
+        {/* Header Section - 10vh */}
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-center relative h-[10vh] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0 blur-xl" />
+          <div>
+            <h1 className="text-4xl font-bold mb-2 text-white relative">
               FOX<span className="text-emerald-400">DIE</span>
             </h1>
-            <p className="text-xl text-emerald-400/70 font-mono tracking-wider">
+            <p className="text-sm text-emerald-400/70 font-mono tracking-wider">
               MARKET_SURVEILLANCE_SYSTEM v2.1
             </p>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
 
-        {/* Main Content */}
-        <div className="flex flex-col space-y-8">
-          {/* Globe */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card rounded-2xl overflow-hidden relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
-            <div className="p-8 relative">
-              <TradingGlobe />
-            </div>
-          </motion.div>
-
-          {/* Stats Matrix */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card rounded-2xl overflow-hidden relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
-            <div className="p-8 relative">
-              <div className="grid grid-cols-3 gap-6">
-                {[
-                  { label: 'VOLUME_INDEX', value: marketStats.totalVolume.toLocaleString(), icon: <Activity /> },
-                  { label: 'CONFIDENCE_MATRIX', value: `${marketStats.avgConfidence}%`, icon: <TrendingUp /> },
-                  { label: 'BULLISH_SIGNALS', value: marketStats.upPredictions, icon: <DollarSign /> }
-                ].map((stat, index) => (
-                  <div key={stat.label} className="text-center">
-                    <div className="flex items-center justify-center mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                        {stat.icon}
-                      </div>
-                    </div>
-                    <p className="text-emerald-400/70 font-mono text-sm tracking-wider mb-2">{stat.label}</p>
-                    <p className="text-3xl font-bold text-white">{stat.value}</p>
-                  </div>
-                ))}
+        {/* Main Content Grid - 90vh */}
+        <div className="grid grid-cols-12 gap-4 h-[90vh]">
+          {/* Left Column - Globe and Stats (8 columns) */}
+          <div className="col-span-8 grid grid-rows-2 gap-4">
+            {/* Globe Section */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-card rounded-2xl overflow-hidden relative row-span-1"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+              <div className="h-full relative">
+                <TradingGlobe />
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Predictions Feed */}
+            {/* Stats Matrix */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-card rounded-2xl overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+              <div className="p-6 relative h-full flex items-center">
+                <div className="grid grid-cols-3 gap-6 w-full">
+                  {[
+                    { label: 'VOLUME_INDEX', value: marketStats.totalVolume.toLocaleString(), icon: <Activity className="w-6 h-6" /> },
+                    { label: 'CONFIDENCE_MATRIX', value: `${marketStats.avgConfidence}%`, icon: <TrendingUp className="w-6 h-6" /> },
+                    { label: 'BULLISH_SIGNALS', value: marketStats.upPredictions, icon: <DollarSign className="w-6 h-6" /> }
+                  ].map((stat, index) => (
+                    <div key={stat.label} className="text-center">
+                      <div className="flex items-center justify-center mb-4">
+                        <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                          {stat.icon}
+                        </div>
+                      </div>
+                      <p className="text-emerald-400/70 font-mono text-sm tracking-wider mb-2">{stat.label}</p>
+                      <p className="text-2xl font-bold text-white">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Right Column - Predictions Feed (4 columns) */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card p-8 relative overflow-hidden"
+            className="col-span-4 glass-card rounded-2xl relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
-            <h2 className="text-2xl font-bold text-white mb-4 relative">MARKET_PREDICTIONS</h2>
-            <div className="space-y-4">
-              {predictions.map((prediction, index) => (
-                <motion.div
-                  key={prediction.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <PredictionCard
-                    symbol={prediction.symbol}
-                    prediction={prediction.prediction}
-                    confidence={prediction.confidence}
-                    timestamp={prediction.timestamp}
-                    traderText={prediction.traderText}
-                  />
-                </motion.div>
-              ))}
+            <div className="p-4 h-full">
+              <h2 className="text-xl font-bold text-white mb-4 relative">MARKET_PREDICTIONS</h2>
+              <div className="space-y-4 h-[calc(90vh-8rem)] overflow-y-auto custom-scrollbar pr-2">
+                {predictions.map((prediction, index) => (
+                  <motion.div
+                    key={prediction.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <PredictionCard
+                      symbol={prediction.symbol}
+                      prediction={prediction.prediction}
+                      confidence={prediction.confidence}
+                      timestamp={prediction.timestamp}
+                      traderText={prediction.traderText}
+                    />
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
