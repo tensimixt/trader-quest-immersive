@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TradingGlobe from '../components/TradingGlobe';
 import PredictionCard from '../components/PredictionCard';
 import { motion } from 'framer-motion';
-import { Activity, TrendingUp, DollarSign, Shield, Eye, Network } from 'lucide-react';
+import { Activity, TrendingUp, DollarSign, Shield, Eye, Network, Send, MessageCircle, Terminal, Cpu, Signal } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 // Sample trader texts for different scenarios
 const bullishTexts = [
@@ -41,6 +42,11 @@ const Index = () => {
     avgConfidence: 0,
     upPredictions: 0,
   });
+  const [currentInsight, setCurrentInsight] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
+  const [userInput, setUserInput] = useState("");
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Initial predictions
@@ -78,6 +84,30 @@ const Index = () => {
       upPredictions: stats.upPredictions,
     });
   }, [predictions]);
+
+  const handleUserMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim()) return;
+
+    // Add user message to chat
+    const timestamp = new Date().toLocaleTimeString();
+    setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
+    
+    // Clear input and scroll to bottom
+    setUserInput("");
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = "Acknowledged, Master Wayne. Analysis of market patterns suggests unusual activity in the tech sector. Shall I initiate a deeper scan?";
+      setChatHistory(prev => [...prev, { message: aiResponse, timestamp: new Date().toLocaleTimeString() }]);
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 1000);
+  };
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
