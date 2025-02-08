@@ -235,13 +235,14 @@ const TradingGlobe = () => {
   }, []);
 
   return (
-    <div className="relative">
-      <div ref={containerRef} className="w-full h-[600px]" />
+    <div className="flex flex-col gap-8">
+      <div ref={containerRef} className="w-full h-[400px]" />
+      
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-md"
+        className="w-full max-w-md mx-auto"
       >
         <div className="glass-card p-4 border border-green-500/20 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-4">
@@ -303,4 +304,3 @@ const TradingGlobe = () => {
 };
 
 export default TradingGlobe;
-
