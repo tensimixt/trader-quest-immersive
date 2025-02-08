@@ -1,8 +1,9 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send } from 'lucide-react';
+import { MessageCircle, Send, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
