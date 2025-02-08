@@ -71,7 +71,7 @@ const Index = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
-      setPredictions(prev => [randomCall, ...prev].slice(0, 3)); // Keep last 3 predictions
+      setPredictions(prev => [randomCall, ...prev].slice(0, 100)); // Keep last 100 predictions
     }, 15000); // New market call every 15 seconds
 
     return () => clearInterval(interval);
