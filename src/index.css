@@ -11,11 +11,12 @@
     --card-foreground: 240 10% 3.9%;
     --accent: 240 5.9% 10%;
     --accent-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
     --radius: 0.5rem;
   }
 
   * {
-    @apply border-border antialiased;
+    @apply border-neutral-200 antialiased;
   }
 
   body {
