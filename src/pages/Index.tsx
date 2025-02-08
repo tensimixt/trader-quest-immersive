@@ -249,11 +249,23 @@ const Index = () => {
                   animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
                 />
-                <motion.div
-                  className="absolute inset-[8px] border-2 border-emerald-400/60 rounded-full"
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 1 }}
-                />
+                <div className="absolute inset-[8px] flex items-center justify-center">
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  />
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                  />
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 1 }}
+                  />
+                </div>
               </div>
               <Shield className="w-6 h-6 text-emerald-400" />
               <h1 className="text-4xl font-bold text-white tracking-wider">
