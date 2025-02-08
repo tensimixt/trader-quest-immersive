@@ -274,17 +274,32 @@ const Index = () => {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.3 }}
                   className="flex items-center gap-2 mb-4"
                 >
                   {isHistoryView ? (
                     <>
                       <History className="w-5 h-5 text-blue-400" />
-                      <h2 className="text-xl font-bold text-white">MARKET_HISTORY</h2>
+                      <motion.h2 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-xl font-bold text-white"
+                      >
+                        MARKET_HISTORY
+                      </motion.h2>
                     </>
                   ) : (
                     <>
                       <Eye className="w-5 h-5 text-emerald-400" />
-                      <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
+                      <motion.h2 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-xl font-bold text-white"
+                      >
+                        MARKET_INTEL
+                      </motion.h2>
                     </>
                   )}
                 </motion.div>
