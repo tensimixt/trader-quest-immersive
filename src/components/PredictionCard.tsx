@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield } from 'lucide-react';
+import { format } from 'date-fns-tz';
 
 interface PredictionCardProps {
   symbol: string;
@@ -12,6 +13,9 @@ interface PredictionCardProps {
 }
 
 const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
+  // Convert timestamp string back to Date and format in Japan time
+  const formattedTimestamp = format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -39,7 +43,7 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
         </div>
         <div className="flex items-center space-x-2">
           <Clock className="w-4 h-4 text-emerald-400/70" />
-          <span className="text-sm font-mono text-emerald-400/70">{timestamp}</span>
+          <span className="text-sm font-mono text-emerald-400/70">{formattedTimestamp}</span>
         </div>
       </div>
       
@@ -126,3 +130,4 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
 };
 
 export default PredictionCard;
+
