@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Eye, Network, Terminal, Send, History } from 'lucide-react';
+import { Shield, Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -354,49 +356,62 @@ const Index = () => {
                   }}
                   className="relative"
                 >
-                  <div className="flex items-center gap-2 mb-4">
-                    <motion.div
-                      animate={{
-                        rotate: isHistoryView ? [0, 180, 360] : 0,
-                      }}
-                      transition={{
-                        duration: 0.5,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      {isHistoryView ? (
-                        <History className="w-5 h-5 text-blue-400" />
-                      ) : (
-                        <Eye className="w-5 h-5 text-emerald-400" />
-                      )}
-                    </motion.div>
-                    <motion.div
-                      layout
-                      className="relative"
-                    >
-                      <motion.h2 
-                        className="text-xl font-bold text-white flex items-center gap-2"
-                      >
-                        {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: 0.2 }}
-                          className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
-                        />
-                      </motion.h2>
-                      <motion.div 
-                        className="absolute -bottom-1 left-0 right-0 h-[2px]"
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                        style={{
-                          background: isHistoryView 
-                            ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
-                            : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <motion.div
+                        animate={{
+                          rotate: isHistoryView ? [0, 180, 360] : 0,
                         }}
-                      />
-                    </motion.div>
+                        transition={{
+                          duration: 0.5,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        {isHistoryView ? (
+                          <History className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Eye className="w-5 h-5 text-emerald-400" />
+                        )}
+                      </motion.div>
+                      <motion.div
+                        layout
+                        className="relative"
+                      >
+                        <motion.h2 
+                          className="text-xl font-bold text-white flex items-center gap-2"
+                        >
+                          {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
+                          />
+                        </motion.h2>
+                        <motion.div 
+                          className="absolute -bottom-1 left-0 right-0 h-[2px]"
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.1 }}
+                          style={{
+                            background: isHistoryView 
+                              ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
+                              : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
+                          }}
+                        />
+                      </motion.div>
+                    </div>
+                    {isHistoryView && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsHistoryView(false)}
+                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Intel
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               </AnimatePresence>
