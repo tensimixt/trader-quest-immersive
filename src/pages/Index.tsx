@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
@@ -17,84 +16,70 @@ const marketIntelligence = [
 
 const marketCalls = [
   {
-    traderProfile: "Alpha Trader",
+    traderProfile: "Bitcoin Whale",
     market: "BTC/USD",
     direction: "LONG",
-    entryPrice: "43,250",
+    entryPrice: "48,250",
     timeframe: "4H",
-    analysis: "Strong bullish divergence detected. RSI showing oversold conditions.",
-    confidence: 97,
-    roi: 875
+    analysis: "Accumulation phase complete. Whales increasing positions.",
+    confidence: 94,
+    roi: 1250,
+    timestamp: "2024-02-15 14:30"
   },
   {
-    traderProfile: "Crypto Whale",
+    traderProfile: "ETH Oracle",
+    market: "ETH/USD",
+    direction: "LONG",
+    entryPrice: "2,850",
+    timeframe: "1D",
+    analysis: "Triple bottom formation with increasing volume.",
+    confidence: 92,
+    roi: 875,
+    timestamp: "2024-02-14 09:15"
+  },
+  {
+    traderProfile: "Doge Hunter",
+    market: "DOGE/USD",
+    direction: "LONG",
+    entryPrice: "0.085",
+    timeframe: "2H",
+    analysis: "Social sentiment spike detected. Major influencer activity.",
+    confidence: 88,
+    roi: 420,
+    timestamp: "2024-02-13 21:45"
+  },
+  {
+    traderProfile: "TRX Master",
+    market: "TRX/USD",
+    direction: "SHORT",
+    entryPrice: "0.14",
+    timeframe: "4H",
+    analysis: "Bearish divergence on RSI. Volume declining.",
+    confidence: 86,
+    roi: 320,
+    timestamp: "2024-02-12 16:20"
+  },
+  {
+    traderProfile: "Bitcoin Scout",
+    market: "BTC/USD",
+    direction: "SHORT",
+    entryPrice: "52,800",
+    timeframe: "1D",
+    analysis: "Distribution pattern forming at resistance.",
+    confidence: 91,
+    roi: 680,
+    timestamp: "2024-02-11 11:10"
+  },
+  {
+    traderProfile: "ETH Tracker",
     market: "ETH/USD",
     direction: "LONG",
     entryPrice: "2,450",
-    timeframe: "1D",
-    analysis: "Breaking key resistance. Volume profile confirms breakout.",
-    confidence: 85,
-    roi: 650
-  },
-  {
-    traderProfile: "Smart Money",
-    market: "LINK/USD",
-    direction: "LONG",
-    entryPrice: "18.50",
-    timeframe: "2H",
-    analysis: "Forming cup and handle pattern.",
-    confidence: 92,
-    roi: 450
-  },
-  {
-    traderProfile: "Market Oracle",
-    market: "BTC/USD",
-    direction: "SHORT",
-    entryPrice: "44,800",
     timeframe: "4H",
-    analysis: "Showing bearish divergence on 4H timeframe.",
-    confidence: 88,
-    roi: -320
-  },
-  {
-    traderProfile: "Trend Hunter",
-    market: "SOL/USD",
-    direction: "LONG",
-    entryPrice: "95.20",
-    timeframe: "1H",
-    analysis: "Multiple timeframe analysis suggests accumulation phase.",
-    confidence: 94,
-    roi: 560
-  },
-  {
-    traderProfile: "Alpha Trader",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "45,750",
-    timeframe: "1D",
-    analysis: "Golden cross formation on daily chart. Strong buy signal.",
-    confidence: 96,
-    roi: 920
-  },
-  {
-    traderProfile: "Crypto Whale",
-    market: "DOT/USD",
-    direction: "LONG",
-    entryPrice: "7.85",
-    timeframe: "4H",
-    analysis: "Accumulation zone identified. Whale wallets increasing positions.",
+    analysis: "Breaking out of falling wedge pattern.",
     confidence: 89,
-    roi: 430
-  },
-  {
-    traderProfile: "Smart Money",
-    market: "BNB/USD",
-    direction: "SHORT",
-    entryPrice: "320.50",
-    timeframe: "2H",
-    analysis: "Descending triangle pattern completion. Volume confirming.",
-    confidence: 91,
-    roi: 680
+    roi: 540,
+    timestamp: "2024-02-10 08:45"
   }
 ];
 
