@@ -11,6 +11,10 @@ const MarketInsights = [
   "Institutional buying pressure detected",
   "Bullish divergence on momentum indicators",
   "Market sentiment shifting positive",
+  "Unusual options activity detected",
+  "High-frequency trading patterns identified",
+  "Key resistance level approaching",
+  "Volume profile showing accumulation"
 ];
 
 const TradingGlobe = () => {
@@ -58,14 +62,14 @@ const TradingGlobe = () => {
       wireframe: true,
     });
     
-    // Add glow effect
+    // Add glow effect with fixed uniform types
     const glowGeometry = new THREE.SphereGeometry(5.2, 50, 50);
     const glowMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        c: { type: "f", value: 0.5 },
-        p: { type: "f", value: 3.0 },
-        glowColor: { type: "c", value: new THREE.Color(0x00ff00) },
-        viewVector: { type: "v3", value: camera.position }
+        c: { value: 0.5 },
+        p: { value: 3.0 },
+        glowColor: { value: new THREE.Color(0x00ff00) },
+        viewVector: { value: camera.position }
       },
       vertexShader: `
         uniform vec3 viewVector;
@@ -95,10 +99,13 @@ const TradingGlobe = () => {
     scene.add(glowMesh);
     sphereRef.current = sphere;
 
-    // Add data points
+    // Add more data points for a richer visualization
     const dataPointsGeometry = new THREE.BufferGeometry();
     const dataPoints = [];
-    for (let i = 0; i < 100; i++) {
+    const colors = [];
+    const color = new THREE.Color();
+    
+    for (let i = 0; i < 200; i++) {
       const theta = THREE.MathUtils.randFloatSpread(360);
       const phi = THREE.MathUtils.randFloatSpread(360);
       const radius = 5.5;
@@ -108,20 +115,28 @@ const TradingGlobe = () => {
         radius * Math.sin(theta) * Math.sin(phi),
         radius * Math.cos(theta)
       );
+
+      // Add varying colors for data points
+      const hue = i / 200;
+      color.setHSL(hue, 1, 0.5);
+      colors.push(color.r, color.g, color.b);
     }
+    
     dataPointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(dataPoints, 3));
+    dataPointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     
     const dataPointsMaterial = new THREE.PointsMaterial({
-      color: 0x00ff00,
-      size: 0.1,
+      size: 0.15,
+      vertexColors: true,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
     });
     
     const dataPointsCloud = new THREE.Points(dataPointsGeometry, dataPointsMaterial);
     scene.add(dataPointsCloud);
 
-    // Lighting
+    // Enhanced lighting
     const ambientLight = new THREE.AmbientLight(0x404040);
     scene.add(ambientLight);
     
@@ -129,22 +144,35 @@ const TradingGlobe = () => {
     pointLight.position.set(10, 10, 10);
     scene.add(pointLight);
 
+    // Add pulse effect to point light
+    const pulseLight = () => {
+      pointLight.intensity = 2 + Math.sin(Date.now() * 0.002) * 0.5;
+    };
+
     // Camera position
     camera.position.z = 15;
 
-    // Controls
+    // Controls with smooth damping
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.rotateSpeed = 0.5;
+    controls.maxDistance = 30;
+    controls.minDistance = 10;
 
-    // Animation loop
+    // Animation loop with enhanced effects
     const animate = () => {
       requestAnimationFrame(animate);
       if (sphereRef.current) {
         sphereRef.current.rotation.y += 0.001;
         dataPointsCloud.rotation.y += 0.001;
+        
+        // Add slight wobble effect
+        sphereRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.1;
+        dataPointsCloud.position.y = sphereRef.current.position.y;
       }
+      
+      pulseLight();
       controls.update();
       renderer.render(scene, camera);
     };
