@@ -3,7 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { motion } from 'framer-motion';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 const MarketInsights = [
   "Market volatility detected in tech sector",
@@ -18,12 +19,28 @@ const MarketInsights = [
   "Volume profile showing accumulation"
 ];
 
+const AIResponses = {
+  volume: "Based on our analysis, trading volume has spiked 23% above the 20-day average, indicating strong institutional interest.",
+  trend: "The current trend analysis shows an emerging bullish pattern with increasing momentum.",
+  support: "Key support levels have been established at recent price points, providing a stable foundation for upward movement.",
+  resistance: "Watch for potential breakout above the current resistance level at market open.",
+  default: "I'm analyzing the market patterns. What specific aspect would you like to know about?"
+};
+
 const TradingGlobe = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sphereRef = useRef<THREE.Mesh>();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string }>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
+  const [userInput, setUserInput] = useState("");
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  };
 
   const typeMessage = async (message: string) => {
     setIsTyping(true);
@@ -34,16 +51,34 @@ const TradingGlobe = () => {
     }
     setIsTyping(false);
     
-    // Add message to chat history
     const timestamp = new Date().toLocaleTimeString();
     setChatHistory(prev => [...prev, { message, timestamp }]);
+    scrollToBottom();
+  };
+
+  const handleUserMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim()) return;
+
+    const timestamp = new Date().toLocaleTimeString();
+    setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
+    
+    // Generate AI response
+    const keywords = ['volume', 'trend', 'support', 'resistance'];
+    const matchedKeyword = keywords.find(keyword => userInput.toLowerCase().includes(keyword));
+    const response = matchedKeyword ? AIResponses[matchedKeyword] : AIResponses.default;
+    
+    setUserInput("");
+    setTimeout(() => {
+      typeMessage(response);
+    }, 500);
   };
 
   useEffect(() => {
     const interval = setInterval(() => {
       const randomInsight = MarketInsights[Math.floor(Math.random() * MarketInsights.length)];
       typeMessage(randomInsight);
-    }, 5000);
+    }, 15000); // Increased interval to reduce frequency of automated messages
 
     return () => clearInterval(interval);
   }, []);
@@ -217,36 +252,49 @@ const TradingGlobe = () => {
             <MessageCircle className="text-green-400 w-5 h-5" />
           </div>
           
-          <div className="space-y-4 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/20 scrollbar-track-transparent mb-4">
+          <div 
+            ref={chatContainerRef}
+            className="space-y-4 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/20 scrollbar-track-transparent mb-4"
+          >
             {chatHistory.map((item, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="flex items-start space-x-3"
+                className={`flex items-start space-x-3 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
               >
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-green-400" />
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full ${item.isUser ? 'bg-blue-500/20' : 'bg-green-500/20'} flex items-center justify-center`}>
+                  <MessageCircle className={`w-4 h-4 ${item.isUser ? 'text-blue-400' : 'text-green-400'}`} />
                 </div>
-                <div className="flex-1">
-                  <div className="text-green-300 font-mono text-sm">{item.message}</div>
-                  <div className="text-green-500/50 text-xs mt-1">{item.timestamp}</div>
+                <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
+                  <div className={`text-sm font-mono ${item.isUser ? 'text-blue-300' : 'text-green-300'}`}>
+                    {item.message}
+                  </div>
+                  <div className={`text-xs mt-1 ${item.isUser ? 'text-blue-500/50' : 'text-green-500/50'}`}>
+                    {item.timestamp}
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
           
           <div className="border-t border-green-500/20 pt-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <MessageCircle className="w-4 h-4 text-green-400" />
-              </div>
-              <p className="text-green-300 font-mono text-sm flex-1">
-                {currentInsight}
-                {isTyping && <span className="animate-pulse">_</span>}
-              </p>
-            </div>
+            <form onSubmit={handleUserMessage} className="flex items-center space-x-2">
+              <Input
+                type="text"
+                placeholder="Ask about market conditions..."
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                className="flex-1 bg-transparent border-green-500/20 text-green-300 placeholder:text-green-500/50"
+              />
+              <button
+                type="submit"
+                className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center hover:bg-green-500/30 transition-colors"
+              >
+                <Send className="w-4 h-4 text-green-400" />
+              </button>
+            </form>
           </div>
         </div>
       </motion.div>
@@ -255,3 +303,4 @@ const TradingGlobe = () => {
 };
 
 export default TradingGlobe;
+
