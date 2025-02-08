@@ -290,43 +290,57 @@ const TradingGlobe = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-4xl mx-auto"
       >
-        <div className="glass-card p-4 border border-green-500/20 backdrop-blur-xl mb-6">
+        <div className="glass-card p-4 border border-purple-500/20 backdrop-blur-xl mb-6">
           <div className="h-[200px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#9b87f5" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#9b87f5" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="gridGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="rgba(155, 135, 245, 0.1)"/>
+                    <stop offset="100%" stopColor="rgba(155, 135, 245, 0.05)"/>
                   </linearGradient>
                 </defs>
                 <XAxis 
                   dataKey="time" 
-                  stroke="#9CA3AF"
-                  tick={{ fill: '#9CA3AF' }}
-                  tickLine={{ stroke: '#9CA3AF' }}
+                  stroke="#8E9196"
+                  tick={{ fill: '#8E9196', fontSize: 12 }}
+                  tickLine={{ stroke: '#8E9196' }}
+                  axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
+                  dy={10}
                 />
                 <YAxis 
-                  stroke="#9CA3AF"
-                  tick={{ fill: '#9CA3AF' }}
-                  tickLine={{ stroke: '#9CA3AF' }}
+                  stroke="#8E9196"
+                  tick={{ fill: '#8E9196', fontSize: 12 }}
+                  tickLine={{ stroke: '#8E9196' }}
+                  axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
+                  dx={-10}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'rgba(17, 24, 39, 0.8)',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                    border: '1px solid rgba(155, 135, 245, 0.2)',
                     borderRadius: '8px',
-                    backdropFilter: 'blur(4px)'
+                    backdropFilter: 'blur(4px)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    padding: '12px'
                   }}
-                  labelStyle={{ color: '#9CA3AF' }}
-                  itemStyle={{ color: '#8B5CF6' }}
+                  labelStyle={{ color: '#8E9196', marginBottom: '4px', fontSize: '12px' }}
+                  itemStyle={{ color: '#9b87f5', fontSize: '14px', padding: '4px 0' }}
+                  cursor={{ stroke: '#9b87f5', strokeWidth: 1, strokeDasharray: '4 4' }}
                 />
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#8B5CF6"
+                  stroke="#9b87f5"
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorValue)"
+                  animationDuration={1500}
+                  animationEasing="ease-in-out"
                 />
               </AreaChart>
             </ResponsiveContainer>
