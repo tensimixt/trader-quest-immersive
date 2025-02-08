@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { motion } from 'framer-motion';
+import { MessageCircle } from 'lucide-react';
 
 const MarketInsights = [
   "Market volatility detected in tech sector",
@@ -22,6 +23,7 @@ const TradingGlobe = () => {
   const sphereRef = useRef<THREE.Mesh>();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string }>>([]);
 
   const typeMessage = async (message: string) => {
     setIsTyping(true);
@@ -31,6 +33,10 @@ const TradingGlobe = () => {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     setIsTyping(false);
+    
+    // Add message to chat history
+    const timestamp = new Date().toLocaleTimeString();
+    setChatHistory(prev => [...prev, { message, timestamp }]);
   };
 
   useEffect(() => {
@@ -203,14 +209,45 @@ const TradingGlobe = () => {
         className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-md"
       >
         <div className="glass-card p-4 border border-green-500/20 backdrop-blur-xl">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-green-400 text-sm font-mono">MARKET INTELLIGENCE</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-green-400 text-sm font-mono">MARKET INTELLIGENCE</span>
+            </div>
+            <MessageCircle className="text-green-400 w-5 h-5" />
           </div>
-          <p className="text-green-300 font-mono text-sm min-h-[3rem] leading-relaxed">
-            {currentInsight}
-            {isTyping && <span className="animate-pulse">_</span>}
-          </p>
+          
+          <div className="space-y-4 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/20 scrollbar-track-transparent mb-4">
+            {chatHistory.map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-start space-x-3"
+              >
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <MessageCircle className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-green-300 font-mono text-sm">{item.message}</div>
+                  <div className="text-green-500/50 text-xs mt-1">{item.timestamp}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          
+          <div className="border-t border-green-500/20 pt-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-green-400" />
+              </div>
+              <p className="text-green-300 font-mono text-sm flex-1">
+                {currentInsight}
+                {isTyping && <span className="animate-pulse">_</span>}
+              </p>
+            </div>
+          </div>
         </div>
       </motion.div>
     </div>
