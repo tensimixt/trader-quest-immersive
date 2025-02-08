@@ -300,50 +300,50 @@ const TradingGlobe = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="flex flex-col gap-12 px-6 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-10 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[700px] relative overflow-hidden"
+          className="glass-card p-12 rounded-2xl border border-emerald-500/20 backdrop-blur-lg min-h-[800px] relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-          <div className="absolute top-2 left-2 px-3 py-1 bg-black/40 rounded-md border border-emerald-500/30 text-[10px] font-mono text-emerald-400/70 flex items-center gap-2">
+          <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+          <div className="absolute top-4 left-4 px-4 py-2 bg-black/40 rounded-md border border-emerald-500/30 text-xs font-mono text-emerald-400/70 flex items-center gap-2">
             <Power className="w-3 h-3" />
             FOXDIE v2.1
           </div>
           
-          <div className="flex items-center justify-between mb-8 mt-4">
-            <div className="flex items-center space-x-4">
-              <Target className="w-7 h-7 text-emerald-400" />
-              <span className="text-emerald-400 font-mono text-xl tracking-wider">SNAKE.MONITOR_</span>
+          <div className="flex items-center justify-between mb-10 mt-8">
+            <div className="flex items-center space-x-6">
+              <Target className="w-8 h-8 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-2xl tracking-wider">SNAKE.MONITOR_</span>
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
-            <div className="flex items-center space-x-3 text-emerald-400/50">
+            <div className="flex items-center space-x-4 text-emerald-400/50">
               <Radio className="w-5 h-5" />
               <span className="text-sm font-mono">CODEC ACTIVE</span>
             </div>
           </div>
           
-          <div ref={containerRef} className="w-full h-[500px] rounded-lg overflow-hidden border border-emerald-500/10 mb-8 relative">
+          <div ref={containerRef} className="w-full h-[550px] rounded-2xl overflow-hidden border border-emerald-500/10 mb-10 relative">
             <div className="absolute inset-0 pointer-events-none border-2 border-emerald-500/10 z-10" />
-            <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
-              <CrosshairIcon className="w-4 h-4 text-emerald-400/70" />
-              <span className="text-xs font-mono text-emerald-400/70">TACTICAL VIEW</span>
+            <div className="absolute top-4 left-4 flex items-center gap-3 z-10">
+              <CrosshairIcon className="w-5 h-5 text-emerald-400/70" />
+              <span className="text-sm font-mono text-emerald-400/70">TACTICAL VIEW</span>
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-8">
             {['CODEC', 'RADAR', 'INTEL'].map((status, index) => (
-              <div key={status} className="glass-card p-5 rounded-lg border border-emerald-500/20 backdrop-blur-sm relative">
+              <div key={status} className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-sm relative">
                 <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-mono text-emerald-400/70">{status}</span>
-                  {index === 0 ? <Shield className="w-4 h-4 text-emerald-400" /> :
-                   index === 1 ? <Radar className="w-4 h-4 text-emerald-400" /> :
-                                <Database className="w-4 h-4 text-emerald-400" />}
+                  {index === 0 ? <Shield className="w-5 h-5 text-emerald-400" /> :
+                   index === 1 ? <Radar className="w-5 h-5 text-emerald-400" /> :
+                                <Database className="w-5 h-5 text-emerald-400" />}
                 </div>
-                <div className="text-2xl font-mono text-emerald-300">
+                <div className="text-3xl font-mono text-emerald-300">
                   {Math.floor(Math.random() * 100)}%
                 </div>
               </div>
@@ -354,25 +354,25 @@ const TradingGlobe = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-10 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[700px] relative"
+          className="glass-card p-12 rounded-2xl border border-emerald-500/20 backdrop-blur-lg min-h-[800px] relative"
         >
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-          <div className="absolute top-2 right-2 px-3 py-1 bg-black/40 rounded-md border border-emerald-500/30 text-[10px] font-mono text-emerald-400/70 flex items-center gap-2">
+          <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+          <div className="absolute top-4 right-4 px-4 py-2 bg-black/40 rounded-md border border-emerald-500/30 text-xs font-mono text-emerald-400/70 flex items-center gap-2">
             <Wifi className="w-3 h-3" />
             SECURE-LINK
           </div>
           
-          <div className="flex items-center justify-between mb-8 mt-4">
-            <div className="flex items-center space-x-4">
-              <Monitor className="w-7 h-7 text-emerald-400" />
-              <span className="text-emerald-400 font-mono text-xl tracking-wider">INTEL.MATRIX_</span>
+          <div className="flex items-center justify-between mb-10 mt-8">
+            <div className="flex items-center space-x-6">
+              <Monitor className="w-8 h-8 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-2xl tracking-wider">INTEL.MATRIX_</span>
             </div>
-            <div className="px-4 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+            <div className="px-5 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/20">
               <span className="text-sm font-mono text-emerald-400">CLASSIFIED</span>
             </div>
           </div>
           
-          <div className="h-[300px] mb-8 relative">
+          <div className="h-[350px] mb-10 relative">
             <div className="absolute inset-0 pointer-events-none border-2 border-emerald-500/10 z-10" />
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
@@ -385,14 +385,14 @@ const TradingGlobe = () => {
                 <XAxis 
                   dataKey="time" 
                   stroke="#059669"
-                  tick={{ fill: '#059669', fontSize: 11, fontFamily: 'monospace' }}
+                  tick={{ fill: '#059669', fontSize: 12, fontFamily: 'monospace' }}
                   tickLine={{ stroke: '#059669' }}
                   axisLine={{ stroke: '#059669', strokeWidth: 0.5 }}
                   dy={10}
                 />
                 <YAxis 
                   stroke="#059669"
-                  tick={{ fill: '#059669', fontSize: 11, fontFamily: 'monospace' }}
+                  tick={{ fill: '#059669', fontSize: 12, fontFamily: 'monospace' }}
                   tickLine={{ stroke: '#059669' }}
                   axisLine={{ stroke: '#059669', strokeWidth: 0.5 }}
                   dx={-10}
@@ -401,10 +401,10 @@ const TradingGlobe = () => {
                   contentStyle={{ 
                     backgroundColor: 'rgba(0, 0, 0, 0.9)',
                     border: '1px solid rgba(5, 150, 105, 0.2)',
-                    borderRadius: '6px',
-                    padding: '12px',
+                    borderRadius: '8px',
+                    padding: '16px',
                     fontFamily: 'monospace',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     color: '#059669'
                   }}
                   cursor={{ stroke: '#059669', strokeWidth: 1, strokeDasharray: '4 4' }}
@@ -413,7 +413,7 @@ const TradingGlobe = () => {
                   type="monotone"
                   dataKey="value"
                   stroke="#059669"
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorValue)"
                 />
@@ -421,14 +421,14 @@ const TradingGlobe = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <span className="text-base font-mono text-emerald-400">CODEC.FEED_</span>
-              <AlertCircle className="w-5 h-5 text-emerald-400" />
+              <span className="text-lg font-mono text-emerald-400">CODEC.FEED_</span>
+              <AlertCircle className="w-6 h-6 text-emerald-400" />
             </div>
             <div 
               ref={chatContainerRef}
-              className="h-[220px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-4 pr-2"
+              className="h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-6 pr-4"
             >
               {chatHistory.map((item, index) => (
                 <motion.div
@@ -436,21 +436,21 @@ const TradingGlobe = () => {
                   initial={{ opacity: 0, x: item.isUser ? 20 : -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3 }}
-                  className={`flex items-start space-x-4 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
+                  className={`flex items-start space-x-5 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
                 >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-md ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center relative`}>
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center relative`}>
                     <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent" />
                     {item.isUser ? (
-                      <Terminal className="w-4 h-4 text-emerald-400 relative z-10" />
+                      <Terminal className="w-5 h-5 text-emerald-400 relative z-10" />
                     ) : (
-                      <Cpu className="w-4 h-4 text-emerald-400 relative z-10" />
+                      <Cpu className="w-5 h-5 text-emerald-400 relative z-10" />
                     )}
                   </div>
                   <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
                     <div className={`text-sm font-mono ${item.isUser ? 'text-emerald-300' : 'text-emerald-400'}`}>
                       {item.message}
                     </div>
-                    <div className="text-[10px] mt-1 font-mono text-emerald-500/50">
+                    <div className="text-[10px] mt-2 font-mono text-emerald-500/50">
                       {item.timestamp}
                     </div>
                   </div>
@@ -464,27 +464,27 @@ const TradingGlobe = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-10 rounded-xl border border-emerald-500/20 backdrop-blur-lg relative"
+        className="glass-card p-12 rounded-2xl border border-emerald-500/20 backdrop-blur-lg relative"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+        <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
         
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center space-x-4">
-            <Terminal className="w-7 h-7 text-emerald-400" />
-            <span className="text-emerald-400 font-mono text-xl tracking-wider">COMMAND.TERMINAL_</span>
+        <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center space-x-6">
+            <Terminal className="w-8 h-8 text-emerald-400" />
+            <span className="text-emerald-400 font-mono text-2xl tracking-wider">COMMAND.TERMINAL_</span>
           </div>
-          <form onSubmit={handleUserMessage} className="flex-1 max-w-3xl ml-8">
+          <form onSubmit={handleUserMessage} className="flex-1 max-w-4xl ml-10">
             <div className="relative">
               <Input
                 type="text"
                 placeholder="> Enter command sequence..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono text-base placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-14 px-5"
+                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono text-base placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-16 px-6"
               />
               <button
                 type="submit"
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-emerald-500/20 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
               >
                 <Send className="w-5 h-5 text-emerald-400" />
               </button>
@@ -492,21 +492,21 @@ const TradingGlobe = () => {
           </form>
         </div>
         
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-4 gap-8">
           {['SYSTEM', 'NETWORK', 'SECURITY', 'ANALYSIS'].map((system, index) => (
             <motion.div
               key={system}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="glass-card p-6 rounded-lg border border-emerald-500/20 relative"
+              className="glass-card p-8 rounded-xl border border-emerald-500/20 relative"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-mono text-emerald-400">{system}</span>
-                <Activity className="w-4 h-4 text-emerald-400" />
+                <Activity className="w-5 h-5 text-emerald-400" />
               </div>
-              <div className="text-2xl font-mono text-emerald-300 mb-2">
+              <div className="text-3xl font-mono text-emerald-300 mb-3">
                 {Math.floor(Math.random() * 1000)}
               </div>
               <div className="text-[10px] font-mono text-emerald-500/50">
@@ -521,3 +521,4 @@ const TradingGlobe = () => {
 };
 
 export default TradingGlobe;
+
