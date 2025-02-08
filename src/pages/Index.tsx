@@ -85,10 +85,10 @@ const Index = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto py-16 px-8"
+        className="container mx-auto py-16 px-4"
       >
         {/* Header Section */}
-        <div className="mb-24">
+        <div className="mb-16">
           <motion.div 
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -104,8 +104,8 @@ const Index = () => {
           </motion.div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        {/* Stats Row */}
+        <div className="flex flex-wrap lg:flex-nowrap gap-4 mb-16">
           {[
             { label: 'VOLUME_INDEX', value: marketStats.totalVolume.toLocaleString(), icon: <Activity /> },
             { label: 'CONFIDENCE_MATRIX', value: `${marketStats.avgConfidence}%`, icon: <TrendingUp /> },
@@ -116,7 +116,7 @@ const Index = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="glass-card relative overflow-hidden group"
+              className="glass-card relative overflow-hidden group flex-1 min-w-[300px]"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
