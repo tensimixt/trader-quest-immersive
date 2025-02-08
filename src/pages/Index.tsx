@@ -1,20 +1,38 @@
-
 import React, { useState, useEffect } from 'react';
 import TradingGlobe from '../components/TradingGlobe';
 import PredictionCard from '../components/PredictionCard';
 import { motion } from 'framer-motion';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, Activity, DollarSign } from 'lucide-react';
 
+// Sample trader texts for different scenarios
+const bullishTexts = [
+  "Strong bullish divergence on RSI with increasing volume. Target: key resistance at upper Bollinger Band.",
+  "Multiple timeframe analysis shows bullish momentum. Watch for breakout above EMA200.",
+  "Price action forming ascending triangle with higher lows. Expecting upward movement.",
+];
+
+const bearishTexts = [
+  "Breaking below key support with increasing selling pressure. Watch for continuation.",
+  "Bearish engulfing pattern on the 4h chart with declining volume. Targeting next support.",
+  "Double top formation complete with bearish MACD crossover. Risk management crucial.",
+];
+
 // Mock data generator with more fields
-const generatePrediction = () => ({
-  symbol: ['AAPL', 'GOOGL', 'TSLA', 'MSFT', 'AMZN'][Math.floor(Math.random() * 5)],
-  prediction: Math.random() > 0.5 ? 'up' : 'down' as 'up' | 'down',
-  confidence: Math.floor(Math.random() * 30) + 70,
-  timestamp: new Date().toLocaleTimeString(),
-  volume: Math.floor(Math.random() * 1000000),
-  priceChange: (Math.random() * 10 - 5).toFixed(2),
-  id: Math.random().toString(),
-});
+const generatePrediction = () => {
+  const isPredictionUp = Math.random() > 0.5;
+  return {
+    symbol: ['AAPL', 'GOOGL', 'TSLA', 'MSFT', 'AMZN'][Math.floor(Math.random() * 5)],
+    prediction: isPredictionUp ? 'up' : 'down' as 'up' | 'down',
+    confidence: Math.floor(Math.random() * 30) + 70,
+    timestamp: new Date().toLocaleTimeString(),
+    volume: Math.floor(Math.random() * 1000000),
+    priceChange: (Math.random() * 10 - 5).toFixed(2),
+    traderText: isPredictionUp 
+      ? bullishTexts[Math.floor(Math.random() * bullishTexts.length)]
+      : bearishTexts[Math.floor(Math.random() * bearishTexts.length)],
+    id: Math.random().toString(),
+  };
+};
 
 const Index = () => {
   const [predictions, setPredictions] = useState<Array<any>>([]);
@@ -141,6 +159,7 @@ const Index = () => {
                 prediction={prediction.prediction}
                 confidence={prediction.confidence}
                 timestamp={prediction.timestamp}
+                traderText={prediction.traderText}
               />
             ))}
           </div>

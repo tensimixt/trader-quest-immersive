@@ -1,16 +1,17 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare } from 'lucide-react';
 
 interface PredictionCardProps {
   symbol: string;
   prediction: 'up' | 'down';
   confidence: number;
   timestamp: string;
+  traderText?: string;
 }
 
-const PredictionCard = ({ symbol, prediction, confidence, timestamp }: PredictionCardProps) => {
+const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText = "Looking bullish on the 4h timeframe with strong support levels and increasing volume." }: PredictionCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -51,6 +52,16 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp }: Predictio
             <span className="text-xs text-red-400">Bearish Signal</span>
           </div>
         )}
+      </div>
+
+      <div className="mb-6 p-4 rounded-lg bg-white/5 border border-white/10">
+        <div className="flex items-center space-x-2 mb-2">
+          <MessageSquare className="w-4 h-4 text-blue-400" />
+          <span className="text-sm font-medium text-blue-400">Trader's Analysis</span>
+        </div>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          {traderText}
+        </p>
       </div>
       
       <div className="space-y-4">
