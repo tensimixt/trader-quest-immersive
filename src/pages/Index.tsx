@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import TradingGlobe from '../components/TradingGlobe';
 import PredictionCard from '../components/PredictionCard';
@@ -80,89 +81,112 @@ const Index = () => {
   }, [predictions]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-accent">
+    <div className="min-h-screen bg-[#1A1F2C] overflow-hidden">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto px-4 py-8"
+        className="container mx-auto py-16 px-8"
       >
-        <div className="text-center mb-12">
-          <motion.h1
+        {/* Header Section */}
+        <div className="mb-24">
+          <motion.div 
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="text-4xl font-bold mb-4 text-foreground"
+            className="text-center relative"
           >
-            Trading Insights
-          </motion.h1>
-          <motion.p
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-gray-400"
-          >
-            Real-time market predictions powered by AI
-          </motion.p>
-        </div>
-
-        {/* Market Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass-card p-4 rounded-lg"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400">Total Volume</span>
-              <Activity className="w-5 h-5 text-blue-400" />
-            </div>
-            <p className="text-2xl font-bold mt-2">{marketStats.totalVolume.toLocaleString()}</p>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass-card p-4 rounded-lg"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400">Avg Confidence</span>
-              <TrendingUp className="w-5 h-5 text-green-400" />
-            </div>
-            <p className="text-2xl font-bold mt-2">{marketStats.avgConfidence}%</p>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="glass-card p-4 rounded-lg"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400">Up Predictions</span>
-              <DollarSign className="w-5 h-5 text-yellow-400" />
-            </div>
-            <p className="text-2xl font-bold mt-2">{marketStats.upPredictions}</p>
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0 blur-xl" />
+            <h1 className="text-6xl font-bold mb-6 text-white relative">
+              FOX<span className="text-emerald-400">DIE</span>
+            </h1>
+            <p className="text-xl text-emerald-400/70 font-mono tracking-wider">
+              MARKET_SURVEILLANCE_SYSTEM v2.1
+            </p>
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <TradingGlobe />
-          </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          {[
+            { label: 'VOLUME_INDEX', value: marketStats.totalVolume.toLocaleString(), icon: <Activity /> },
+            { label: 'CONFIDENCE_MATRIX', value: `${marketStats.avgConfidence}%`, icon: <TrendingUp /> },
+            { label: 'BULLISH_SIGNALS', value: marketStats.upPredictions, icon: <DollarSign /> }
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="glass-card relative overflow-hidden group"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+              
+              <div className="p-8 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-emerald-400/70 font-mono text-sm tracking-wider">{stat.label}</span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                    {stat.icon}
+                  </div>
+                </div>
+                <p className="text-4xl font-bold text-white mb-2">{stat.value}</p>
+                <div className="h-1 w-full bg-emerald-500/20 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-500/0"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
-          <div className="space-y-4">
-            {predictions.map((prediction, index) => (
-              <PredictionCard
-                key={prediction.id}
-                symbol={prediction.symbol}
-                prediction={prediction.prediction}
-                confidence={prediction.confidence}
-                timestamp={prediction.timestamp}
-                traderText={prediction.traderText}
-              />
-            ))}
-          </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
+          {/* Globe Section */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-card rounded-2xl overflow-hidden relative min-h-[800px]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+            <div className="p-8 relative">
+              <TradingGlobe />
+            </div>
+          </motion.div>
+
+          {/* Predictions Section */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            <div className="glass-card p-8 mb-8 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
+              <h2 className="text-2xl font-bold text-white mb-4 relative">MARKET_PREDICTIONS</h2>
+              <div className="space-y-4">
+                {predictions.map((prediction, index) => (
+                  <motion.div
+                    key={prediction.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <PredictionCard
+                      symbol={prediction.symbol}
+                      prediction={prediction.prediction}
+                      confidence={prediction.confidence}
+                      timestamp={prediction.timestamp}
+                      traderText={prediction.traderText}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
       </motion.div>
     </div>
