@@ -64,6 +64,36 @@ const marketCalls = [
     confidence: 94,
     roi: 560
   },
+  {
+    traderProfile: "Alpha Trader",
+    market: "BTC/USD",
+    direction: "LONG",
+    entryPrice: "45,750",
+    timeframe: "1D",
+    analysis: "Golden cross formation on daily chart. Strong buy signal.",
+    confidence: 96,
+    roi: 920
+  },
+  {
+    traderProfile: "Crypto Whale",
+    market: "DOT/USD",
+    direction: "LONG",
+    entryPrice: "7.85",
+    timeframe: "4H",
+    analysis: "Accumulation zone identified. Whale wallets increasing positions.",
+    confidence: 89,
+    roi: 430
+  },
+  {
+    traderProfile: "Smart Money",
+    market: "BNB/USD",
+    direction: "SHORT",
+    entryPrice: "320.50",
+    timeframe: "2H",
+    analysis: "Descending triangle pattern completion. Volume confirming.",
+    confidence: 91,
+    roi: 680
+  }
 ];
 
 const Index = () => {
@@ -124,7 +154,8 @@ const Index = () => {
       userInput.toLowerCase().includes('previous');
 
     if (isHistoryQuery) {
-      setFilteredHistory(predictions.slice(0, 3));
+      // Initialize with 6 entries immediately for smoother transition
+      setFilteredHistory(predictions.slice(0, 6));
       setIsHistoryView(true);
       
       const query = userInput.toLowerCase();
@@ -147,7 +178,7 @@ const Index = () => {
       }]);
 
       setTimeout(() => {
-        const historyData = filtered.slice(0, 10).map(p => ({
+        const historyData = filtered.slice(0, 6).map(p => ({
           market: p.market,
           direction: p.direction,
           confidence: p.confidence,
