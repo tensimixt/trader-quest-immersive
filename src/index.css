@@ -5,13 +5,13 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
+    --background: 225 30% 12%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 225 25% 10%;
     --card-foreground: 0 0% 98%;
-    --accent: 240 3.7% 15.9%;
+    --accent: 225 30% 15.9%;
     --accent-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
+    --border: 225 20% 20%;
     --radius: 0.5rem;
   }
 
@@ -22,19 +22,45 @@
   body {
     @apply bg-background text-foreground overflow-x-hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background: radial-gradient(circle at 50% 50%, rgba(23, 28, 35, 1) 0%, rgba(16, 20, 25, 1) 100%);
   }
 }
 
 .glass-card {
-  @apply bg-black/30 backdrop-blur-xl border border-white/10 shadow-lg;
+  @apply bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.36)];
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  transition: 0.5s;
+  pointer-events: none;
+}
+
+.glass-card:hover::before {
+  left: 100%;
 }
 
 .prediction-card {
   @apply glass-card rounded-xl p-6 transition-all duration-500;
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%);
 }
 
 .prediction-card:hover {
-  @apply transform -translate-y-1 shadow-xl;
+  @apply transform -translate-y-1;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 .animate-in {
@@ -51,19 +77,38 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  @apply bg-white/5;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  @apply bg-white/10 rounded-full;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  @apply bg-white/20;
 }
+
+.bat-grid {
+  background-size: 30px 30px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+.bat-glow {
+  box-shadow: 0 0 30px rgba(74, 222, 128, 0.2);
+}
+
+.cyber-line {
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(74, 222, 128, 0.2) 50%,
+    transparent 100%
+  );
+}
+
