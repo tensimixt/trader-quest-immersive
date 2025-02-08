@@ -1,8 +1,13 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Activity, Terminal, Cpu, Signal, Braces, Box } from 'lucide-react';
+import { 
+  MessageCircle, Send, Activity, Terminal, Cpu, Signal, 
+  AlertCircle, Radio, Shield, Wifi, Monitor, Radar,
+  Target, CrosshairIcon, Power, Database
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -295,35 +300,50 @@ const TradingGlobe = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="flex flex-col gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-8 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[600px]"
+          className="glass-card p-10 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[700px] relative overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+          <div className="absolute top-2 left-2 px-3 py-1 bg-black/40 rounded-md border border-emerald-500/30 text-[10px] font-mono text-emerald-400/70 flex items-center gap-2">
+            <Power className="w-3 h-3" />
+            FOXDIE v2.1
+          </div>
+          
+          <div className="flex items-center justify-between mb-8 mt-4">
             <div className="flex items-center space-x-4">
-              <Terminal className="w-6 h-6 text-emerald-400" />
-              <span className="text-emerald-400 font-mono text-lg tracking-wider">NEURAL.GLOBE_v2.1</span>
+              <Target className="w-7 h-7 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-xl tracking-wider">SNAKE.MONITOR_</span>
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
             <div className="flex items-center space-x-3 text-emerald-400/50">
-              <Cpu className="w-5 h-5" />
-              <span className="text-sm font-mono">SYSTEM ACTIVE</span>
+              <Radio className="w-5 h-5" />
+              <span className="text-sm font-mono">CODEC ACTIVE</span>
             </div>
           </div>
           
-          <div ref={containerRef} className="w-full h-[450px] rounded-lg overflow-hidden border border-emerald-500/10 mb-6" />
+          <div ref={containerRef} className="w-full h-[500px] rounded-lg overflow-hidden border border-emerald-500/10 mb-8 relative">
+            <div className="absolute inset-0 pointer-events-none border-2 border-emerald-500/10 z-10" />
+            <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
+              <CrosshairIcon className="w-4 h-4 text-emerald-400/70" />
+              <span className="text-xs font-mono text-emerald-400/70">TACTICAL VIEW</span>
+            </div>
+          </div>
           
-          <div className="grid grid-cols-3 gap-4">
-            {['SCANNING', 'PROCESSING', 'ANALYZING'].map((status, index) => (
-              <div key={status} className="glass-card p-4 rounded-lg border border-emerald-500/10 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-2">
+          <div className="grid grid-cols-3 gap-6">
+            {['CODEC', 'RADAR', 'INTEL'].map((status, index) => (
+              <div key={status} className="glass-card p-5 rounded-lg border border-emerald-500/20 backdrop-blur-sm relative">
+                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
+                <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-mono text-emerald-400/70">{status}</span>
-                  <Signal className="w-4 h-4 text-emerald-400" />
+                  {index === 0 ? <Shield className="w-4 h-4 text-emerald-400" /> :
+                   index === 1 ? <Radar className="w-4 h-4 text-emerald-400" /> :
+                                <Database className="w-4 h-4 text-emerald-400" />}
                 </div>
-                <div className="text-xl font-mono text-emerald-300">
+                <div className="text-2xl font-mono text-emerald-300">
                   {Math.floor(Math.random() * 100)}%
                 </div>
               </div>
@@ -334,19 +354,26 @@ const TradingGlobe = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-8 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[600px]"
+          className="glass-card p-10 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[700px] relative"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+          <div className="absolute top-2 right-2 px-3 py-1 bg-black/40 rounded-md border border-emerald-500/30 text-[10px] font-mono text-emerald-400/70 flex items-center gap-2">
+            <Wifi className="w-3 h-3" />
+            SECURE-LINK
+          </div>
+          
+          <div className="flex items-center justify-between mb-8 mt-4">
             <div className="flex items-center space-x-4">
-              <Box className="w-6 h-6 text-emerald-400" />
-              <span className="text-emerald-400 font-mono text-lg tracking-wider">MARKET.MATRIX</span>
+              <Monitor className="w-7 h-7 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-xl tracking-wider">INTEL.MATRIX_</span>
             </div>
-            <div className="px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-              <span className="text-sm font-mono text-emerald-400">REAL-TIME</span>
+            <div className="px-4 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+              <span className="text-sm font-mono text-emerald-400">CLASSIFIED</span>
             </div>
           </div>
           
-          <div className="h-[250px] mb-8">
+          <div className="h-[300px] mb-8 relative">
+            <div className="absolute inset-0 pointer-events-none border-2 border-emerald-500/10 z-10" />
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -372,7 +399,7 @@ const TradingGlobe = () => {
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
                     border: '1px solid rgba(5, 150, 105, 0.2)',
                     borderRadius: '6px',
                     padding: '12px',
@@ -394,14 +421,14 @@ const TradingGlobe = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <span className="text-base font-mono text-emerald-400">NEURAL NET STATUS</span>
-              <Braces className="w-5 h-5 text-emerald-400" />
+              <span className="text-base font-mono text-emerald-400">CODEC.FEED_</span>
+              <AlertCircle className="w-5 h-5 text-emerald-400" />
             </div>
             <div 
               ref={chatContainerRef}
-              className="h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-4 pr-2"
+              className="h-[220px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-4 pr-2"
             >
               {chatHistory.map((item, index) => (
                 <motion.div
@@ -411,11 +438,12 @@ const TradingGlobe = () => {
                   transition={{ duration: 0.3 }}
                   className={`flex items-start space-x-4 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
                 >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-md ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center`}>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-md ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center relative`}>
+                    <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent" />
                     {item.isUser ? (
-                      <Terminal className="w-4 h-4 text-emerald-400" />
+                      <Terminal className="w-4 h-4 text-emerald-400 relative z-10" />
                     ) : (
-                      <Cpu className="w-4 h-4 text-emerald-400" />
+                      <Cpu className="w-4 h-4 text-emerald-400 relative z-10" />
                     )}
                   </div>
                   <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
@@ -436,21 +464,23 @@ const TradingGlobe = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-8 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+        className="glass-card p-10 rounded-xl border border-emerald-500/20 backdrop-blur-lg relative"
       >
-        <div className="flex items-center justify-between mb-8">
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+        
+        <div className="flex items-center justify-between mb-10">
           <div className="flex items-center space-x-4">
-            <Terminal className="w-6 h-6 text-emerald-400" />
-            <span className="text-emerald-400 font-mono text-lg tracking-wider">COMMAND_CENTER</span>
+            <Terminal className="w-7 h-7 text-emerald-400" />
+            <span className="text-emerald-400 font-mono text-xl tracking-wider">COMMAND.TERMINAL_</span>
           </div>
-          <form onSubmit={handleUserMessage} className="flex-1 max-w-3xl ml-6">
+          <form onSubmit={handleUserMessage} className="flex-1 max-w-3xl ml-8">
             <div className="relative">
               <Input
                 type="text"
-                placeholder="> Enter command..."
+                placeholder="> Enter command sequence..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono text-base placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-12 px-4"
+                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono text-base placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-14 px-5"
               />
               <button
                 type="submit"
@@ -462,15 +492,16 @@ const TradingGlobe = () => {
           </form>
         </div>
         
-        <div className="grid grid-cols-4 gap-5">
+        <div className="grid grid-cols-4 gap-6">
           {['SYSTEM', 'NETWORK', 'SECURITY', 'ANALYSIS'].map((system, index) => (
             <motion.div
               key={system}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="glass-card p-5 rounded-lg border border-emerald-500/10"
+              className="glass-card p-6 rounded-lg border border-emerald-500/20 relative"
             >
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-mono text-emerald-400">{system}</span>
                 <Activity className="w-4 h-4 text-emerald-400" />
@@ -479,7 +510,7 @@ const TradingGlobe = () => {
                 {Math.floor(Math.random() * 1000)}
               </div>
               <div className="text-[10px] font-mono text-emerald-500/50">
-                Updated {new Date().toLocaleTimeString()}
+                Last Update: {new Date().toLocaleTimeString()}
               </div>
             </motion.div>
           ))}
