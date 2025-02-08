@@ -74,6 +74,7 @@ const Index = () => {
   const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
+  const [filteredHistory, setFilteredHistory] = useState<Array<any>>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,32 +117,63 @@ const Index = () => {
       type: 'chat' 
     }]);
     
-    if (userInput.toLowerCase().includes('history') || userInput.toLowerCase().includes('previous calls')) {
+    const isHistoryQuery = 
+      userInput.toLowerCase().includes('history') || 
+      userInput.toLowerCase().includes('calls') || 
+      userInput.toLowerCase().includes('show me') ||
+      userInput.toLowerCase().includes('previous');
+
+    if (isHistoryQuery) {
       setIsHistoryView(true);
-      const traderHistory = predictions.slice(0, 10).map(p => ({
-        market: p.market,
-        direction: p.direction,
-        confidence: p.confidence,
-        roi: p.roi,
-        timestamp: new Date().toLocaleTimeString()
-      }));
+      
+      const query = userInput.toLowerCase();
+      let filtered = [...predictions];
+
+      if (query.includes('btc')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
+      }
+      if (query.includes('trader')) {
+        const traderName = query.split('trader')[1]?.split(' ')[1];
+        if (traderName) {
+          filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes(traderName.toLowerCase()));
+        }
+      }
 
       setTimeout(() => {
         setChatHistory(prev => [...prev, { 
-          message: JSON.stringify(traderHistory, null, 2),
+          message: "Accessing secure trading records... Decrypting data...",
           timestamp: new Date().toLocaleTimeString(),
-          type: 'history'
+          type: 'chat'
         }]);
-        
-        toast({
-          title: "Trader History Retrieved",
-          description: "Displaying last 10 trading calls",
-          className: "bg-emerald-500/20 text-white border-emerald-500/20"
-        });
-        
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
+
+        setTimeout(() => {
+          const historyData = filtered.slice(0, 10).map(p => ({
+            market: p.market,
+            direction: p.direction,
+            confidence: p.confidence,
+            roi: p.roi,
+            trader: p.traderProfile,
+            timestamp: new Date().toLocaleTimeString()
+          }));
+
+          setFilteredHistory(historyData);
+          
+          setChatHistory(prev => [...prev, { 
+            message: `Secured ${historyData.length} trading records matching your query.`,
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'history'
+          }]);
+          
+          toast({
+            title: "Trading Records Retrieved",
+            description: `Found ${historyData.length} matching trading calls`,
+            className: "bg-emerald-500/20 text-white border-emerald-500/20"
+          });
+          
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        }, 1500);
       }, 1000);
     } else {
       setIsHistoryView(false);
@@ -342,7 +374,7 @@ const Index = () => {
                 </motion.div>
               </AnimatePresence>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {predictions.map((prediction, index) => (
+                {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: -20 }}
@@ -353,8 +385,8 @@ const Index = () => {
                       symbol={prediction.market}
                       prediction={prediction.direction === "LONG" ? "up" : "down"}
                       confidence={prediction.confidence}
-                      timestamp={new Date().toLocaleTimeString()}
-                      traderText={prediction.analysis}
+                      timestamp={prediction.timestamp}
+                      traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
                     />
                   </motion.div>
                 ))}
