@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
@@ -245,7 +246,7 @@ const Index = () => {
             <div className="flex items-center justify-center gap-2">
               <Eye className="w-4 h-4 text-emerald-400/70" />
               <p className="text-sm text-emerald-400/70 font-mono tracking-[0.2em]">
-                MARKET_DOMINATION_MATRIX
+                MARKET_INTELLIGENCE_MATRIX
               </p>
               <Network className="w-4 h-4 text-emerald-400/70" />
             </div>
