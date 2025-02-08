@@ -295,33 +295,35 @@ const TradingGlobe = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+          className="glass-card p-8 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[600px]"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <Terminal className="w-5 h-5 text-emerald-400" />
-              <span className="text-emerald-400 font-mono text-sm tracking-wider">NEURAL.GLOBE_v2.1</span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <Terminal className="w-6 h-6 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-lg tracking-wider">NEURAL.GLOBE_v2.1</span>
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
-            <div className="flex items-center space-x-2 text-emerald-400/50">
-              <Cpu className="w-4 h-4" />
-              <span className="text-xs font-mono">SYSTEM ACTIVE</span>
+            <div className="flex items-center space-x-3 text-emerald-400/50">
+              <Cpu className="w-5 h-5" />
+              <span className="text-sm font-mono">SYSTEM ACTIVE</span>
             </div>
           </div>
-          <div ref={containerRef} className="w-full h-[400px] rounded-lg overflow-hidden border border-emerald-500/10" />
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          
+          <div ref={containerRef} className="w-full h-[450px] rounded-lg overflow-hidden border border-emerald-500/10 mb-6" />
+          
+          <div className="grid grid-cols-3 gap-4">
             {['SCANNING', 'PROCESSING', 'ANALYZING'].map((status, index) => (
-              <div key={status} className="glass-card p-3 rounded-lg border border-emerald-500/10 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-emerald-400/70">{status}</span>
-                  <Signal className="w-3 h-3 text-emerald-400" />
+              <div key={status} className="glass-card p-4 rounded-lg border border-emerald-500/10 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-mono text-emerald-400/70">{status}</span>
+                  <Signal className="w-4 h-4 text-emerald-400" />
                 </div>
-                <div className="mt-2 text-lg font-mono text-emerald-300">
+                <div className="text-xl font-mono text-emerald-300">
                   {Math.floor(Math.random() * 100)}%
                 </div>
               </div>
@@ -332,21 +334,19 @@ const TradingGlobe = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+          className="glass-card p-8 rounded-xl border border-emerald-500/20 backdrop-blur-lg min-h-[600px]"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <Box className="w-5 h-5 text-emerald-400" />
-              <span className="text-emerald-400 font-mono text-sm tracking-wider">MARKET.MATRIX</span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <Box className="w-6 h-6 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-lg tracking-wider">MARKET.MATRIX</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                <span className="text-xs font-mono text-emerald-400">REAL-TIME</span>
-              </div>
+            <div className="px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+              <span className="text-sm font-mono text-emerald-400">REAL-TIME</span>
             </div>
           </div>
           
-          <div className="h-[200px] mb-6">
+          <div className="h-[250px] mb-8">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -358,14 +358,14 @@ const TradingGlobe = () => {
                 <XAxis 
                   dataKey="time" 
                   stroke="#059669"
-                  tick={{ fill: '#059669', fontSize: 10, fontFamily: 'monospace' }}
+                  tick={{ fill: '#059669', fontSize: 11, fontFamily: 'monospace' }}
                   tickLine={{ stroke: '#059669' }}
                   axisLine={{ stroke: '#059669', strokeWidth: 0.5 }}
                   dy={10}
                 />
                 <YAxis 
                   stroke="#059669"
-                  tick={{ fill: '#059669', fontSize: 10, fontFamily: 'monospace' }}
+                  tick={{ fill: '#059669', fontSize: 11, fontFamily: 'monospace' }}
                   tickLine={{ stroke: '#059669' }}
                   axisLine={{ stroke: '#059669', strokeWidth: 0.5 }}
                   dx={-10}
@@ -374,7 +374,8 @@ const TradingGlobe = () => {
                   contentStyle={{ 
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     border: '1px solid rgba(5, 150, 105, 0.2)',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
+                    padding: '12px',
                     fontFamily: 'monospace',
                     fontSize: '12px',
                     color: '#059669'
@@ -393,14 +394,14 @@ const TradingGlobe = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-mono text-emerald-400">NEURAL NET STATUS</span>
-              <Braces className="w-4 h-4 text-emerald-400" />
+              <span className="text-base font-mono text-emerald-400">NEURAL NET STATUS</span>
+              <Braces className="w-5 h-5 text-emerald-400" />
             </div>
             <div 
               ref={chatContainerRef}
-              className="h-[150px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-3"
+              className="h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-4 pr-2"
             >
               {chatHistory.map((item, index) => (
                 <motion.div
@@ -408,17 +409,17 @@ const TradingGlobe = () => {
                   initial={{ opacity: 0, x: item.isUser ? 20 : -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3 }}
-                  className={`flex items-start space-x-3 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
+                  className={`flex items-start space-x-4 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
                 >
-                  <div className={`flex-shrink-0 w-6 h-6 rounded-md ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center`}>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-md ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center`}>
                     {item.isUser ? (
-                      <Terminal className="w-3 h-3 text-emerald-400" />
+                      <Terminal className="w-4 h-4 text-emerald-400" />
                     ) : (
-                      <Cpu className="w-3 h-3 text-emerald-400" />
+                      <Cpu className="w-4 h-4 text-emerald-400" />
                     )}
                   </div>
                   <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
-                    <div className={`text-xs font-mono ${item.isUser ? 'text-emerald-300' : 'text-emerald-400'}`}>
+                    <div className={`text-sm font-mono ${item.isUser ? 'text-emerald-300' : 'text-emerald-400'}`}>
                       {item.message}
                     </div>
                     <div className="text-[10px] mt-1 font-mono text-emerald-500/50">
@@ -435,46 +436,46 @@ const TradingGlobe = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+        className="glass-card p-8 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <Terminal className="w-5 h-5 text-emerald-400" />
-            <span className="text-emerald-400 font-mono text-sm tracking-wider">COMMAND_CENTER</span>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <Terminal className="w-6 h-6 text-emerald-400" />
+            <span className="text-emerald-400 font-mono text-lg tracking-wider">COMMAND_CENTER</span>
           </div>
-          <form onSubmit={handleUserMessage} className="flex-1 max-w-2xl ml-4">
+          <form onSubmit={handleUserMessage} className="flex-1 max-w-3xl ml-6">
             <div className="relative">
               <Input
                 type="text"
                 placeholder="> Enter command..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono text-base placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-12 px-4"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md bg-emerald-500/20 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-emerald-500/20 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
               >
-                <Send className="w-4 h-4 text-emerald-400" />
+                <Send className="w-5 h-5 text-emerald-400" />
               </button>
             </div>
           </form>
         </div>
         
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-5">
           {['SYSTEM', 'NETWORK', 'SECURITY', 'ANALYSIS'].map((system, index) => (
             <motion.div
               key={system}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="glass-card p-4 rounded-lg border border-emerald-500/10"
+              className="glass-card p-5 rounded-lg border border-emerald-500/10"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono text-emerald-400">{system}</span>
-                <Activity className="w-3 h-3 text-emerald-400" />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-mono text-emerald-400">{system}</span>
+                <Activity className="w-4 h-4 text-emerald-400" />
               </div>
-              <div className="text-xl font-mono text-emerald-300 mb-1">
+              <div className="text-2xl font-mono text-emerald-300 mb-2">
                 {Math.floor(Math.random() * 1000)}
               </div>
               <div className="text-[10px] font-mono text-emerald-500/50">
