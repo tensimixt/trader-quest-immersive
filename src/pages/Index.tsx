@@ -1,9 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import TradingGlobe from '../components/TradingGlobe';
-import PredictionCard from '../components/PredictionCard';
 import { motion } from 'framer-motion';
-import { Activity, TrendingUp, DollarSign, Shield, Eye, Network, Send, MessageCircle, Terminal, Cpu, Signal } from 'lucide-react';
+import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 // Sample trader texts for different scenarios
@@ -19,72 +16,12 @@ const bearishTexts = [
   "Double top formation complete with bearish MACD crossover. Risk management crucial.",
 ];
 
-// Mock data generator with more fields
-const generatePrediction = () => {
-  const isPredictionUp = Math.random() > 0.5;
-  return {
-    symbol: ['AAPL', 'GOOGL', 'TSLA', 'MSFT', 'AMZN'][Math.floor(Math.random() * 5)],
-    prediction: isPredictionUp ? 'up' : 'down' as 'up' | 'down',
-    confidence: Math.floor(Math.random() * 30) + 70,
-    timestamp: new Date().toLocaleTimeString(),
-    volume: Math.floor(Math.random() * 1000000),
-    priceChange: (Math.random() * 10 - 5).toFixed(2),
-    traderText: isPredictionUp 
-      ? bullishTexts[Math.floor(Math.random() * bullishTexts.length)]
-      : bearishTexts[Math.floor(Math.random() * bearishTexts.length)],
-    id: Math.random().toString(),
-  };
-};
-
 const Index = () => {
-  const [predictions, setPredictions] = useState<Array<any>>([]);
-  const [marketStats, setMarketStats] = useState({
-    totalVolume: 0,
-    avgConfidence: 0,
-    upPredictions: 0,
-  });
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Initial predictions
-    setPredictions([
-      generatePrediction(),
-      generatePrediction(),
-      generatePrediction(),
-    ]);
-
-    // Add new prediction every 5 seconds
-    const interval = setInterval(() => {
-      setPredictions(prev => {
-        const newPredictions = [...prev, generatePrediction()];
-        if (newPredictions.length > 5) {
-          newPredictions.shift();
-        }
-        return newPredictions;
-      });
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update market stats when predictions change
-  useEffect(() => {
-    const stats = predictions.reduce((acc, curr) => ({
-      totalVolume: acc.totalVolume + curr.volume,
-      avgConfidence: acc.avgConfidence + curr.confidence,
-      upPredictions: acc.upPredictions + (curr.prediction === 'up' ? 1 : 0),
-    }), { totalVolume: 0, avgConfidence: 0, upPredictions: 0 });
-
-    setMarketStats({
-      totalVolume: stats.totalVolume,
-      avgConfidence: Math.round(stats.avgConfidence / predictions.length),
-      upPredictions: stats.upPredictions,
-    });
-  }, [predictions]);
 
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,77 +79,20 @@ const Index = () => {
         </motion.div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-12 gap-4 h-[90vh]">
-          {/* Left Column - Snake Monitor */}
-          <div className="col-span-3">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative bat-glow h-[200px]"
-            >
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-              <div className="h-full relative">
-                <TradingGlobe />
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Middle Column - Charts and Stats */}
-          <div className="col-span-5 flex flex-col gap-4">
-            {/* Stats Matrix */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative p-6"
-            >
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-              
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-6">
-                {[
-                  { 
-                    label: 'THREAT_INDEX', 
-                    value: marketStats.totalVolume.toLocaleString(), 
-                    icon: <Activity className="w-6 h-6" />,
-                    color: 'text-emerald-400'
-                  },
-                  { 
-                    label: 'SIGNAL_STRENGTH', 
-                    value: `${marketStats.avgConfidence}%`, 
-                    icon: <TrendingUp className="w-6 h-6" />,
-                    color: 'text-sky-400'
-                  },
-                  { 
-                    label: 'ASSET_SECURITY', 
-                    value: marketStats.upPredictions, 
-                    icon: <DollarSign className="w-6 h-6" />,
-                    color: 'text-purple-400'
-                  }
-                ].map((stat, index) => (
-                  <div key={stat.label} className="text-center">
-                    <div className="flex items-center justify-center mb-4">
-                      <div className={`w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center ${stat.color}`}>
-                        {stat.icon}
-                      </div>
-                    </div>
-                    <p className="text-emerald-400/70 font-mono text-sm tracking-wider mb-2">{stat.label}</p>
-                    <p className="text-2xl font-bold text-white">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Chat Interface */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1"
-            >
+        <div className="grid grid-cols-2 gap-4 h-[90vh]">
+          {/* Left Column - Codec Feed and Command Interface */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex flex-col gap-4"
+          >
+            {/* Codec Feed */}
+            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               <div className="h-full flex flex-col">
                 <div className="flex items-center gap-2 mb-4">
                   <Terminal className="w-5 h-5 text-emerald-400" />
-                  <h2 className="text-xl font-bold text-white">COMMAND_INTERFACE</h2>
+                  <h2 className="text-xl font-bold text-white">CODEC_FEED</h2>
                 </div>
                 <div 
                   ref={chatContainerRef}
@@ -232,54 +112,47 @@ const Index = () => {
                     </motion.div>
                   ))}
                 </div>
-                <form onSubmit={handleUserMessage} className="relative">
-                  <Input
-                    type="text"
-                    placeholder="Enter command, Master Wayne..."
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
               </div>
-            </motion.div>
-          </div>
+            </div>
 
-          {/* Right Column - Intel Feed */}
+            {/* Command Interface */}
+            <div className="glass-card rounded-2xl overflow-hidden relative p-6">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+              <form onSubmit={handleUserMessage} className="relative">
+                <Input
+                  type="text"
+                  placeholder="Enter command, Master Wayne..."
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          </motion.div>
+
+          {/* Right Column - Chart */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="col-span-4 glass-card rounded-2xl relative overflow-hidden"
+            className="glass-card rounded-2xl relative overflow-hidden p-6"
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-            <div className="p-4 h-full">
+            <div className="h-full flex flex-col">
               <div className="flex items-center gap-2 mb-4">
                 <Eye className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-xl font-bold text-white relative">MARKET_INTEL</h2>
+                <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
               </div>
-              <div className="space-y-4 h-[calc(90vh-8rem)] overflow-y-auto custom-scrollbar pr-2">
-                {predictions.map((prediction, index) => (
-                  <motion.div
-                    key={prediction.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <PredictionCard
-                      symbol={prediction.symbol}
-                      prediction={prediction.prediction}
-                      confidence={prediction.confidence}
-                      timestamp={prediction.timestamp}
-                      traderText={prediction.traderText}
-                    />
-                  </motion.div>
-                ))}
+              <div className="flex-1 relative">
+                {/* Add your chart component here */}
+                <div className="absolute inset-0 flex items-center justify-center text-emerald-400/50 font-mono">
+                  [MARKET DATA VISUALIZATION]
+                </div>
               </div>
             </div>
           </motion.div>
@@ -290,4 +163,3 @@ const Index = () => {
 };
 
 export default Index;
-
