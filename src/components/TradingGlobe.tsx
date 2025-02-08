@@ -1,10 +1,10 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { motion } from 'framer-motion';
 import { MessageCircle, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
 const MarketInsights = [
   "Market volatility detected in tech sector",
@@ -27,6 +27,20 @@ const AIResponses = {
   default: "I'm analyzing the market patterns. What specific aspect would you like to know about?"
 };
 
+const generateChartData = () => {
+  const data = [];
+  for (let i = 0; i < 24; i++) {
+    const baseValue = 1000 + Math.random() * 500;
+    const sentiment = Math.random();
+    data.push({
+      time: `${i}:00`,
+      value: baseValue,
+      sentiment: sentiment * 100,
+    });
+  }
+  return data;
+};
+
 const TradingGlobe = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sphereRef = useRef<THREE.Mesh>();
@@ -35,6 +49,7 @@ const TradingGlobe = () => {
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [chartData, setChartData] = useState(generateChartData());
 
   const scrollToBottom = () => {
     if (chatContainerRef.current) {
@@ -78,7 +93,15 @@ const TradingGlobe = () => {
     const interval = setInterval(() => {
       const randomInsight = MarketInsights[Math.floor(Math.random() * MarketInsights.length)];
       typeMessage(randomInsight);
-    }, 15000); // Increased interval to reduce frequency of automated messages
+      setChartData(prev => {
+        const newData = [...prev.slice(1), {
+          time: new Date().toLocaleTimeString(),
+          value: prev[prev.length - 1].value + (Math.random() - 0.5) * 200,
+          sentiment: Math.random() * 100,
+        }];
+        return newData;
+      });
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -242,8 +265,51 @@ const TradingGlobe = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md mx-auto"
+        className="w-full max-w-4xl mx-auto"
       >
+        <div className="glass-card p-4 border border-green-500/20 backdrop-blur-xl mb-6">
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#9CA3AF"
+                  tick={{ fill: '#9CA3AF' }}
+                  tickLine={{ stroke: '#9CA3AF' }}
+                />
+                <YAxis 
+                  stroke="#9CA3AF"
+                  tick={{ fill: '#9CA3AF' }}
+                  tickLine={{ stroke: '#9CA3AF' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(17, 24, 39, 0.8)',
+                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderRadius: '8px',
+                    backdropFilter: 'blur(4px)'
+                  }}
+                  labelStyle={{ color: '#9CA3AF' }}
+                  itemStyle={{ color: '#8B5CF6' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#8B5CF6"
+                  fillOpacity={1}
+                  fill="url(#colorValue)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         <div className="glass-card p-4 border border-green-500/20 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
