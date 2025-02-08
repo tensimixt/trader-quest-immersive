@@ -1,27 +1,42 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-// Sample trader texts for different scenarios
-const bullishTexts = [
-  "Strong bullish divergence on RSI with increasing volume. Target: key resistance at upper Bollinger Band.",
-  "Multiple timeframe analysis shows bullish momentum. Watch for breakout above EMA200.",
-  "Price action forming ascending triangle with higher lows. Expecting upward movement.",
-];
-
-const bearishTexts = [
-  "Breaking below key support with increasing selling pressure. Watch for continuation.",
-  "Bearish engulfing pattern on the 4h chart with declining volume. Targeting next support.",
-  "Double top formation complete with bearish MACD crossover. Risk management crucial.",
+// Sample market call texts
+const marketCalls = [
+  "Strong bullish divergence detected on BTC/USD. RSI showing oversold conditions.",
+  "ETH breaking key resistance at $2,450. Volume profile confirms breakout.",
+  "LINK forming cup and handle pattern. Target: $18.50",
+  "BTC showing bearish divergence on 4H timeframe. Exercise caution.",
+  "SOL/USD: Multiple timeframe analysis suggests accumulation phase.",
 ];
 
 const Index = () => {
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, isMarketCall?: boolean }>>([]);
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Simulate market calls coming in
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
+      setChatHistory(prev => [...prev, { 
+        message: randomCall, 
+        timestamp: new Date().toLocaleTimeString(),
+        isMarketCall: true 
+      }]);
+      
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 15000); // New market call every 15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +54,7 @@ const Index = () => {
 
     // Simulate AI response
     setTimeout(() => {
-      const aiResponse = "Acknowledged, Master Wayne. Analysis of market patterns suggests unusual activity in the tech sector. Shall I initiate a deeper scan?";
+      const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
       setChatHistory(prev => [...prev, { message: aiResponse, timestamp: new Date().toLocaleTimeString() }]);
       if (chatContainerRef.current) {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -105,7 +120,13 @@ const Index = () => {
                       animate={{ opacity: 1, x: 0 }}
                       className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'}`}>
+                      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                        msg.isUser 
+                          ? 'bg-emerald-500/20' 
+                          : msg.isMarketCall 
+                            ? 'bg-purple-500/20 border border-purple-500/30' 
+                            : 'bg-white/5'
+                      }`}>
                         <p className="text-sm text-white font-mono">{msg.message}</p>
                         <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
                       </div>
