@@ -15,8 +15,8 @@ const marketIntelligence = [
   "Major DeFi protocol reports record-breaking TVL"
 ];
 
-const formatSingaporeTime = (date: Date) => {
-  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Singapore' });
+const formatJapanTime = (date: Date) => {
+  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
 };
 
 const marketCalls = [
@@ -29,7 +29,7 @@ const marketCalls = [
     analysis: "Accumulation phase complete. Whales increasing positions.",
     confidence: 94,
     roi: 1250,
-    timestamp: formatSingaporeTime(new Date())
+    timestamp: formatJapanTime(new Date())
   },
   {
     traderProfile: "ETH Oracle",
@@ -40,7 +40,7 @@ const marketCalls = [
     analysis: "Triple bottom formation with increasing volume.",
     confidence: 92,
     roi: 875,
-    timestamp: formatSingaporeTime(new Date(Date.now() - 24 * 60 * 60 * 1000))
+    timestamp: formatJapanTime(new Date(Date.now() - 24 * 60 * 60 * 1000))
   },
   {
     traderProfile: "Doge Hunter",
@@ -51,7 +51,7 @@ const marketCalls = [
     analysis: "Social sentiment spike detected. Major influencer activity.",
     confidence: 88,
     roi: 420,
-    timestamp: formatSingaporeTime(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000))
+    timestamp: formatJapanTime(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000))
   },
   {
     traderProfile: "TRX Master",
@@ -62,7 +62,7 @@ const marketCalls = [
     analysis: "Bearish divergence on RSI. Volume declining.",
     confidence: 86,
     roi: 320,
-    timestamp: formatSingaporeTime(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000))
+    timestamp: formatJapanTime(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000))
   },
   {
     traderProfile: "Bitcoin Scout",
@@ -73,7 +73,7 @@ const marketCalls = [
     analysis: "Distribution pattern forming at resistance.",
     confidence: 91,
     roi: 680,
-    timestamp: formatSingaporeTime(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000))
+    timestamp: formatJapanTime(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000))
   },
   {
     traderProfile: "ETH Tracker",
@@ -84,7 +84,7 @@ const marketCalls = [
     analysis: "Breaking out of falling wedge pattern.",
     confidence: 89,
     roi: 540,
-    timestamp: formatSingaporeTime(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000))
+    timestamp: formatJapanTime(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000))
   }
 ];
 
@@ -111,7 +111,7 @@ const Index = () => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
       const newCall = {
         ...randomCall,
-        timestamp: formatSingaporeTime(new Date())
+        timestamp: formatJapanTime(new Date())
       };
       setPredictions(prev => [newCall, ...prev].slice(0, 100));
     }, 15000);
@@ -122,7 +122,7 @@ const Index = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
-      const timestamp = formatSingaporeTime(new Date());
+      const timestamp = formatJapanTime(new Date());
       setChatHistory(prev => [...prev, { 
         message: randomIntel, 
         timestamp, 
@@ -141,7 +141,7 @@ const Index = () => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const timestamp = formatSingaporeTime(new Date());
+    const timestamp = formatJapanTime(new Date());
     
     setChatHistory(prev => [...prev, { 
       message: userInput, 
@@ -183,7 +183,7 @@ const Index = () => {
 
       setChatHistory(prev => [...prev, { 
         message: "Accessing secure trading records... Decrypting data...",
-        timestamp: formatSingaporeTime(new Date()),
+        timestamp: formatJapanTime(new Date()),
         type: 'chat'
       }]);
 
@@ -194,14 +194,14 @@ const Index = () => {
           confidence: p.confidence,
           roi: p.roi,
           trader: p.traderProfile,
-          timestamp: formatSingaporeTime(new Date())
+          timestamp: formatJapanTime(new Date())
         }));
 
         setFilteredHistory(historyData);
         
         setChatHistory(prev => [...prev, { 
           message: `Secured ${historyData.length} trading records matching your query.`,
-          timestamp: formatSingaporeTime(new Date()),
+          timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
         
@@ -217,7 +217,7 @@ const Index = () => {
         const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
         setChatHistory(prev => [...prev, { 
           message: aiResponse, 
-          timestamp: formatSingaporeTime(new Date()),
+          timestamp: formatJapanTime(new Date()),
           type: 'chat'
         }]);
       }, 1000);
