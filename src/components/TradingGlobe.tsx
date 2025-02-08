@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -44,6 +43,7 @@ const generateChartData = () => {
 
 const TradingGlobe = () => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sphereRef = useRef<THREE.Mesh>();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -113,6 +113,7 @@ const TradingGlobe = () => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    rendererRef.current = renderer;
     
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     containerRef.current.appendChild(renderer.domElement);
@@ -242,9 +243,11 @@ const TradingGlobe = () => {
     controls.maxDistance = 30;
     controls.minDistance = 10;
 
+    let animationFrameId: number;
     let time = 0;
+    
     const animate = () => {
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
       time += 0.01;
 
       if (sphereRef.current) {
@@ -277,7 +280,17 @@ const TradingGlobe = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      containerRef.current?.removeChild(renderer.domElement);
+      cancelAnimationFrame(animationFrameId);
+      controls.dispose();
+      renderer.dispose();
+      
+      // Safely remove the renderer's DOM element
+      if (rendererRef.current && rendererRef.current.domElement && rendererRef.current.domElement.parentNode) {
+        rendererRef.current.domElement.parentNode.removeChild(rendererRef.current.domElement);
+      }
+      
+      // Clear the reference
+      rendererRef.current = null;
     };
   }, []);
 
