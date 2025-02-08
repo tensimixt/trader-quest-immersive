@@ -238,6 +238,23 @@ const Index = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
           <div className="relative">
             <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="relative w-8 h-8">
+                <motion.div
+                  className="absolute inset-0 border-2 border-emerald-400 rounded-full"
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+                <motion.div
+                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
+                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                />
+                <motion.div
+                  className="absolute inset-[8px] border-2 border-emerald-400/60 rounded-full"
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 1 }}
+                />
+              </div>
               <Shield className="w-6 h-6 text-emerald-400" />
               <h1 className="text-4xl font-bold text-white tracking-wider">
                 COPE<span className="text-emerald-400">NET</span>
