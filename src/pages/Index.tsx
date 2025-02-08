@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import TradingGlobe from '../components/TradingGlobe';
 import PredictionCard from '../components/PredictionCard';
@@ -103,15 +104,15 @@ const Index = () => {
           </motion.div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 xl:grid-cols-2 gap-16">
           {/* Left Column - Globe and Stats */}
-          <div className="space-y-8">
-            {/* Globe Section */}
+          <div>
+            {/* Globe */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="glass-card rounded-2xl overflow-hidden relative min-h-[600px]"
+              className="glass-card rounded-2xl overflow-hidden relative mb-8"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/30 to-emerald-500/0" />
@@ -120,7 +121,7 @@ const Index = () => {
               </div>
             </motion.div>
 
-            {/* Stats Section Below Globe */}
+            {/* Stats Below Globe */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
