@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import PredictionCard from '@/components/PredictionCard';
 
 // Sample market call texts with structured data
 const marketCalls = [
@@ -11,7 +13,9 @@ const marketCalls = [
     direction: "LONG",
     entryPrice: "43,250",
     timeframe: "4H",
-    analysis: "Strong bullish divergence detected. RSI showing oversold conditions."
+    analysis: "Strong bullish divergence detected. RSI showing oversold conditions.",
+    confidence: 97,
+    roi: 875
   },
   {
     traderProfile: "Crypto Whale",
@@ -19,7 +23,9 @@ const marketCalls = [
     direction: "LONG",
     entryPrice: "2,450",
     timeframe: "1D",
-    analysis: "Breaking key resistance. Volume profile confirms breakout."
+    analysis: "Breaking key resistance. Volume profile confirms breakout.",
+    confidence: 85,
+    roi: 650
   },
   {
     traderProfile: "Smart Money",
@@ -27,7 +33,9 @@ const marketCalls = [
     direction: "LONG",
     entryPrice: "18.50",
     timeframe: "2H",
-    analysis: "Forming cup and handle pattern."
+    analysis: "Forming cup and handle pattern.",
+    confidence: 92,
+    roi: 450
   },
   {
     traderProfile: "Market Oracle",
@@ -35,7 +43,9 @@ const marketCalls = [
     direction: "SHORT",
     entryPrice: "44,800",
     timeframe: "4H",
-    analysis: "Showing bearish divergence on 4H timeframe."
+    analysis: "Showing bearish divergence on 4H timeframe.",
+    confidence: 88,
+    roi: -320
   },
   {
     traderProfile: "Trend Hunter",
@@ -43,7 +53,9 @@ const marketCalls = [
     direction: "LONG",
     entryPrice: "95.20",
     timeframe: "1H",
-    analysis: "Multiple timeframe analysis suggests accumulation phase."
+    analysis: "Multiple timeframe analysis suggests accumulation phase.",
+    confidence: 94,
+    roi: 560
   },
 ];
 
@@ -51,21 +63,15 @@ const Index = () => {
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
-  const [marketIntel, setMarketIntel] = useState<string>("");
+  const [currentMarketCall, setCurrentMarketCall] = useState(marketCalls[0]);
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  // Format market call for display
-  const formatMarketCall = (call: typeof marketCalls[0]) => {
-    return `${call.traderProfile} | ${call.market} | ${call.direction} | $${call.entryPrice} | ${call.timeframe}\n${call.analysis}`;
-  };
 
   // Simulate market calls coming in only to MARKET_INTEL
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
-      const formattedCall = formatMarketCall(randomCall);
-      setMarketIntel(formattedCall);
+      setCurrentMarketCall(randomCall);
     }, 15000); // New market call every 15 seconds
 
     return () => clearInterval(interval);
@@ -199,9 +205,13 @@ const Index = () => {
                 <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
               </div>
               <div className="flex-1 relative">
-                <div className="absolute inset-0 flex items-center justify-center text-emerald-400/50 font-mono whitespace-pre-line">
-                  {marketIntel || "[AWAITING MARKET DATA]"}
-                </div>
+                <PredictionCard
+                  symbol={currentMarketCall.market}
+                  prediction={currentMarketCall.direction === "LONG" ? "up" : "down"}
+                  confidence={currentMarketCall.confidence}
+                  timestamp={new Date().toLocaleTimeString()}
+                  traderText={currentMarketCall.analysis}
+                />
               </div>
             </div>
           </motion.div>
@@ -212,3 +222,4 @@ const Index = () => {
 };
 
 export default Index;
+
