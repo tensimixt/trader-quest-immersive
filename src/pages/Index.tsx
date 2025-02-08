@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
@@ -5,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
 import { useToast } from '@/components/ui/use-toast';
+import { format } from 'date-fns-tz';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -24,7 +26,7 @@ const marketCalls = [
     analysis: "Accumulation phase complete. Whales increasing positions.",
     confidence: 94,
     roi: 1250,
-    timestamp: "2024-02-15 14:30"
+    timestamp: format(new Date(), 'yyyy-MM-dd HH:mm', { timeZone: 'Asia/Singapore' })
   },
   {
     traderProfile: "ETH Oracle",
@@ -35,7 +37,7 @@ const marketCalls = [
     analysis: "Triple bottom formation with increasing volume.",
     confidence: 92,
     roi: 875,
-    timestamp: "2024-02-14 09:15"
+    timestamp: format(new Date(Date.now() - 24 * 60 * 60 * 1000), 'yyyy-MM-dd HH:mm', { timeZone: 'Asia/Singapore' })
   },
   {
     traderProfile: "Doge Hunter",
@@ -46,7 +48,7 @@ const marketCalls = [
     analysis: "Social sentiment spike detected. Major influencer activity.",
     confidence: 88,
     roi: 420,
-    timestamp: "2024-02-13 21:45"
+    timestamp: format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd HH:mm', { timeZone: 'Asia/Singapore' })
   },
   {
     traderProfile: "TRX Master",
@@ -57,7 +59,7 @@ const marketCalls = [
     analysis: "Bearish divergence on RSI. Volume declining.",
     confidence: 86,
     roi: 320,
-    timestamp: "2024-02-12 16:20"
+    timestamp: format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd HH:mm', { timeZone: 'Asia/Singapore' })
   },
   {
     traderProfile: "Bitcoin Scout",
@@ -68,7 +70,7 @@ const marketCalls = [
     analysis: "Distribution pattern forming at resistance.",
     confidence: 91,
     roi: 680,
-    timestamp: "2024-02-11 11:10"
+    timestamp: format(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd HH:mm', { timeZone: 'Asia/Singapore' })
   },
   {
     traderProfile: "ETH Tracker",
@@ -79,7 +81,7 @@ const marketCalls = [
     analysis: "Breaking out of falling wedge pattern.",
     confidence: 89,
     roi: 540,
-    timestamp: "2024-02-10 08:45"
+    timestamp: format(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd HH:mm', { timeZone: 'Asia/Singapore' })
   }
 ];
 
@@ -113,7 +115,7 @@ const Index = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
-      const timestamp = new Date().toLocaleTimeString();
+      const timestamp = format(new Date(), 'HH:mm:ss', { timeZone: 'Asia/Singapore' });
       setChatHistory(prev => [...prev, { 
         message: randomIntel, 
         timestamp, 
@@ -132,7 +134,7 @@ const Index = () => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp = format(new Date(), 'HH:mm:ss', { timeZone: 'Asia/Singapore' });
     
     setChatHistory(prev => [...prev, { 
       message: userInput, 
@@ -174,7 +176,7 @@ const Index = () => {
 
       setChatHistory(prev => [...prev, { 
         message: "Accessing secure trading records... Decrypting data...",
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: format(new Date(), 'HH:mm:ss', { timeZone: 'Asia/Singapore' }),
         type: 'chat'
       }]);
 
@@ -192,7 +194,7 @@ const Index = () => {
         
         setChatHistory(prev => [...prev, { 
           message: `Secured ${historyData.length} trading records matching your query.`,
-          timestamp: new Date().toLocaleTimeString(),
+          timestamp: format(new Date(), 'HH:mm:ss', { timeZone: 'Asia/Singapore' }),
           type: 'history'
         }]);
         
@@ -208,7 +210,7 @@ const Index = () => {
         const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
         setChatHistory(prev => [...prev, { 
           message: aiResponse, 
-          timestamp: new Date().toLocaleTimeString(),
+          timestamp: format(new Date(), 'HH:mm:ss', { timeZone: 'Asia/Singapore' }),
           type: 'chat'
         }]);
       }, 1000);
