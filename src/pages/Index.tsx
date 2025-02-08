@@ -373,23 +373,27 @@ const Index = () => {
                   </div>
                 </motion.div>
               </AnimatePresence>
+              
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <PredictionCard
-                      symbol={prediction.market}
-                      prediction={prediction.direction === "LONG" ? "up" : "down"}
-                      confidence={prediction.confidence}
-                      timestamp={prediction.timestamp}
-                      traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                    />
-                  </motion.div>
-                ))}
+                <AnimatePresence mode="wait">
+                  {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
+                    <motion.div
+                      key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <PredictionCard
+                        symbol={prediction.market}
+                        prediction={prediction.direction === "LONG" ? "up" : "down"}
+                        confidence={prediction.confidence}
+                        timestamp={prediction.timestamp}
+                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </div>
           </motion.div>
