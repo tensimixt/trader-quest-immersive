@@ -1,11 +1,11 @@
 
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const TradingGlobe = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const globe = useRef<THREE.Group>();
+  const sphereRef = useRef<THREE.Mesh>();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -29,7 +29,7 @@ const TradingGlobe = () => {
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     scene.add(sphere);
-    globe.current = sphere;
+    sphereRef.current = sphere;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x404040);
@@ -51,8 +51,8 @@ const TradingGlobe = () => {
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
-      if (globe.current) {
-        globe.current.rotation.y += 0.001;
+      if (sphereRef.current) {
+        sphereRef.current.rotation.y += 0.001;
       }
       controls.update();
       renderer.render(scene, camera);
