@@ -124,6 +124,7 @@ const Index = () => {
       userInput.toLowerCase().includes('previous');
 
     if (isHistoryQuery) {
+      setFilteredHistory(predictions.slice(0, 3));
       setIsHistoryView(true);
       
       const query = userInput.toLowerCase();
@@ -139,42 +140,36 @@ const Index = () => {
         }
       }
 
+      setChatHistory(prev => [...prev, { 
+        message: "Accessing secure trading records... Decrypting data...",
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'chat'
+      }]);
+
       setTimeout(() => {
+        const historyData = filtered.slice(0, 10).map(p => ({
+          market: p.market,
+          direction: p.direction,
+          confidence: p.confidence,
+          roi: p.roi,
+          trader: p.traderProfile,
+          timestamp: new Date().toLocaleTimeString()
+        }));
+
+        setFilteredHistory(historyData);
+        
         setChatHistory(prev => [...prev, { 
-          message: "Accessing secure trading records... Decrypting data...",
+          message: `Secured ${historyData.length} trading records matching your query.`,
           timestamp: new Date().toLocaleTimeString(),
-          type: 'chat'
+          type: 'history'
         }]);
-
-        setTimeout(() => {
-          const historyData = filtered.slice(0, 10).map(p => ({
-            market: p.market,
-            direction: p.direction,
-            confidence: p.confidence,
-            roi: p.roi,
-            trader: p.traderProfile,
-            timestamp: new Date().toLocaleTimeString()
-          }));
-
-          setFilteredHistory(historyData);
-          
-          setChatHistory(prev => [...prev, { 
-            message: `Secured ${historyData.length} trading records matching your query.`,
-            timestamp: new Date().toLocaleTimeString(),
-            type: 'history'
-          }]);
-          
-          toast({
-            title: "Trading Records Retrieved",
-            description: `Found ${historyData.length} matching trading calls`,
-            className: "bg-emerald-500/20 text-white border-emerald-500/20"
-          });
-          
-          if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-          }
-        }, 1500);
-      }, 1000);
+        
+        toast({
+          title: "Trading Records Retrieved",
+          description: `Found ${historyData.length} matching trading calls`,
+          className: "bg-emerald-500/20 text-white border-emerald-500/20"
+        });
+      }, 1500);
     } else {
       setIsHistoryView(false);
       setTimeout(() => {
@@ -184,13 +179,14 @@ const Index = () => {
           timestamp: new Date().toLocaleTimeString(),
           type: 'chat'
         }]);
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
       }, 1000);
     }
 
     setUserInput("");
+    
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   return (
@@ -300,7 +296,7 @@ const Index = () => {
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
             <div className="h-full flex flex-col">
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="sync">
                 <motion.div 
                   key={isHistoryView ? 'history' : 'intel'}
                   initial={{ 
