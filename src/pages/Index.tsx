@@ -1,12 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import PredictionCard from '@/components/PredictionCard';
 import { useToast } from '@/components/ui/use-toast';
 
-// Sample market intelligence updates
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
   "Ethereum Foundation announces major protocol upgrade",
@@ -15,7 +13,6 @@ const marketIntelligence = [
   "Major DeFi protocol reports record-breaking TVL"
 ];
 
-// Sample market calls with structured data
 const marketCalls = [
   {
     traderProfile: "Alpha Trader",
@@ -76,9 +73,9 @@ const Index = () => {
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, type?: 'chat' | 'intel' | 'history' }>>([]);
   const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
+  const [isHistoryView, setIsHistoryView] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Simulate market calls coming in
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
@@ -88,7 +85,6 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Simulate market intelligence updates
   useEffect(() => {
     const interval = setInterval(() => {
       const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
@@ -113,7 +109,6 @@ const Index = () => {
 
     const timestamp = new Date().toLocaleTimeString();
     
-    // Add user message to chat
     setChatHistory(prev => [...prev, { 
       message: userInput, 
       timestamp, 
@@ -121,8 +116,8 @@ const Index = () => {
       type: 'chat' 
     }]);
     
-    // Check if user is requesting trader history
     if (userInput.toLowerCase().includes('history') || userInput.toLowerCase().includes('previous calls')) {
+      setIsHistoryView(true);
       const traderHistory = predictions.slice(0, 10).map(p => ({
         market: p.market,
         direction: p.direction,
@@ -149,7 +144,7 @@ const Index = () => {
         }
       }, 1000);
     } else {
-      // Normal chat response
+      setIsHistoryView(false);
       setTimeout(() => {
         const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
         setChatHistory(prev => [...prev, { 
@@ -173,7 +168,6 @@ const Index = () => {
         animate={{ opacity: 1 }}
         className="container mx-auto p-4 h-screen flex flex-col"
       >
-        {/* Header */}
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -197,15 +191,12 @@ const Index = () => {
           </div>
         </motion.div>
 
-        {/* Main Grid */}
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
-          {/* Left Column - Codec Feed and Command Interface */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4"
           >
-            {/* Codec Feed */}
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               <div className="h-full flex flex-col">
@@ -250,7 +241,6 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Command Interface */}
             <div className="glass-card rounded-2xl overflow-hidden relative p-6">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               <form onSubmit={handleUserMessage} className="relative">
@@ -271,7 +261,6 @@ const Index = () => {
             </div>
           </motion.div>
 
-          {/* Right Column - Market Intel */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -279,10 +268,27 @@ const Index = () => {
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
             <div className="h-full flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <Eye className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={isHistoryView ? 'history' : 'intel'}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="flex items-center gap-2 mb-4"
+                >
+                  {isHistoryView ? (
+                    <>
+                      <History className="w-5 h-5 text-blue-400" />
+                      <h2 className="text-xl font-bold text-white">MARKET_HISTORY</h2>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-5 h-5 text-emerald-400" />
+                      <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 {predictions.map((prediction, index) => (
                   <motion.div
