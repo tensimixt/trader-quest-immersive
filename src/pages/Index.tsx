@@ -17,6 +17,7 @@ const Index = () => {
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, isMarketCall?: boolean }>>([]);
+  const [marketIntel, setMarketIntel] = useState<string>("");
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -24,11 +25,16 @@ const Index = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
+      
+      // Add to chat history
       setChatHistory(prev => [...prev, { 
         message: randomCall, 
         timestamp: new Date().toLocaleTimeString(),
         isMarketCall: true 
       }]);
+      
+      // Update market intel
+      setMarketIntel(randomCall);
       
       if (chatContainerRef.current) {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -157,7 +163,7 @@ const Index = () => {
             </div>
           </motion.div>
 
-          {/* Right Column - Chart */}
+          {/* Right Column - Market Intel */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -170,9 +176,8 @@ const Index = () => {
                 <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
               </div>
               <div className="flex-1 relative">
-                {/* Add your chart component here */}
                 <div className="absolute inset-0 flex items-center justify-center text-emerald-400/50 font-mono">
-                  [MARKET DATA VISUALIZATION]
+                  {marketIntel || "[AWAITING MARKET DATA]"}
                 </div>
               </div>
             </div>
