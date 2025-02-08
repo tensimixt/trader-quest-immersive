@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Activity } from 'lucide-react';
+import { MessageCircle, Send, Activity, Terminal, Cpu, Signal, Braces, Box } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -282,106 +282,133 @@ const TradingGlobe = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-8">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-      >
-        <div className="relative">
-          <div ref={containerRef} className="w-full h-[400px] rounded-xl overflow-hidden" />
-          <div className="absolute bottom-4 left-4 flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-green-400 text-sm font-mono">ACTIVE</span>
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <Terminal className="w-5 h-5 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-sm tracking-wider">NEURAL.GLOBE_v2.1</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+            <div className="flex items-center space-x-2 text-emerald-400/50">
+              <Cpu className="w-4 h-4" />
+              <span className="text-xs font-mono">SYSTEM ACTIVE</span>
+            </div>
           </div>
-        </div>
+          <div ref={containerRef} className="w-full h-[400px] rounded-lg overflow-hidden border border-emerald-500/10" />
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {['SCANNING', 'PROCESSING', 'ANALYZING'].map((status, index) => (
+              <div key={status} className="glass-card p-3 rounded-lg border border-emerald-500/10 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono text-emerald-400/70">{status}</span>
+                  <Signal className="w-3 h-3 text-emerald-400" />
+                </div>
+                <div className="mt-2 text-lg font-mono text-emerald-300">
+                  {Math.floor(Math.random() * 100)}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="glass-card p-6 rounded-xl backdrop-blur-xl border border-purple-500/20">
-            <h3 className="text-xl font-semibold mb-2 text-purple-300">Market Activity</h3>
-            <div className="mt-4">
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#9b87f5" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#9b87f5" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis 
-                      dataKey="time" 
-                      stroke="#8E9196"
-                      tick={{ fill: '#8E9196', fontSize: 12 }}
-                      tickLine={{ stroke: '#8E9196' }}
-                      axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
-                      dy={10}
-                    />
-                    <YAxis 
-                      stroke="#8E9196"
-                      tick={{ fill: '#8E9196', fontSize: 12 }}
-                      tickLine={{ stroke: '#8E9196' }}
-                      axisLine={{ stroke: '#8E9196', strokeWidth: 0.5 }}
-                      dx={-10}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                        border: '1px solid rgba(155, 135, 245, 0.2)',
-                        borderRadius: '8px',
-                        backdropFilter: 'blur(4px)',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                        padding: '12px'
-                      }}
-                      labelStyle={{ color: '#8E9196', marginBottom: '4px', fontSize: '12px' }}
-                      itemStyle={{ color: '#9b87f5', fontSize: '14px', padding: '4px 0' }}
-                      cursor={{ stroke: '#9b87f5', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#9b87f5"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorValue)"
-                      animationDuration={1500}
-                      animationEasing="ease-in-out"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <Box className="w-5 h-5 text-emerald-400" />
+              <span className="text-emerald-400 font-mono text-sm tracking-wider">MARKET.MATRIX</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                <span className="text-xs font-mono text-emerald-400">REAL-TIME</span>
               </div>
             </div>
           </div>
+          
+          <div className="h-[200px] mb-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#059669" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#059669"
+                  tick={{ fill: '#059669', fontSize: 10, fontFamily: 'monospace' }}
+                  tickLine={{ stroke: '#059669' }}
+                  axisLine={{ stroke: '#059669', strokeWidth: 0.5 }}
+                  dy={10}
+                />
+                <YAxis 
+                  stroke="#059669"
+                  tick={{ fill: '#059669', fontSize: 10, fontFamily: 'monospace' }}
+                  tickLine={{ stroke: '#059669' }}
+                  axisLine={{ stroke: '#059669', strokeWidth: 0.5 }}
+                  dx={-10}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    border: '1px solid rgba(5, 150, 105, 0.2)',
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    color: '#059669'
+                  }}
+                  cursor={{ stroke: '#059669', strokeWidth: 1, strokeDasharray: '4 4' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#059669"
+                  strokeWidth={1.5}
+                  fillOpacity={1}
+                  fill="url(#colorValue)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
-          <div className="glass-card p-6 rounded-xl border border-green-500/20 backdrop-blur-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-green-400 text-sm font-mono">AI ANALYST</span>
-              </div>
-              <MessageCircle className="text-green-400 w-5 h-5" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-mono text-emerald-400">NEURAL NET STATUS</span>
+              <Braces className="w-4 h-4 text-emerald-400" />
             </div>
-            
             <div 
               ref={chatContainerRef}
-              className="h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/20 scrollbar-track-transparent space-y-4"
+              className="h-[150px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent space-y-3"
             >
               {chatHistory.map((item, index) => (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, x: item.isUser ? 20 : -20 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3 }}
                   className={`flex items-start space-x-3 ${item.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
                 >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full ${item.isUser ? 'bg-blue-500/20' : 'bg-green-500/20'} flex items-center justify-center`}>
-                    <MessageCircle className={`w-4 h-4 ${item.isUser ? 'text-blue-400' : 'text-green-400'}`} />
+                  <div className={`flex-shrink-0 w-6 h-6 rounded-md ${item.isUser ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center`}>
+                    {item.isUser ? (
+                      <Terminal className="w-3 h-3 text-emerald-400" />
+                    ) : (
+                      <Cpu className="w-3 h-3 text-emerald-400" />
+                    )}
                   </div>
                   <div className={`flex-1 ${item.isUser ? 'text-right' : ''}`}>
-                    <div className={`text-sm font-mono ${item.isUser ? 'text-blue-300' : 'text-green-300'}`}>
+                    <div className={`text-xs font-mono ${item.isUser ? 'text-emerald-300' : 'text-emerald-400'}`}>
                       {item.message}
                     </div>
-                    <div className={`text-xs mt-1 ${item.isUser ? 'text-blue-500/50' : 'text-green-500/50'}`}>
+                    <div className="text-[10px] mt-1 font-mono text-emerald-500/50">
                       {item.timestamp}
                     </div>
                   </div>
@@ -389,54 +416,61 @@ const TradingGlobe = () => {
               ))}
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
-      <div className="glass-card p-6 rounded-xl border border-purple-500/20 backdrop-blur-xl">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold text-purple-300">Trading Console</h3>
-          <form onSubmit={handleUserMessage} className="flex-1 max-w-md ml-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-6 rounded-xl border border-emerald-500/20 backdrop-blur-lg"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <Terminal className="w-5 h-5 text-emerald-400" />
+            <span className="text-emerald-400 font-mono text-sm tracking-wider">COMMAND_CENTER</span>
+          </div>
+          <form onSubmit={handleUserMessage} className="flex-1 max-w-2xl ml-4">
             <div className="relative">
               <Input
                 type="text"
-                placeholder="Ask about market conditions..."
+                placeholder="> Enter command..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                className="w-full bg-black/30 border-purple-500/20 text-purple-300 placeholder:text-purple-500/50"
+                className="w-full bg-black/30 border-emerald-500/20 text-emerald-300 font-mono placeholder:text-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/20"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center hover:bg-purple-500/30 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md bg-emerald-500/20 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
               >
-                <Send className="w-4 h-4 text-purple-400" />
+                <Send className="w-4 h-4 text-emerald-400" />
               </button>
             </div>
           </form>
         </div>
         
-        <div className="grid grid-cols-3 gap-6">
-          {[1, 2, 3].map((index) => (
+        <div className="grid grid-cols-4 gap-4">
+          {['SYSTEM', 'NETWORK', 'SECURITY', 'ANALYSIS'].map((system, index) => (
             <motion.div
-              key={index}
+              key={system}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="glass-card p-4 rounded-lg border border-purple-500/10"
+              className="glass-card p-4 rounded-lg border border-emerald-500/10"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-purple-300 font-mono">MARKET SIGNAL {index}</span>
-                <Activity className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-mono text-emerald-400">{system}</span>
+                <Activity className="w-3 h-3 text-emerald-400" />
               </div>
-              <div className="text-2xl font-bold text-purple-200 mb-1">
+              <div className="text-xl font-mono text-emerald-300 mb-1">
                 {Math.floor(Math.random() * 1000)}
               </div>
-              <div className="text-xs text-purple-400">
+              <div className="text-[10px] font-mono text-emerald-500/50">
                 Updated {new Date().toLocaleTimeString()}
               </div>
             </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
