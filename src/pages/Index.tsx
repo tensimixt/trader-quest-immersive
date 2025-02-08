@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Eye, Network, Terminal, Send } from 'lucide-react';
@@ -51,7 +50,7 @@ const marketCalls = [
 const Index = () => {
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, isMarketCall?: boolean }>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean }>>([]);
   const [marketIntel, setMarketIntel] = useState<string>("");
   const [userInput, setUserInput] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -61,25 +60,12 @@ const Index = () => {
     return `${call.traderProfile} | ${call.market} | ${call.direction} | $${call.entryPrice} | ${call.timeframe}\n${call.analysis}`;
   };
 
-  // Simulate market calls coming in
+  // Simulate market calls coming in only to MARKET_INTEL
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
       const formattedCall = formatMarketCall(randomCall);
-      
-      // Add to chat history
-      setChatHistory(prev => [...prev, { 
-        message: formattedCall, 
-        timestamp: new Date().toLocaleTimeString(),
-        isMarketCall: true 
-      }]);
-      
-      // Update market intel
       setMarketIntel(formattedCall);
-      
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
     }, 15000); // New market call every 15 seconds
 
     return () => clearInterval(interval);
@@ -168,11 +154,7 @@ const Index = () => {
                       className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                        msg.isUser 
-                          ? 'bg-emerald-500/20' 
-                          : msg.isMarketCall 
-                            ? 'bg-purple-500/20 border border-purple-500/30' 
-                            : 'bg-white/5'
+                        msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
                       }`}>
                         <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
                         <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
