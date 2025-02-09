@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns-tz';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -88,6 +89,31 @@ const marketCalls = [
   }
 ];
 
+const generatePerformanceData = (calls: any[], year: string) => {
+  const yearCalls = calls.filter(call => call.timestamp.includes(year));
+  const totalCalls = yearCalls.length;
+  const successfulCalls = yearCalls.filter(call => call.roi > 0).length;
+  const winRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0;
+  
+  const monthlyData = Array.from({ length: 12 }, (_, i) => {
+    const month = String(i + 1).padStart(2, '0');
+    const monthCalls = yearCalls.filter(call => call.timestamp.includes(`${year}-${month}`));
+    const monthlyWins = monthCalls.filter(call => call.roi > 0).length;
+    const monthlyRate = monthCalls.length > 0 ? (monthlyWins / monthCalls.length) * 100 : 0;
+    
+    return {
+      month: `${year}-${month}`,
+      winRate: monthlyRate,
+      calls: monthCalls.length
+    };
+  });
+
+  return {
+    overall: winRate.toFixed(2),
+    monthlyData
+  };
+};
+
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
@@ -104,6 +130,7 @@ const Index = () => {
     trader: call.traderProfile,
     timestamp: call.timestamp
   })));
+  const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,13 +183,42 @@ const Index = () => {
       type: 'chat' 
     }]);
     
-    const isHistoryQuery = 
-      userInput.toLowerCase().includes('history') || 
-      userInput.toLowerCase().includes('calls') || 
-      userInput.toLowerCase().includes('show me') ||
-      userInput.toLowerCase().includes('previous');
+    const isPerformanceQuery = 
+      userInput.toLowerCase().includes('win rate') || 
+      userInput.toLowerCase().includes('performance') ||
+      userInput.toLowerCase().includes('success rate');
 
-    if (isHistoryQuery) {
+    const yearMatch = userInput.match(/\b(20\d{2})\b/);
+    const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+
+    if (isPerformanceQuery) {
+      setIsHistoryView(true);
+      const performance = generatePerformanceData(marketCalls, year);
+      setPerformanceData(performance);
+
+      setChatHistory(prev => [...prev, { 
+        message: `Analyzing performance metrics for ${year}...`,
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+
+      setTimeout(() => {
+        setChatHistory(prev => [...prev, { 
+          message: `Overall win rate for ${year}: ${performance.overall}%`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+        
+        toast({
+          title: "Performance Analysis Complete",
+          description: `Win rate for ${year}: ${performance.overall}%`,
+          className: "bg-emerald-500/20 text-white border-emerald-500/20"
+        });
+      }, 1500);
+    } else if (userInput.toLowerCase().includes('history') || 
+               userInput.toLowerCase().includes('calls') || 
+               userInput.toLowerCase().includes('show me') ||
+               userInput.toLowerCase().includes('previous')) {
       setIsHistoryView(true);
       
       const query = userInput.toLowerCase();
@@ -219,6 +275,7 @@ const Index = () => {
       }, 1500);
     } else {
       setIsHistoryView(false);
+      setPerformanceData(null);
       setTimeout(() => {
         const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
         setChatHistory(prev => [...prev, { 
@@ -471,6 +528,54 @@ const Index = () => {
                       />
                     </motion.div>
                   ))}
+                  {isHistoryView && performanceData && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                    >
+                      <div className="h-[300px] mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={performanceData.monthlyData}>
+                            <defs>
+                              <linearGradient id="winRateGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis 
+                              dataKey="month" 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                            />
+                            <YAxis 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(0,0,0,0.8)', 
+                                border: '1px solid rgba(16,185,129,0.2)',
+                                borderRadius: '8px'
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="winRate"
+                              stroke="#10B981"
+                              fillOpacity={1}
+                              fill="url(#winRateGradient)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="text-center text-emerald-400 font-mono">
+                        Monthly Win Rate Analysis
+                      </div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
               </div>
             </div>
