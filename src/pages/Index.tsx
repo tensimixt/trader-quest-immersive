@@ -130,7 +130,7 @@ const Index = () => {
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, type?: 'chat' | 'intel' | 'history' }>>([]);
-  const [predictions, setPredictions] = useState<Array<any>>([]);
+  const [predictions, setPredictions] = useState<Array<any>>(marketCalls);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
   const [filteredHistory, setFilteredHistory] = useState<Array<any>>([]);
@@ -194,7 +194,7 @@ const Index = () => {
     const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
     
     if (query.includes('hsaka') || query.includes('performance') || query.includes('win rate')) {
-      let filtered = [...marketCalls];
+      let filtered = [...predictions];
       
       // Apply year filter
       filtered = filtered.filter(call => {
@@ -223,8 +223,10 @@ const Index = () => {
 
       setFilteredHistory(historyData);
       
+      const messageText = `Found ${historyData.length} trading records for ${year}. Overall win rate: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`;
+      
       setChatHistory(prev => [...prev, { 
-        message: `Found ${historyData.length} trading records. Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
+        message: messageText,
         timestamp: formatJapanTime(new Date()),
         type: 'history'
       }]);
