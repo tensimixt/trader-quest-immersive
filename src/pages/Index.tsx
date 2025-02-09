@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -304,11 +305,14 @@ const Index = () => {
       const target = e.target as HTMLElement;
       if (target.dataset.action === 'scroll-to-chart') {
         setIsHistoryView(true);
+        // Wait for state update and component mount
         setTimeout(() => {
-          if (chartRef.current) {
-            chartRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 100);
+          setTimeout(() => {
+            if (chartRef.current) {
+              chartRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100); // Additional delay for animation completion
+        }, 0);
       }
     };
 
