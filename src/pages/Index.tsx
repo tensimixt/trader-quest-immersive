@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -137,6 +136,7 @@ const Index = () => {
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const [showOnlyChart, setShowOnlyChart] = useState(false);
 
   const scrollToChart = () => {
     if (chartRef.current) {
@@ -204,6 +204,7 @@ const Index = () => {
 
     if (isPerformanceQuery) {
       setIsHistoryView(true);
+      setShowOnlyChart(true);
       const performance = generatePerformanceData(marketCalls, year);
       setPerformanceData(performance);
 
@@ -231,6 +232,7 @@ const Index = () => {
                userInput.toLowerCase().includes('show me') ||
                userInput.toLowerCase().includes('previous')) {
       setIsHistoryView(true);
+      setShowOnlyChart(false);
       
       const query = userInput.toLowerCase();
       let filtered = [...marketCalls];
@@ -286,6 +288,7 @@ const Index = () => {
       }, 1500);
     } else {
       setIsHistoryView(false);
+      setShowOnlyChart(false);
       setPerformanceData(null);
       setTimeout(() => {
         const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
