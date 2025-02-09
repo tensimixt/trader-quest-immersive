@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
+import { useToast } from '@/hooks/use-toast';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
