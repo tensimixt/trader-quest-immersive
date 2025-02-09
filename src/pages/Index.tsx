@@ -196,10 +196,6 @@ const Index = () => {
     const timestamp = new Date().toLocaleTimeString();
     setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
     
-    const keywords = ['volume', 'trend', 'support', 'resistance'];
-    const matchedKeyword = keywords.find(keyword => userInput.toLowerCase().includes(keyword));
-    const response = matchedKeyword ? AIResponses[matchedKeyword] : AIResponses.default;
-    
     const isPerformanceQuery = 
       userInput.toLowerCase().includes('win rate') || 
       userInput.toLowerCase().includes('performance') ||
@@ -212,6 +208,7 @@ const Index = () => {
       const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
       const performance = generatePerformanceData(marketCalls, year);
       setPerformanceData(performance);
+      setFilteredHistory([]); // Clear filtered history when showing performance
 
       setChatHistory(prev => [...prev, { 
         message: `Analyzing performance metrics for ${year}...`,
@@ -238,10 +235,20 @@ const Index = () => {
                userInput.toLowerCase().includes('previous')) {
       setIsHistoryView(true);
       setShowOnlyChart(false);
+      setPerformanceData(null); // Clear performance data when showing calls
       
       const query = userInput.toLowerCase();
       let filtered = [...marketCalls];
 
+      const yearMatch = query.match(/\b(20\d{2})\b/);
+      if (yearMatch) {
+        const year = yearMatch[1];
+        filtered = filtered.filter(call => call.timestamp.includes(year));
+      }
+
+      if (query.includes('hsaka')) {
+        filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes('hsaka'));
+      }
       if (query.includes('btc')) {
         filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
       }
@@ -253,12 +260,6 @@ const Index = () => {
       }
       if (query.includes('trx')) {
         filtered = filtered.filter(p => p.market.toLowerCase().includes('trx'));
-      }
-      if (query.includes('trader')) {
-        const traderName = query.split('trader')[1]?.split(' ')[1];
-        if (traderName) {
-          filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes(traderName.toLowerCase()));
-        }
       }
 
       setChatHistory(prev => [...prev, { 
@@ -340,6 +341,7 @@ const Index = () => {
     setIsHistoryView(false);
     setShowOnlyChart(false); // Reset chart visibility when going back to intel
     setPerformanceData(null); // Clear performance data
+    setFilteredHistory([]);
   };
 
   return (
