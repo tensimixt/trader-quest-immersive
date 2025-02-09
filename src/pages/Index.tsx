@@ -132,6 +132,13 @@ const Index = () => {
   })));
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const scrollToChart = () => {
+    if (chartRef.current) {
+      chartRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -204,7 +211,7 @@ const Index = () => {
 
       setTimeout(() => {
         setChatHistory(prev => [...prev, { 
-          message: `Overall win rate for ${year}: ${performance.overall}%`,
+          message: `Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -288,6 +295,26 @@ const Index = () => {
 
     setUserInput("");
   };
+
+  useEffect(() => {
+    const handleChatClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.dataset.action === 'scroll-to-chart') {
+        scrollToChart();
+      }
+    };
+
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer) {
+      chatContainer.addEventListener('click', handleChatClick);
+    }
+
+    return () => {
+      if (chatContainer) {
+        chatContainer.removeEventListener('click', handleChatClick);
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
@@ -530,6 +557,7 @@ const Index = () => {
                   ))}
                   {isHistoryView && performanceData && (
                     <motion.div
+                      ref={chartRef}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
