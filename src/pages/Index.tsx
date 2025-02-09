@@ -336,6 +336,12 @@ const Index = () => {
     };
   }, []);
 
+  const handleBackToIntel = () => {
+    setIsHistoryView(false);
+    setShowOnlyChart(false); // Reset chart visibility when going back to intel
+    setPerformanceData(null); // Clear performance data
+  };
+
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
       <motion.div
@@ -545,7 +551,7 @@ const Index = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setIsHistoryView(false)}
+                        onClick={handleBackToIntel}
                         className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
                       >
                         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -577,7 +583,7 @@ const Index = () => {
                       </motion.div>
                     ))
                   ) : (
-                    performanceData && (
+                    performanceData && isHistoryView ? (
                       <motion.div
                         ref={chartRef}
                         initial={{ opacity: 0, y: 20 }}
@@ -625,7 +631,7 @@ const Index = () => {
                           Monthly Win Rate Analysis
                         </div>
                       </motion.div>
-                    )
+                    ) : null
                   )}
                 </AnimatePresence>
               </div>
