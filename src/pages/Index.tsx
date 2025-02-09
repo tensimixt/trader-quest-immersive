@@ -201,14 +201,79 @@ const Index = () => {
       userInput.toLowerCase().includes('performance') ||
       userInput.toLowerCase().includes('success rate');
 
-    if (isPerformanceQuery) {
+    const query = userInput.toLowerCase();
+    const yearMatch = query.match(/\b(20\d{2})\b/);
+    const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+
+    // If it's both a performance query and includes "show" or "calls", display both
+    if (isPerformanceQuery && (query.includes('show') || query.includes('calls'))) {
       setIsHistoryView(true);
-      setShowOnlyChart(true);
-      const yearMatch = userInput.match(/\b(20\d{2})\b/);
-      const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+      setShowOnlyChart(false); // Show both chart and history
+      
+      // Generate performance data
       const performance = generatePerformanceData(marketCalls, year);
       setPerformanceData(performance);
-      setFilteredHistory([]); // Clear filtered history when showing performance
+
+      // Filter calls
+      let filtered = [...marketCalls];
+      
+      if (yearMatch) {
+        filtered = filtered.filter(call => call.timestamp.includes(year));
+      }
+
+      if (query.includes('hsaka')) {
+        filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes('hsaka'));
+      }
+      if (query.includes('btc')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
+      }
+      if (query.includes('eth')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('eth'));
+      }
+      if (query.includes('doge')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('doge'));
+      }
+      if (query.includes('trx')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('trx'));
+      }
+
+      setChatHistory(prev => [...prev, { 
+        message: "Processing market data and performance metrics...",
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+
+      setTimeout(() => {
+        const historyData = filtered.slice(0, 6).map(p => ({
+          market: p.market,
+          direction: p.direction,
+          confidence: p.confidence,
+          roi: p.roi,
+          trader: p.traderProfile,
+          timestamp: formatJapanTime(new Date())
+        }));
+
+        setFilteredHistory(historyData);
+        
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${historyData.length} trading records and calculated performance metrics for ${year}. Overall win rate: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+        
+        toast({
+          title: "Analysis Complete",
+          description: `Found ${historyData.length} calls with ${performance.overall}% win rate`,
+          className: "bg-emerald-500/20 text-white border-emerald-500/20"
+        });
+      }, 1500);
+    } else if (isPerformanceQuery) {
+      // Original performance query logic
+      setIsHistoryView(true);
+      setShowOnlyChart(true);
+      const performance = generatePerformanceData(marketCalls, year);
+      setPerformanceData(performance);
+      setFilteredHistory([]); 
 
       setChatHistory(prev => [...prev, { 
         message: `Analyzing performance metrics for ${year}...`,
@@ -229,15 +294,15 @@ const Index = () => {
           className: "bg-emerald-500/20 text-white border-emerald-500/20"
         });
       }, 1500);
-    } else if (userInput.toLowerCase().includes('history') || 
-               userInput.toLowerCase().includes('calls') || 
-               userInput.toLowerCase().includes('show me') ||
-               userInput.toLowerCase().includes('previous')) {
+    } else if (query.includes('history') || 
+              query.includes('calls') || 
+              query.includes('show me') ||
+              query.includes('previous')) {
+      // Original history query logic
       setIsHistoryView(true);
       setShowOnlyChart(false);
-      setPerformanceData(null); // Clear performance data when showing calls
+      setPerformanceData(null);
       
-      const query = userInput.toLowerCase();
       let filtered = [...marketCalls];
 
       const yearMatch = query.match(/\b(20\d{2})\b/);
