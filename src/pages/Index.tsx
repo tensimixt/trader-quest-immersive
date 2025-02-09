@@ -294,7 +294,7 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4"
           >
-            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col">
+            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               <div className="flex items-center gap-2 mb-4">
                 <Terminal className="w-5 h-5 text-emerald-400" />
@@ -302,7 +302,8 @@ const Index = () => {
               </div>
               <div 
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto custom-scrollbar space-y-4"
+                className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4"
+                style={{ maxHeight: 'calc(100% - 120px)' }} // Reserve space for input
               >
                 {chatHistory.map((msg, idx) => (
                   <motion.div
@@ -334,7 +335,7 @@ const Index = () => {
                   </motion.div>
                 ))}
               </div>
-              <form onSubmit={handleUserMessage} className="mt-4 relative">
+              <form onSubmit={handleUserMessage} className="relative mt-auto">
                 <Input
                   type="text"
                   placeholder="Enter command, Master Wayne..."
