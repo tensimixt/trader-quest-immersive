@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -193,102 +192,69 @@ const Index = () => {
       isUser: true, 
       type: 'chat' 
     }]);
-    
-    const isPerformanceQuery = 
-      userInput.toLowerCase().includes('win rate') || 
-      userInput.toLowerCase().includes('performance') ||
-      userInput.toLowerCase().includes('success rate');
 
-    const yearMatch = userInput.match(/\b(20\d{2})\b/);
-    const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+    const query = userInput.toLowerCase();
+    const isWinRateQuery = query.includes('win rate');
+    const isCallsQuery = query.includes('calls');
+    const isHsakaQuery = query.includes('hsaka');
+    const year = '2024'; // Currently hardcoded to 2024 for this example
 
-    if (isPerformanceQuery) {
-      setIsHistoryView(true);
-      const performance = generatePerformanceData(marketCalls, year);
-      setPerformanceData(performance);
-
-      setChatHistory(prev => [...prev, { 
-        message: `Analyzing performance metrics for ${year}...`,
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      setTimeout(() => {
-        setChatHistory(prev => [...prev, { 
-          message: `Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history'
-        }]);
-        
-        toast({
-          title: "Performance Analysis Complete",
-          description: `Win rate for ${year}: ${performance.overall}%`,
-          className: "bg-emerald-500/20 text-white border-emerald-500/20"
-        });
-      }, 1500);
-    } else if (userInput.toLowerCase().includes('history') || 
-               userInput.toLowerCase().includes('calls') || 
-               userInput.toLowerCase().includes('show me') ||
-               userInput.toLowerCase().includes('previous')) {
+    if (isHsakaQuery && (isWinRateQuery || isCallsQuery)) {
       setIsHistoryView(true);
       
-      const query = userInput.toLowerCase();
-      let filtered = [...marketCalls];
+      // Filter market calls for Hsaka
+      const hsakaCalls = marketCalls.filter(call => 
+        call.traderProfile.toLowerCase().includes('hsaka')
+      );
 
-      if (query.includes('btc')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
-      }
-      if (query.includes('eth')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('eth'));
-      }
-      if (query.includes('doge')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('doge'));
-      }
-      if (query.includes('trx')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('trx'));
-      }
-      if (query.includes('trader')) {
-        const traderName = query.split('trader')[1]?.split(' ')[1];
-        if (traderName) {
-          filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes(traderName.toLowerCase()));
-        }
-      }
-
-      setChatHistory(prev => [...prev, { 
-        message: "Accessing secure trading records... Decrypting data...",
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      setTimeout(() => {
-        const historyData = filtered.slice(0, 6).map(p => ({
-          market: p.market,
-          direction: p.direction,
-          confidence: p.confidence,
-          roi: p.roi,
-          trader: p.traderProfile,
-          timestamp: formatJapanTime(new Date())
+      if (isCallsQuery) {
+        const filteredCalls = hsakaCalls.slice(0, 6).map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
         }));
 
-        setFilteredHistory(historyData);
+        setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: `Secured ${historyData.length} trading records matching your query.`,
+          message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
-        
-        toast({
-          title: "Trading Records Retrieved",
-          description: `Found ${historyData.length} matching trading calls`,
-          className: "bg-emerald-500/20 text-white border-emerald-500/20"
-        });
-      }, 1500);
+      }
+
+      if (isWinRateQuery) {
+        const performance = generatePerformanceData(hsakaCalls, year);
+        setPerformanceData(performance);
+
+        setChatHistory(prev => [...prev, { 
+          message: `Analyzing Hsaka's performance metrics for ${year}...`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'chat'
+        }]);
+
+        setTimeout(() => {
+          setChatHistory(prev => [...prev, { 
+            message: `Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
+            timestamp: formatJapanTime(new Date()),
+            type: 'history'
+          }]);
+          
+          toast({
+            title: "Performance Analysis Complete",
+            description: `Hsaka's win rate for ${year}: ${performance.overall}%`,
+            className: "bg-emerald-500/20 text-white border-emerald-500/20"
+          });
+        }, 1500);
+      }
     } else {
       setIsHistoryView(false);
       setPerformanceData(null);
       setTimeout(() => {
-        const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
+        const aiResponse = "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.";
         setChatHistory(prev => [...prev, { 
           message: aiResponse, 
           timestamp: formatJapanTime(new Date()),
