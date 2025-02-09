@@ -117,6 +117,14 @@ const generatePerformanceData = (calls: any[], year: string) => {
   };
 };
 
+const AIResponses = {
+  default: "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?",
+  volume: "Volume is increasing, indicating bullish momentum.",
+  trend: "The trend is upward, with strong support and resistance levels.",
+  support: "Support levels are holding strong, indicating a potential reversal.",
+  resistance: "Resistance levels are being tested, but the trend remains bullish."
+};
+
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
@@ -185,26 +193,23 @@ const Index = () => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const timestamp = formatJapanTime(new Date());
+    const timestamp = new Date().toLocaleTimeString();
+    setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
     
-    setChatHistory(prev => [...prev, { 
-      message: userInput, 
-      timestamp, 
-      isUser: true, 
-      type: 'chat' 
-    }]);
+    const keywords = ['volume', 'trend', 'support', 'resistance'];
+    const matchedKeyword = keywords.find(keyword => userInput.toLowerCase().includes(keyword));
+    const response = matchedKeyword ? AIResponses[matchedKeyword] : AIResponses.default;
     
     const isPerformanceQuery = 
       userInput.toLowerCase().includes('win rate') || 
       userInput.toLowerCase().includes('performance') ||
       userInput.toLowerCase().includes('success rate');
 
-    const yearMatch = userInput.match(/\b(20\d{2})\b/);
-    const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
-
     if (isPerformanceQuery) {
       setIsHistoryView(true);
       setShowOnlyChart(true);
+      const yearMatch = userInput.match(/\b(20\d{2})\b/);
+      const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
       const performance = generatePerformanceData(marketCalls, year);
       setPerformanceData(performance);
 
