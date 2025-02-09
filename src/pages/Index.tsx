@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -206,8 +207,11 @@ const Index = () => {
       
       let filtered = [...marketCalls];
       
-      // Apply year filter
-      filtered = filtered.filter(call => call.timestamp.includes(year));
+      // Apply year filter - ensure timestamps are in 2024
+      filtered = filtered.filter(call => {
+        const callYear = call.timestamp.split('-')[0];
+        return callYear === year;
+      });
       
       // Apply trader filter if hsaka is mentioned
       if (query.includes('hsaka')) {
@@ -224,7 +228,7 @@ const Index = () => {
       }]);
 
       setTimeout(() => {
-        const historyData = filtered.slice(0, 6).map(p => ({
+        const historyData = filtered.map(p => ({
           market: p.market,
           direction: p.direction,
           confidence: p.confidence,
