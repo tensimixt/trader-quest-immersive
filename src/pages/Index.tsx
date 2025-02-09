@@ -197,18 +197,21 @@ const Index = () => {
     const isWinRateQuery = query.includes('win rate');
     const isCallsQuery = query.includes('calls');
     const isHsakaQuery = query.includes('hsaka');
-    const year = '2024'; // Currently hardcoded to 2024 for this example
+    const year = '2024';
 
     if (isHsakaQuery && (isWinRateQuery || isCallsQuery)) {
       setIsHistoryView(true);
       
-      // Filter market calls for Hsaka
+      // Filter market calls for Hsaka - using case-insensitive comparison
       const hsakaCalls = marketCalls.filter(call => 
-        call.traderProfile.toLowerCase().includes('hsaka')
+        call.traderProfile.toLowerCase().includes('hsaka') ||
+        call.traderProfile.toLowerCase() === 'hsaka'
       );
 
+      console.log('Found Hsaka calls:', hsakaCalls); // Debug log
+
       if (isCallsQuery) {
-        const filteredCalls = hsakaCalls.slice(0, 6).map(call => ({
+        const filteredCalls = hsakaCalls.map(call => ({
           market: call.market,
           direction: call.direction,
           confidence: call.confidence,
@@ -242,12 +245,6 @@ const Index = () => {
             timestamp: formatJapanTime(new Date()),
             type: 'history'
           }]);
-          
-          toast({
-            title: "Performance Analysis Complete",
-            description: `Hsaka's win rate for ${year}: ${performance.overall}%`,
-            className: "bg-emerald-500/20 text-white border-emerald-500/20"
-          });
         }, 1500);
       }
     } else {
