@@ -558,71 +558,74 @@ const Index = () => {
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 <AnimatePresence mode="wait">
-                  {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
-                    <motion.div
-                      key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <PredictionCard
-                        symbol={prediction.market}
-                        prediction={prediction.direction === "LONG" ? "up" : "down"}
-                        confidence={prediction.confidence}
-                        timestamp={prediction.timestamp}
-                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                      />
-                    </motion.div>
-                  ))}
-                  {isHistoryView && performanceData && (
-                    <motion.div
-                      ref={chartRef}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
-                    >
-                      <div className="h-[300px] mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={performanceData.monthlyData}>
-                            <defs>
-                              <linearGradient id="winRateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <XAxis 
-                              dataKey="month" 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                            />
-                            <YAxis 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                              domain={[0, 100]}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(0,0,0,0.8)', 
-                                border: '1px solid rgba(16,185,129,0.2)',
-                                borderRadius: '8px'
-                              }}
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="winRate"
-                              stroke="#10B981"
-                              fillOpacity={1}
-                              fill="url(#winRateGradient)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="text-center text-emerald-400 font-mono">
-                        Monthly Win Rate Analysis
-                      </div>
-                    </motion.div>
+                  {!showOnlyChart ? (
+                    (isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
+                      <motion.div
+                        key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <PredictionCard
+                          symbol={prediction.market}
+                          prediction={prediction.direction === "LONG" ? "up" : "down"}
+                          confidence={prediction.confidence}
+                          timestamp={prediction.timestamp}
+                          traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                        />
+                      </motion.div>
+                    ))
+                  ) : (
+                    performanceData && (
+                      <motion.div
+                        ref={chartRef}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                      >
+                        <div className="h-[300px] mb-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={performanceData.monthlyData}>
+                              <defs>
+                                <linearGradient id="winRateGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <XAxis 
+                                dataKey="month" 
+                                stroke="#10B981"
+                                tick={{ fill: '#10B981', fontSize: 12 }}
+                              />
+                              <YAxis 
+                                stroke="#10B981"
+                                tick={{ fill: '#10B981', fontSize: 12 }}
+                                domain={[0, 100]}
+                              />
+                              <Tooltip 
+                                contentStyle={{ 
+                                  backgroundColor: 'rgba(0,0,0,0.8)', 
+                                  border: '1px solid rgba(16,185,129,0.2)',
+                                  borderRadius: '8px'
+                                }}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="winRate"
+                                stroke="#10B981"
+                                fillOpacity={1}
+                                fill="url(#winRateGradient)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="text-center text-emerald-400 font-mono">
+                          Monthly Win Rate Analysis
+                        </div>
+                      </motion.div>
+                    )
                   )}
                 </AnimatePresence>
               </div>
