@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
+import { 
+  Eye, Network, Terminal, Send, History, ArrowLeft,
+  MessageCircle, Activity
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
-import { useToast } from '@/components/ui/use-toast';
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -300,7 +302,12 @@ const Index = () => {
     const handleChatClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.dataset.action === 'scroll-to-chart') {
-        scrollToChart();
+        setIsHistoryView(true);
+        setTimeout(() => {
+          if (chartRef.current) {
+            chartRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
       }
     };
 
