@@ -294,53 +294,47 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4"
           >
-            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1">
+            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-              <div className="h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-4">
-                  <Terminal className="w-5 h-5 text-emerald-400" />
-                  <h2 className="text-xl font-bold text-white">CODEC_FEED</h2>
-                </div>
-                <div 
-                  ref={chatContainerRef}
-                  className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4"
-                >
-                  {chatHistory.map((msg, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                        msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
-                        msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-                        msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                      }`}>
-                        {msg.type === 'intel' && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <Network className="w-3 h-3 text-purple-400" />
-                            <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
-                          </div>
-                        )}
-                        {msg.type === 'history' && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <History className="w-3 h-3 text-blue-400" />
-                            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-                          </div>
-                        )}
-                        <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
-                        <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+              <div className="flex items-center gap-2 mb-4">
+                <Terminal className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-xl font-bold text-white">CODEC_FEED</h2>
               </div>
-            </div>
-
-            <div className="glass-card rounded-2xl overflow-hidden relative p-6">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-              <form onSubmit={handleUserMessage} className="relative">
+              <div 
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto custom-scrollbar space-y-4"
+              >
+                {chatHistory.map((msg, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                      msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
+                      msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
+                      msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+                    }`}>
+                      {msg.type === 'intel' && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <Network className="w-3 h-3 text-purple-400" />
+                          <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
+                        </div>
+                      )}
+                      {msg.type === 'history' && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <History className="w-3 h-3 text-blue-400" />
+                          <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+                        </div>
+                      )}
+                      <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
+                      <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              <form onSubmit={handleUserMessage} className="mt-4 relative">
                 <Input
                   type="text"
                   placeholder="Enter command, Master Wayne..."
