@@ -511,10 +511,7 @@ const Index = () => {
                           <Eye className="w-5 h-5 text-emerald-400" />
                         )}
                       </motion.div>
-                      <motion.div
-                        layout
-                        className="relative"
-                      >
+                      <motion.div layout className="relative">
                         <motion.h2 
                           className="text-xl font-bold text-white flex items-center gap-2"
                         >
