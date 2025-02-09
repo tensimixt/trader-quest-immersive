@@ -415,7 +415,10 @@ const Index = () => {
                             <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
                           </div>
                         )}
-                        <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
+                        <p 
+                          className="text-sm text-white font-mono whitespace-pre-line"
+                          dangerouslySetInnerHTML={{ __html: msg.message }}
+                        />
                         <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
                       </div>
                     </motion.div>
