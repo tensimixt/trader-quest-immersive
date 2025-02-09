@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -117,27 +118,25 @@ const generatePerformanceData = (calls: any[], year: string) => {
   };
 };
 
-const AIResponses = {
-  default: "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?",
-  volume: "Volume is increasing, indicating bullish momentum.",
-  trend: "The trend is upward, with strong support and resistance levels.",
-  support: "Support levels are holding strong, indicating a potential reversal.",
-  resistance: "Resistance levels are being tested, but the trend remains bullish."
-};
-
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, type?: 'chat' | 'intel' | 'history' }>>([]);
-  const [predictions, setPredictions] = useState<Array<any>>(marketCalls);
+  const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
-  const [filteredHistory, setFilteredHistory] = useState<Array<any>>([]);
+  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6).map(call => ({
+    market: call.market,
+    direction: call.direction,
+    confidence: call.confidence,
+    roi: call.roi,
+    trader: call.traderProfile,
+    timestamp: call.timestamp
+  })));
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-  const [showOnlyChart, setShowOnlyChart] = useState(false);
 
   const scrollToChart = () => {
     if (chartRef.current) {
@@ -186,63 +185,110 @@ const Index = () => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const timestamp = new Date().toLocaleTimeString();
-    setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
+    const timestamp = formatJapanTime(new Date());
     
-    const query = userInput.toLowerCase();
-    const yearMatch = query.match(/\b(20\d{2})\b/);
+    setChatHistory(prev => [...prev, { 
+      message: userInput, 
+      timestamp, 
+      isUser: true, 
+      type: 'chat' 
+    }]);
+    
+    const isPerformanceQuery = 
+      userInput.toLowerCase().includes('win rate') || 
+      userInput.toLowerCase().includes('performance') ||
+      userInput.toLowerCase().includes('success rate');
+
+    const yearMatch = userInput.match(/\b(20\d{2})\b/);
     const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
-    
-    if (query.includes('hsaka') || query.includes('performance') || query.includes('win rate')) {
-      let filtered = [...predictions];
+
+    if (isPerformanceQuery) {
+      setIsHistoryView(true);
+      const performance = generatePerformanceData(marketCalls, year);
+      setPerformanceData(performance);
+
+      setChatHistory(prev => [...prev, { 
+        message: `Analyzing performance metrics for ${year}...`,
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+
+      setTimeout(() => {
+        setChatHistory(prev => [...prev, { 
+          message: `Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+        
+        toast({
+          title: "Performance Analysis Complete",
+          description: `Win rate for ${year}: ${performance.overall}%`,
+          className: "bg-emerald-500/20 text-white border-emerald-500/20"
+        });
+      }, 1500);
+    } else if (userInput.toLowerCase().includes('history') || 
+               userInput.toLowerCase().includes('calls') || 
+               userInput.toLowerCase().includes('show me') ||
+               userInput.toLowerCase().includes('previous')) {
+      setIsHistoryView(true);
       
-      // Apply year filter
-      filtered = filtered.filter(call => {
-        const callYear = call.timestamp.split('-')[0];
-        return callYear === year;
-      });
-      
-      // Apply trader filter if hsaka is mentioned
-      if (query.includes('hsaka')) {
-        filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes('hsaka'));
+      const query = userInput.toLowerCase();
+      let filtered = [...marketCalls];
+
+      if (query.includes('btc')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
+      }
+      if (query.includes('eth')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('eth'));
+      }
+      if (query.includes('doge')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('doge'));
+      }
+      if (query.includes('trx')) {
+        filtered = filtered.filter(p => p.market.toLowerCase().includes('trx'));
+      }
+      if (query.includes('trader')) {
+        const traderName = query.split('trader')[1]?.split(' ')[1];
+        if (traderName) {
+          filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes(traderName.toLowerCase()));
+        }
       }
 
-      const performance = generatePerformanceData(filtered, year);
-      setPerformanceData(performance);
-      setIsHistoryView(true);
-      setShowOnlyChart(false);
-
-      const historyData = filtered.map(p => ({
-        market: p.market,
-        direction: p.direction.toLowerCase() as "up" | "down",
-        confidence: p.confidence,
-        roi: p.roi,
-        trader: p.traderProfile,
-        timestamp: p.timestamp
-      }));
-
-      setFilteredHistory(historyData);
-      
-      const messageText = `Found ${historyData.length} trading records for ${year}. Overall win rate: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`;
-      
       setChatHistory(prev => [...prev, { 
-        message: messageText,
+        message: "Accessing secure trading records... Decrypting data...",
         timestamp: formatJapanTime(new Date()),
-        type: 'history'
+        type: 'chat'
       }]);
-      
-      toast({
-        title: "Analysis Complete",
-        description: `Found ${historyData.length} calls with ${performance.overall}% win rate`,
-        className: "bg-emerald-500/20 text-white border-emerald-500/20"
-      });
+
+      setTimeout(() => {
+        const historyData = filtered.slice(0, 6).map(p => ({
+          market: p.market,
+          direction: p.direction,
+          confidence: p.confidence,
+          roi: p.roi,
+          trader: p.traderProfile,
+          timestamp: formatJapanTime(new Date())
+        }));
+
+        setFilteredHistory(historyData);
+        
+        setChatHistory(prev => [...prev, { 
+          message: `Secured ${historyData.length} trading records matching your query.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+        
+        toast({
+          title: "Trading Records Retrieved",
+          description: `Found ${historyData.length} matching trading calls`,
+          className: "bg-emerald-500/20 text-white border-emerald-500/20"
+        });
+      }, 1500);
     } else {
       setIsHistoryView(false);
-      setShowOnlyChart(false);
       setPerformanceData(null);
-      setFilteredHistory([]);
       setTimeout(() => {
-        const aiResponse = AIResponses.default;
+        const aiResponse = "Acknowledged. Analyzing market patterns and correlating with historical data. Would you like me to run a deeper technical analysis?";
         setChatHistory(prev => [...prev, { 
           message: aiResponse, 
           timestamp: formatJapanTime(new Date()),
@@ -281,13 +327,6 @@ const Index = () => {
       }
     };
   }, []);
-
-  const handleBackToIntel = () => {
-    setIsHistoryView(false);
-    setShowOnlyChart(false);
-    setPerformanceData(null);
-    setFilteredHistory([]);
-  };
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
@@ -453,21 +492,55 @@ const Index = () => {
                   className="relative"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-6">
-                      {isHistoryView ? (
-                        <History className="w-5 h-5 text-emerald-400" />
-                      ) : (
-                        <Eye className="w-5 h-5 text-emerald-400" />
-                      )}
-                      <span className="text-emerald-400 font-mono text-2xl tracking-wider">
-                        {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <motion.div
+                        animate={{
+                          rotate: isHistoryView ? [0, 180, 360] : 0,
+                        }}
+                        transition={{
+                          duration: 0.5,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        {isHistoryView ? (
+                          <History className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Eye className="w-5 h-5 text-emerald-400" />
+                        )}
+                      </motion.div>
+                      <motion.div
+                        layout
+                        className="relative"
+                      >
+                        <motion.h2 
+                          className="text-xl font-bold text-white flex items-center gap-2"
+                        >
+                          {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
+                          />
+                        </motion.h2>
+                        <motion.div 
+                          className="absolute -bottom-1 left-0 right-0 h-[2px]"
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.1 }}
+                          style={{
+                            background: isHistoryView 
+                              ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
+                              : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
+                          }}
+                        />
+                      </motion.div>
                     </div>
                     {isHistoryView && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleBackToIntel}
+                        onClick={() => setIsHistoryView(false)}
                         className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
                       >
                         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -479,90 +552,74 @@ const Index = () => {
               </AnimatePresence>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {isHistoryView && (
-                  <>
-                    {performanceData && (
-                      <motion.div
-                        ref={chartRef}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="glass-card p-4 rounded-xl border border-emerald-500/20 mb-6"
-                      >
-                        <div className="h-[300px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={performanceData.monthlyData}>
-                              <defs>
-                                <linearGradient id="winRateGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <XAxis 
-                                dataKey="month" 
-                                stroke="#10B981"
-                                tick={{ fill: '#10B981', fontSize: 12 }}
-                              />
-                              <YAxis 
-                                stroke="#10B981"
-                                tick={{ fill: '#10B981', fontSize: 12 }}
-                                domain={[0, 100]}
-                              />
-                              <Tooltip 
-                                contentStyle={{ 
-                                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                                  border: '1px solid rgba(16,185,129,0.2)',
-                                  borderRadius: '8px'
-                                }}
-                              />
-                              <Area
-                                type="monotone"
-                                dataKey="winRate"
-                                stroke="#10B981"
-                                fillOpacity={1}
-                                fill="url(#winRateGradient)"
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div className="text-center text-emerald-400 font-mono mt-4">
-                          Monthly Win Rate Analysis
-                        </div>
-                      </motion.div>
-                    )}
-                    {filteredHistory.map((prediction, index) => (
-                      <motion.div
-                        key={`history-${index}`}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                        <PredictionCard
-                          symbol={prediction.market}
-                          prediction={prediction.direction.toLowerCase() as "up" | "down"}
-                          confidence={prediction.confidence}
-                          timestamp={prediction.timestamp}
-                          traderText={`Trading call by ${prediction.trader}`}
-                        />
-                      </motion.div>
-                    ))}
-                  </>
-                )}
-                {!isHistoryView && predictions.map((prediction, index) => (
-                  <motion.div
-                    key={`prediction-${index}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <PredictionCard
-                      symbol={prediction.market}
-                      prediction={prediction.direction.toLowerCase() as "up" | "down"}
-                      confidence={prediction.confidence}
-                      timestamp={prediction.timestamp}
-                      traderText={prediction.analysis}
-                    />
-                  </motion.div>
-                ))}
+                <AnimatePresence mode="wait">
+                  {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
+                    <motion.div
+                      key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <PredictionCard
+                        symbol={prediction.market}
+                        prediction={prediction.direction === "LONG" ? "up" : "down"}
+                        confidence={prediction.confidence}
+                        timestamp={prediction.timestamp}
+                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                      />
+                    </motion.div>
+                  ))}
+                  {isHistoryView && performanceData && (
+                    <motion.div
+                      ref={chartRef}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                    >
+                      <div className="h-[300px] mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={performanceData.monthlyData}>
+                            <defs>
+                              <linearGradient id="winRateGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis 
+                              dataKey="month" 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                            />
+                            <YAxis 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(0,0,0,0.8)', 
+                                border: '1px solid rgba(16,185,129,0.2)',
+                                borderRadius: '8px'
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="winRate"
+                              stroke="#10B981"
+                              fillOpacity={1}
+                              fill="url(#winRateGradient)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="text-center text-emerald-400 font-mono">
+                        Monthly Win Rate Analysis
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </motion.div>
