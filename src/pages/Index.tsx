@@ -202,7 +202,7 @@ const Index = () => {
     
     if (query.includes('hsaka') || query.includes('performance') || query.includes('win rate')) {
       setIsHistoryView(true);
-      setShowOnlyChart(false); // Changed to false to show both chart and calls
+      setShowOnlyChart(false);
       
       let filtered = [...marketCalls];
       
@@ -230,7 +230,7 @@ const Index = () => {
           confidence: p.confidence,
           roi: p.roi,
           trader: p.traderProfile,
-          timestamp: formatJapanTime(new Date())
+          timestamp: p.timestamp
         }));
 
         setFilteredHistory(historyData);
@@ -294,8 +294,8 @@ const Index = () => {
 
   const handleBackToIntel = () => {
     setIsHistoryView(false);
-    setShowOnlyChart(false); // Reset chart visibility when going back to intel
-    setPerformanceData(null); // Clear performance data
+    setShowOnlyChart(false);
+    setPerformanceData(null);
     setFilteredHistory([]);
   };
 
