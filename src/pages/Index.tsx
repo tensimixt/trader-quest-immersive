@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
@@ -300,56 +301,59 @@ const Index = () => {
                 <Terminal className="w-5 h-5 text-emerald-400" />
                 <h2 className="text-xl font-bold text-white">CODEC_FEED</h2>
               </div>
-              <div 
-                ref={chatContainerRef}
-                className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4"
-                style={{ maxHeight: 'calc(100% - 120px)' }} // Reserve space for input
-              >
-                {chatHistory.map((msg, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                      msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
-                      msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-                      msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                    }`}>
-                      {msg.type === 'intel' && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <Network className="w-3 h-3 text-purple-400" />
-                          <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
-                        </div>
-                      )}
-                      {msg.type === 'history' && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <History className="w-3 h-3 text-blue-400" />
-                          <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-                        </div>
-                      )}
-                      <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
-                      <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-              <form onSubmit={handleUserMessage} className="relative mt-auto">
-                <Input
-                  type="text"
-                  placeholder="Enter command, Master Wayne..."
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+              <div className="relative flex-1 overflow-hidden">
+                <div 
+                  ref={chatContainerRef}
+                  className="absolute inset-0 overflow-y-auto custom-scrollbar space-y-4 pb-20"
                 >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
+                  {chatHistory.map((msg, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                        msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
+                        msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
+                        msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+                      }`}>
+                        {msg.type === 'intel' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <Network className="w-3 h-3 text-purple-400" />
+                            <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
+                          </div>
+                        )}
+                        {msg.type === 'history' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <History className="w-3 h-3 text-blue-400" />
+                            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+                          </div>
+                        )}
+                        <p className="text-sm text-white font-mono whitespace-pre-line">{msg.message}</p>
+                        <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+                  <form onSubmit={handleUserMessage} className="relative">
+                    <Input
+                      type="text"
+                      placeholder="Enter command, Master Wayne..."
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -477,3 +481,4 @@ const Index = () => {
 };
 
 export default Index;
+
