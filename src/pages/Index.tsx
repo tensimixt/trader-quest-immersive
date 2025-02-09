@@ -196,71 +196,26 @@ const Index = () => {
     const timestamp = new Date().toLocaleTimeString();
     setChatHistory(prev => [...prev, { message: userInput, timestamp, isUser: true }]);
     
-    const isPerformanceQuery = 
-      userInput.toLowerCase().includes('win rate') || 
-      userInput.toLowerCase().includes('performance') ||
-      userInput.toLowerCase().includes('success rate');
-
-    if (isPerformanceQuery) {
+    const query = userInput.toLowerCase();
+    const yearMatch = query.match(/\b(20\d{2})\b/);
+    const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+    
+    if (query.includes('hsaka') || query.includes('performance') || query.includes('win rate')) {
       setIsHistoryView(true);
-      setShowOnlyChart(true);
-      const yearMatch = userInput.match(/\b(20\d{2})\b/);
-      const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
-      const performance = generatePerformanceData(marketCalls, year);
-      setPerformanceData(performance);
-      setFilteredHistory([]); // Clear filtered history when showing performance
-
-      setChatHistory(prev => [...prev, { 
-        message: `Analyzing performance metrics for ${year}...`,
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      setTimeout(() => {
-        setChatHistory(prev => [...prev, { 
-          message: `Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history'
-        }]);
-        
-        toast({
-          title: "Performance Analysis Complete",
-          description: `Win rate for ${year}: ${performance.overall}%`,
-          className: "bg-emerald-500/20 text-white border-emerald-500/20"
-        });
-      }, 1500);
-    } else if (userInput.toLowerCase().includes('history') || 
-               userInput.toLowerCase().includes('calls') || 
-               userInput.toLowerCase().includes('show me') ||
-               userInput.toLowerCase().includes('previous')) {
-      setIsHistoryView(true);
-      setShowOnlyChart(false);
-      setPerformanceData(null); // Clear performance data when showing calls
+      setShowOnlyChart(false); // Changed to false to show both chart and calls
       
-      const query = userInput.toLowerCase();
       let filtered = [...marketCalls];
-
-      const yearMatch = query.match(/\b(20\d{2})\b/);
-      if (yearMatch) {
-        const year = yearMatch[1];
-        filtered = filtered.filter(call => call.timestamp.includes(year));
-      }
-
+      
+      // Apply year filter
+      filtered = filtered.filter(call => call.timestamp.includes(year));
+      
+      // Apply trader filter if hsaka is mentioned
       if (query.includes('hsaka')) {
         filtered = filtered.filter(p => p.traderProfile.toLowerCase().includes('hsaka'));
       }
-      if (query.includes('btc')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('btc'));
-      }
-      if (query.includes('eth')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('eth'));
-      }
-      if (query.includes('doge')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('doge'));
-      }
-      if (query.includes('trx')) {
-        filtered = filtered.filter(p => p.market.toLowerCase().includes('trx'));
-      }
+
+      const performance = generatePerformanceData(filtered, year);
+      setPerformanceData(performance);
 
       setChatHistory(prev => [...prev, { 
         message: "Accessing secure trading records... Decrypting data...",
@@ -281,14 +236,14 @@ const Index = () => {
         setFilteredHistory(historyData);
         
         setChatHistory(prev => [...prev, { 
-          message: `Secured ${historyData.length} trading records matching your query.`,
+          message: `Found ${historyData.length} trading records. Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
         
         toast({
-          title: "Trading Records Retrieved",
-          description: `Found ${historyData.length} matching trading calls`,
+          title: "Analysis Complete",
+          description: `Found ${historyData.length} calls with ${performance.overall}% win rate`,
           className: "bg-emerald-500/20 text-white border-emerald-500/20"
         });
       }, 1500);
