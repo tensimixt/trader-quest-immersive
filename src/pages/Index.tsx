@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Network, Terminal, Send, History, ArrowLeft } from 'lucide-react';
@@ -129,14 +128,20 @@ const Index = () => {
         timestamp, 
         type: 'intel'
       }]);
-      
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
     }, 20000);
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: 'smooth',
+        block: 'end',
+      };
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
 
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,10 +230,6 @@ const Index = () => {
     }
 
     setUserInput("");
-    
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
   };
 
   return (
@@ -481,4 +482,3 @@ const Index = () => {
 };
 
 export default Index;
-
