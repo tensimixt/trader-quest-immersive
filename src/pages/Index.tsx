@@ -307,7 +307,7 @@ const generatePerformanceData = (calls: any[], year: string) => {
   };
 
   const monthlyData = Object.entries(targetWinRates).map(([month, winRate]) => ({
-    month: `${year}-${month}`,
+    month: `${month}`,
     winRate,
     calls: Math.floor(Math.random() * 10) + 5
   }));
@@ -329,14 +329,7 @@ const Index = () => {
   const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
-  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6).map(call => ({
-    market: call.market,
-    direction: call.direction,
-    confidence: call.confidence,
-    roi: call.roi,
-    trader: call.traderProfile,
-    timestamp: call.timestamp
-  })));
+  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -406,40 +399,14 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      // Filter market calls for Hsaka
       const hsakaCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
       );
 
-      console.log('Found Hsaka calls:', hsakaCalls);
-
-      // Reset state before processing new query
-      setIsHistoryView(true);
-      setFilteredHistory([]);
-      setPerformanceData(null);
-
-      // If only win rate is requested
-      if (isWinRateQuery && !isCallsQuery) {
+      if (isWinRateQuery || isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
 
-        setChatHistory(prev => [...prev, { 
-          message: `Analyzing Hsaka's performance metrics for ${year}...`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'chat'
-        }]);
-
-        setTimeout(() => {
-          setChatHistory(prev => [...prev, { 
-            message: `Overall win rate for ${year}: ${performance.overall}%. Click <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">here</span> to view the detailed chart.`,
-            timestamp: formatJapanTime(new Date()),
-            type: 'history'
-          }]);
-        }, 1500);
-      }
-      
-      // If only calls are requested
-      if (isCallsQuery && !isWinRateQuery) {
         const filteredCalls = hsakaCalls.map(call => ({
           market: call.market,
           direction: call.direction,
@@ -450,33 +417,17 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        
-        setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history'
-        }]);
-      }
-
-      // If both win rate and calls are requested
-      if (isCallsQuery && isWinRateQuery) {
-        const filteredCalls = hsakaCalls.map(call => ({
-          market: call.market,
-          direction: call.direction,
-          confidence: call.confidence,
-          roi: call.roi,
-          trader: call.traderProfile,
-          timestamp: call.timestamp
-        }));
-
-        setFilteredHistory(filteredCalls);
-        const performance = generatePerformanceData(hsakaCalls, year);
-        setPerformanceData(performance);
         
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
+        }]);
+      } else {
+        setChatHistory(prev => [...prev, { 
+          message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
+          timestamp: formatJapanTime(new Date()),
+          type: 'chat'
         }]);
       }
     } else {
