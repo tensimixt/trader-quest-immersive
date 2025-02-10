@@ -291,28 +291,46 @@ const marketCalls = [
 ];
 
 const generatePerformanceData = (calls: any[], year: string) => {
+  const monthlyDistribution = {
+    '01': { total: 0, wins: 0 },
+    '02': { total: 0, wins: 0 },
+    '03': { total: 0, wins: 0 },
+    '04': { total: 0, wins: 0 },
+    '05': { total: 0, wins: 0 },
+    '06': { total: 0, wins: 0 },
+    '07': { total: 0, wins: 0 },
+    '08': { total: 0, wins: 0 },
+    '09': { total: 0, wins: 0 },
+    '10': { total: 0, wins: 0 },
+    '11': { total: 0, wins: 0 },
+    '12': { total: 0, wins: 0 }
+  };
+
   const yearCalls = calls.filter(call => call.timestamp.includes(year));
-  const totalCalls = yearCalls.length;
-  const successfulCalls = yearCalls.filter(call => call.roi > 0).length;
-  const winRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0;
   
-  const monthlyData = Array.from({ length: 12 }, (_, i) => {
-    const month = String(i + 1).padStart(2, '0');
-    const monthCalls = yearCalls.filter(call => 
-      call.timestamp.includes(`${year}-${month}`)
-    );
-    const monthlyWins = monthCalls.filter(call => call.roi > 0).length;
-    const monthlyRate = monthCalls.length > 0 ? (monthlyWins / monthCalls.length) * 100 : 0;
-    
+  yearCalls.forEach(call => {
+    const month = call.timestamp.split('-')[1];
+    monthlyDistribution[month].total++;
+    if (call.roi > 0) {
+      monthlyDistribution[month].wins++;
+    }
+  });
+
+  const monthlyData = Object.entries(monthlyDistribution).map(([month, data]) => {
+    const winRate = data.total > 0 ? (data.wins / data.total) * 100 : 0;
     return {
       month: `${year}-${month}`,
-      winRate: monthlyRate,
-      calls: monthCalls.length
+      winRate: parseFloat(winRate.toFixed(2)),
+      calls: data.total
     };
   });
 
+  const totalCalls = yearCalls.length;
+  const successfulCalls = yearCalls.filter(call => call.roi > 0).length;
+  const overallWinRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0;
+
   return {
-    overall: winRate.toFixed(2),
+    overall: overallWinRate.toFixed(2),
     monthlyData
   };
 };
