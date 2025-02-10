@@ -409,7 +409,7 @@ const Index = () => {
         setFilteredHistory([]); // Clear the calls history
 
         setChatHistory(prev => [...prev, { 
-          message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. View the monthly breakdown in the chart below.`,
+          message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
