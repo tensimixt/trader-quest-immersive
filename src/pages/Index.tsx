@@ -7,7 +7,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/PredictionCard';
-import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 
@@ -157,7 +157,7 @@ const generatePerformanceData = (calls: any[], year: string) => {
 
   return {
     overall: winRate.toFixed(2),
-    monthlyData
+    monthlyData: monthlyData.filter(data => data.calls > 0)
   };
 };
 
@@ -243,36 +243,17 @@ const Index = () => {
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
 
-    if (isHsakaQuery && (isWinRateQuery || isCallsQuery)) {
+    if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      // Filter market calls for Hsaka - using case-insensitive comparison
+      // Filter market calls for Hsaka
       const hsakaCalls = marketCalls.filter(call => 
-        call.traderProfile.toLowerCase().includes('hsaka') ||
         call.traderProfile.toLowerCase() === 'hsaka'
       );
 
-      console.log('Found Hsaka calls:', hsakaCalls); // Debug log
+      console.log('Found Hsaka calls:', hsakaCalls);
 
-      if (isCallsQuery) {
-        const filteredCalls = hsakaCalls.map(call => ({
-          market: call.market,
-          direction: call.direction,
-          confidence: call.confidence,
-          roi: call.roi,
-          trader: call.traderProfile,
-          timestamp: call.timestamp
-        }));
-
-        setFilteredHistory(filteredCalls);
-        
-        setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history'
-        }]);
-      }
-
+      // If only win rate is requested or both are requested, show performance data
       if (isWinRateQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
@@ -290,6 +271,26 @@ const Index = () => {
             type: 'history'
           }]);
         }, 1500);
+      }
+
+      // If calls are requested, show filtered calls
+      if (isCallsQuery) {
+        const filteredCalls = hsakaCalls.map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
+        }));
+
+        setFilteredHistory(filteredCalls);
+        
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
       }
     } else {
       setIsHistoryView(false);
@@ -587,13 +588,7 @@ const Index = () => {
                     >
                       <div className="h-[300px] mb-4">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={performanceData.monthlyData}>
-                            <defs>
-                              <linearGradient id="winRateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
+                          <BarChart data={performanceData.monthlyData}>
                             <XAxis 
                               dataKey="month" 
                               stroke="#10B981"
@@ -611,14 +606,12 @@ const Index = () => {
                                 borderRadius: '8px'
                               }}
                             />
-                            <Area
-                              type="monotone"
+                            <Bar
                               dataKey="winRate"
-                              stroke="#10B981"
-                              fillOpacity={1}
-                              fill="url(#winRateGradient)"
+                              fill="#10B981"
+                              opacity={0.8}
                             />
-                          </AreaChart>
+                          </BarChart>
                         </ResponsiveContainer>
                       </div>
                       <div className="text-center text-emerald-400 font-mono">
