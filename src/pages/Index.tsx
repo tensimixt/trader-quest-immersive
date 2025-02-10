@@ -403,7 +403,37 @@ const Index = () => {
         call.traderProfile.toLowerCase() === 'hsaka'
       );
 
-      if (isWinRateQuery || isCallsQuery) {
+      if (isWinRateQuery && !isCallsQuery) {
+        const performance = generatePerformanceData(hsakaCalls, year);
+        setPerformanceData(performance);
+        setFilteredHistory([]); // Clear the calls history
+
+        setChatHistory(prev => [...prev, { 
+          message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. View the monthly breakdown in the chart below.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+      }
+      else if (isCallsQuery && !isWinRateQuery) {
+        const filteredCalls = hsakaCalls.map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
+        }));
+
+        setFilteredHistory(filteredCalls);
+        setPerformanceData(null); // Clear the performance chart
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+      }
+      else if (isCallsQuery && isWinRateQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
 
