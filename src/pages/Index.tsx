@@ -157,7 +157,7 @@ const generatePerformanceData = (calls: any[], year: string) => {
 
   return {
     overall: winRate.toFixed(2),
-    monthlyData: monthlyData.filter(data => data.calls > 0)
+    monthlyData
   };
 };
 
@@ -253,8 +253,10 @@ const Index = () => {
 
       console.log('Found Hsaka calls:', hsakaCalls);
 
-      // If only win rate is requested or both are requested, show performance data
-      if (isWinRateQuery) {
+      // If only win rate is requested
+      if (isWinRateQuery && !isCallsQuery) {
+        setIsHistoryView(true);
+        setFilteredHistory([]); // Clear the calls display
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
 
@@ -272,9 +274,10 @@ const Index = () => {
           }]);
         }, 1500);
       }
-
-      // If calls are requested, show filtered calls
+      
+      // If calls are requested or both are requested
       if (isCallsQuery) {
+        setIsHistoryView(true);
         const filteredCalls = hsakaCalls.map(call => ({
           market: call.market,
           direction: call.direction,
@@ -285,6 +288,11 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
+        
+        if (isWinRateQuery) {
+          const performance = generatePerformanceData(hsakaCalls, year);
+          setPerformanceData(performance);
+        }
         
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
