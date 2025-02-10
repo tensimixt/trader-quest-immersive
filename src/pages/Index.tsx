@@ -25,6 +25,50 @@ const formatJapanTime = (date: Date) => {
 
 const marketCalls = [
   {
+    traderProfile: "Hsaka",
+    market: "BTC/USD",
+    direction: "LONG",
+    entryPrice: "48,250",
+    timeframe: "4H",
+    analysis: "Double bottom pattern with increasing volume.",
+    confidence: 94,
+    roi: 1250,
+    timestamp: formatJapanTime(new Date('2024-02-10'))
+  },
+  {
+    traderProfile: "Hsaka",
+    market: "ETH/USD",
+    direction: "LONG",
+    entryPrice: "2,850",
+    timeframe: "1D",
+    analysis: "Breaking resistance with strong momentum.",
+    confidence: 92,
+    roi: -275,
+    timestamp: formatJapanTime(new Date('2024-02-09'))
+  },
+  {
+    traderProfile: "Hsaka",
+    market: "BTC/USD",
+    direction: "SHORT",
+    entryPrice: "52,100",
+    timeframe: "4H",
+    analysis: "RSI divergence on multiple timeframes.",
+    confidence: 88,
+    roi: 820,
+    timestamp: formatJapanTime(new Date('2024-02-08'))
+  },
+  {
+    traderProfile: "Hsaka",
+    market: "SOL/USD",
+    direction: "LONG",
+    entryPrice: "98.5",
+    timeframe: "1D",
+    analysis: "Accumulation phase complete, ready for breakout.",
+    confidence: 91,
+    roi: 1100,
+    timestamp: formatJapanTime(new Date('2024-02-07'))
+  },
+  {
     traderProfile: "Bitcoin Whale",
     market: "BTC/USD",
     direction: "LONG",
