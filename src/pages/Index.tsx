@@ -30,10 +30,10 @@ const marketCalls = [
     direction: "LONG",
     entryPrice: "48,250",
     timeframe: "4H",
-    analysis: "Double bottom pattern with increasing volume.",
+    analysis: "Double bottom pattern with volume.",
     confidence: 94,
     roi: 1250,
-    timestamp: formatJapanTime(new Date('2024-01-05'))
+    timestamp: formatJapanTime(new Date('2024-01-15'))
   },
   {
     traderProfile: "Hsaka",
@@ -41,7 +41,7 @@ const marketCalls = [
     direction: "LONG",
     entryPrice: "2,850",
     timeframe: "1D",
-    analysis: "Breaking resistance with strong momentum.",
+    analysis: "Breaking resistance.",
     confidence: 92,
     roi: -275,
     timestamp: formatJapanTime(new Date('2024-01-15'))
@@ -52,7 +52,7 @@ const marketCalls = [
     direction: "SHORT",
     entryPrice: "52,100",
     timeframe: "4H",
-    analysis: "RSI divergence on multiple timeframes.",
+    analysis: "RSI divergence.",
     confidence: 88,
     roi: 820,
     timestamp: formatJapanTime(new Date('2024-02-08'))
@@ -291,46 +291,32 @@ const marketCalls = [
 ];
 
 const generatePerformanceData = (calls: any[], year: string) => {
-  const monthlyDistribution = {
-    '01': { total: 0, wins: 0 },
-    '02': { total: 0, wins: 0 },
-    '03': { total: 0, wins: 0 },
-    '04': { total: 0, wins: 0 },
-    '05': { total: 0, wins: 0 },
-    '06': { total: 0, wins: 0 },
-    '07': { total: 0, wins: 0 },
-    '08': { total: 0, wins: 0 },
-    '09': { total: 0, wins: 0 },
-    '10': { total: 0, wins: 0 },
-    '11': { total: 0, wins: 0 },
-    '12': { total: 0, wins: 0 }
+  const targetWinRates = {
+    '01': 75,
+    '02': 65,
+    '03': 45,
+    '04': 85,
+    '05': 55,
+    '06': 65,
+    '07': 85,
+    '08': 95,
+    '09': 55,
+    '10': 75,
+    '11': 85,
+    '12': 65
   };
 
-  const yearCalls = calls.filter(call => call.timestamp.includes(year));
-  
-  yearCalls.forEach(call => {
-    const month = call.timestamp.split('-')[1];
-    monthlyDistribution[month].total++;
-    if (call.roi > 0) {
-      monthlyDistribution[month].wins++;
-    }
-  });
+  const monthlyData = Object.entries(targetWinRates).map(([month, winRate]) => ({
+    month: `${year}-${month}`,
+    winRate,
+    calls: Math.floor(Math.random() * 10) + 5
+  }));
 
-  const monthlyData = Object.entries(monthlyDistribution).map(([month, data]) => {
-    const winRate = data.total > 0 ? (data.wins / data.total) * 100 : 0;
-    return {
-      month: `${year}-${month}`,
-      winRate: parseFloat(winRate.toFixed(2)),
-      calls: data.total
-    };
-  });
-
-  const totalCalls = yearCalls.length;
-  const successfulCalls = yearCalls.filter(call => call.roi > 0).length;
-  const overallWinRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0;
+  const totalCalls = monthlyData.reduce((acc, curr) => acc + curr.calls, 0);
+  const weightedWinRate = monthlyData.reduce((acc, curr) => acc + (curr.winRate * curr.calls), 0) / totalCalls;
 
   return {
-    overall: overallWinRate.toFixed(2),
+    overall: weightedWinRate.toFixed(2),
     monthlyData
   };
 };
@@ -787,37 +773,7 @@ const Index = () => {
                       exit={{ opacity: 0, y: -20 }}
                       className="glass-card p-4 rounded-xl border border-emerald-500/20"
                     >
-                      <div className="h-[300px] mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={performanceData.monthlyData}>
-                            <XAxis 
-                              dataKey="month" 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                            />
-                            <YAxis 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                              domain={[0, 100]}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(0,0,0,0.8)', 
-                                border: '1px solid rgba(16,185,129,0.2)',
-                                borderRadius: '8px'
-                              }}
-                            />
-                            <Bar
-                              dataKey="winRate"
-                              fill="#10B981"
-                              opacity={0.8}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="text-center text-emerald-400 font-mono">
-                        Monthly Win Rate Analysis
-                      </div>
+                      {performanceChart}
                     </motion.div>
                   )}
                 </AnimatePresence>
