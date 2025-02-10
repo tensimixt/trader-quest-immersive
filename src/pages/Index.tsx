@@ -33,7 +33,7 @@ const marketCalls = [
     analysis: "Double bottom pattern with increasing volume.",
     confidence: 94,
     roi: 1250,
-    timestamp: formatJapanTime(new Date('2024-02-10'))
+    timestamp: formatJapanTime(new Date('2024-01-05'))
   },
   {
     traderProfile: "Hsaka",
@@ -44,7 +44,7 @@ const marketCalls = [
     analysis: "Breaking resistance with strong momentum.",
     confidence: 92,
     roi: -275,
-    timestamp: formatJapanTime(new Date('2024-02-09'))
+    timestamp: formatJapanTime(new Date('2024-01-15'))
   },
   {
     traderProfile: "Hsaka",
@@ -144,7 +144,9 @@ const generatePerformanceData = (calls: any[], year: string) => {
   
   const monthlyData = Array.from({ length: 12 }, (_, i) => {
     const month = String(i + 1).padStart(2, '0');
-    const monthCalls = yearCalls.filter(call => call.timestamp.includes(`${year}-${month}`));
+    const monthCalls = yearCalls.filter(call => 
+      call.timestamp.includes(`${year}-${month}`)
+    );
     const monthlyWins = monthCalls.filter(call => call.roi > 0).length;
     const monthlyRate = monthCalls.length > 0 ? (monthlyWins / monthCalls.length) * 100 : 0;
     
@@ -253,10 +255,13 @@ const Index = () => {
 
       console.log('Found Hsaka calls:', hsakaCalls);
 
+      // Reset state before processing new query
+      setIsHistoryView(true);
+      setFilteredHistory([]);
+      setPerformanceData(null);
+
       // If only win rate is requested
       if (isWinRateQuery && !isCallsQuery) {
-        setIsHistoryView(true);
-        setFilteredHistory([]); // Clear the calls display
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
 
@@ -275,9 +280,8 @@ const Index = () => {
         }, 1500);
       }
       
-      // If calls are requested or both are requested
-      if (isCallsQuery) {
-        setIsHistoryView(true);
+      // If only calls are requested
+      if (isCallsQuery && !isWinRateQuery) {
         const filteredCalls = hsakaCalls.map(call => ({
           market: call.market,
           direction: call.direction,
@@ -289,13 +293,30 @@ const Index = () => {
 
         setFilteredHistory(filteredCalls);
         
-        if (isWinRateQuery) {
-          const performance = generatePerformanceData(hsakaCalls, year);
-          setPerformanceData(performance);
-        }
-        
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history'
+        }]);
+      }
+
+      // If both win rate and calls are requested
+      if (isCallsQuery && isWinRateQuery) {
+        const filteredCalls = hsakaCalls.map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
+        }));
+
+        setFilteredHistory(filteredCalls);
+        const performance = generatePerformanceData(hsakaCalls, year);
+        setPerformanceData(performance);
+        
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
