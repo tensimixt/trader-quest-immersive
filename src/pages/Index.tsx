@@ -645,39 +645,41 @@ const Index = () => {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="codec" className="flex-1 mt-0 overflow-y-auto">
-                    <div className="space-y-4">
-                      {chatHistory.filter(msg => msg.type === 'intel' || msg.type === 'history').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex justify-start"
-                        >
-                          <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                            msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
-                            'bg-blue-500/20 border-blue-500/30'
-                          }`}>
-                            {msg.type === 'intel' && (
-                              <div className="flex items-center gap-2 mb-1">
-                                <Network className="w-3 h-3 text-purple-400" />
-                                <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
-                              </div>
-                            )}
-                            {msg.type === 'history' && (
-                              <div className="flex items-center gap-2 mb-1">
-                                <History className="w-3 h-3 text-blue-400" />
-                                <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-                              </div>
-                            )}
-                            <p 
-                              className="text-sm text-white font-mono whitespace-pre-line"
-                              dangerouslySetInnerHTML={{ __html: msg.message }}
-                            />
-                            <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                          </div>
-                        </motion.div>
-                      ))}
+                  <TabsContent value="codec" className="flex-1 flex flex-col mt-0 data-[state=active]:flex-1">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 min-h-0">
+                      <div className="flex flex-col-reverse">
+                        {chatHistory.filter(msg => msg.type === 'intel' || msg.type === 'history').map((msg, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex justify-start mb-4"
+                          >
+                            <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                              msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
+                              'bg-blue-500/20 border-blue-500/30'
+                            }`}>
+                              {msg.type === 'intel' && (
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Network className="w-3 h-3 text-purple-400" />
+                                  <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
+                                </div>
+                              )}
+                              {msg.type === 'history' && (
+                                <div className="flex items-center gap-2 mb-1">
+                                  <History className="w-3 h-3 text-blue-400" />
+                                  <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+                                </div>
+                              )}
+                              <p 
+                                className="text-sm text-white font-mono whitespace-pre-line"
+                                dangerouslySetInnerHTML={{ __html: msg.message }}
+                              />
+                              <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
                   </TabsContent>
                 </div>
