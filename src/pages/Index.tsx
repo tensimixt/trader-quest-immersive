@@ -322,6 +322,24 @@ const generatePerformanceData = (calls: any[], year: string) => {
   };
 };
 
+const formatAgentMessage = (message: string, type: 'analysis' | 'result' | 'info') => {
+  const icons = {
+    analysis: '<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-500/20 mr-2"><svg class="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20L15.8 15.8M18 10.5C18 14.6421 14.6421 18 10.5 18C6.35786 18 3 14.6421 3 10.5C3 6.35786 6.35786 3 10.5 3C14.6421 3 18 6.35786 18 10.5Z"/></svg></span>',
+    result: '<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-500/20 mr-2"><svg class="w-3 h-3 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg></span>',
+    info: '<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-500/20 mr-2"><svg class="w-3 h-3 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>'
+  };
+
+  return `
+    <div class="flex flex-col space-y-2">
+      <div class="flex items-center text-xs font-mono text-emerald-400/70 mb-1">
+        ${icons[type]}
+        TRADING_AGENT::${type.toUpperCase()}
+      </div>
+      <div class="text-white">${message}</div>
+    </div>
+  `;
+};
+
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
@@ -404,7 +422,7 @@ const Index = () => {
       setIsHistoryView(true);
       
       setChatHistory(prev => [...prev, { 
-        message: "Analyzing Hsaka's trading data...", 
+        message: formatAgentMessage("Analyzing Hsaka's trading data...", 'analysis'),
         timestamp: formatJapanTime(new Date()),
         type: 'chat'
       }]);
@@ -421,7 +439,10 @@ const Index = () => {
         setFilteredHistory([]);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
+          message: formatAgentMessage(
+            `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
+            'result'
+          ),
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -440,7 +461,10 @@ const Index = () => {
         setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
+          message: formatAgentMessage(
+            `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
+            'result'
+          ),
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -461,13 +485,19 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
+          message: formatAgentMessage(
+            `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
+            'result'
+          ),
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
       } else {
         setChatHistory(prev => [...prev, { 
-          message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
+          message: formatAgentMessage(
+            "You can ask about Hsaka's win rate or trading calls for specific time periods.",
+            'info'
+          ),
           timestamp: formatJapanTime(new Date()),
           type: 'chat'
         }]);
@@ -477,7 +507,7 @@ const Index = () => {
       setPerformanceData(null);
       
       setChatHistory(prev => [...prev, { 
-        message: "Processing your request...", 
+        message: formatAgentMessage("Processing your request...", 'analysis'),
         timestamp: formatJapanTime(new Date()),
         type: 'chat'
       }]);
@@ -485,7 +515,10 @@ const Index = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       setChatHistory(prev => [...prev, { 
-        message: "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.",
+        message: formatAgentMessage(
+          "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.",
+          'info'
+        ),
         timestamp: formatJapanTime(new Date()),
         type: 'chat'
       }]);
