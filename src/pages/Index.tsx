@@ -392,7 +392,7 @@ const Index = () => {
 
     const query = userInput.toLowerCase();
     const isWinRateQuery = query.includes('win rate');
-    const isCallsQuery = query.includes('calls');
+    const isCallsQuery = query.includes('calls') || query.includes('trades');
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
 
@@ -425,10 +425,10 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null); // Clear the performance chart
+        setPerformanceData(null); // Clear the performance chart data
 
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka.`,
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -449,7 +449,7 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}.`,
+          message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
