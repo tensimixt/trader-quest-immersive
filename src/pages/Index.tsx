@@ -401,6 +401,14 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
+      setChatHistory(prev => [...prev, { 
+        message: "Analyzing Hsaka's trading data...", 
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const hsakaCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
       );
@@ -410,8 +418,8 @@ const Index = () => {
         setPerformanceData(performance);
         setFilteredHistory([]); // Clear the calls history
 
-        setChatHistory(prev => [...prev, { 
-          message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
+        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -427,9 +435,9 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null); // Clear the performance chart data
+        setPerformanceData(null);
 
-        setChatHistory(prev => [...prev, { 
+        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
           message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
@@ -450,13 +458,13 @@ const Index = () => {
 
         setFilteredHistory(filteredCalls);
         
-        setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
+        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
       } else {
-        setChatHistory(prev => [...prev, { 
+        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
           message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
           timestamp: formatJapanTime(new Date()),
           type: 'chat'
@@ -465,10 +473,16 @@ const Index = () => {
     } else {
       setIsHistoryView(false);
       setPerformanceData(null);
+      
+      setChatHistory(prev => [...prev, { 
+        message: "Processing your request...", 
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+
       setTimeout(() => {
-        const aiResponse = "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.";
-        setChatHistory(prev => [...prev, { 
-          message: aiResponse, 
+        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+          message: "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.",
           timestamp: formatJapanTime(new Date()),
           type: 'chat'
         }]);
@@ -605,7 +619,7 @@ const Index = () => {
                       ref={chatContainerRef}
                       className="flex-1 overflow-y-auto custom-scrollbar space-y-4 min-h-0"
                     >
-                      <div className="flex flex-col-reverse">
+                      <div className="flex flex-col">
                         {chatHistory
                           .filter(msg => msg.type === 'chat')
                           .map((msg, idx) => (
