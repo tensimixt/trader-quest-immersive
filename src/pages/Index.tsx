@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -332,6 +333,7 @@ const Index = () => {
   const [isHistoryView, setIsHistoryView] = useState(false);
   const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
   const [performanceData, setPerformanceData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("chat"); // Added this line
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -622,11 +624,29 @@ const Index = () => {
                       </motion.div>
                     ))}
                   </div>
+
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+                    <form onSubmit={handleUserMessage} className="relative">
+                      <Input
+                        type="text"
+                        placeholder="Enter command, Master Wayne..."
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
+                      />
+                      <button
+                        type="submit"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </form>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="codec" className="mt-0 relative flex-1 overflow-hidden">
                   <div 
-                    className="absolute inset-0 overflow-y-auto custom-scrollbar space-y-4 pb-20"
+                    className="absolute inset-0 overflow-y-auto custom-scrollbar space-y-4"
                   >
                     {chatHistory.filter(msg => msg.type === 'intel' || msg.type === 'history').map((msg, idx) => (
                       <motion.div
@@ -662,24 +682,6 @@ const Index = () => {
                   </div>
                 </TabsContent>
               </Tabs>
-
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-                <form onSubmit={handleUserMessage} className="relative">
-                  <Input
-                    type="text"
-                    placeholder="Enter command, Master Wayne..."
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
             </div>
           </motion.div>
 
