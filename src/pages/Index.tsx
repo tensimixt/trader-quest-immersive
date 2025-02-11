@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -629,22 +630,24 @@ const Index = () => {
                       </div>
                     </div>
                     
-                    <div className="mt-4 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-                      <form onSubmit={handleUserMessage} className="relative">
-                        <Input
-                          type="text"
-                          placeholder="Enter command, Master Wayne..."
-                          value={userInput}
-                          onChange={(e) => setUserInput(e.target.value)}
-                          className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </form>
+                    <div className="absolute bottom-0 right-0 w-[300px] p-4">
+                      <div className="bg-black/50 backdrop-blur-sm border border-emerald-500/20 rounded-lg overflow-hidden">
+                        <form onSubmit={handleUserMessage} className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Enter command, Master Wayne..."
+                            value={userInput}
+                            onChange={(e) => setUserInput(e.target.value)}
+                            className="w-full bg-white/5 border-0 text-white placeholder:text-emerald-500/50"
+                          />
+                          <button
+                            type="submit"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </TabsContent>
 
