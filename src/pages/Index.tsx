@@ -581,20 +581,20 @@ const Index = () => {
                       className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
                     >
                       <MessageCircle className="w-4 h-4 mr-2" />
-                      CHAT_LOG
+                      CHAT
                     </TabsTrigger>
                     <TabsTrigger 
                       value="codec" 
                       className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
                     >
                       <Radio className="w-4 h-4 mr-2" />
-                      CODEC_FEED
+                      CODEC
                     </TabsTrigger>
                   </TabsList>
                   <div className="flex items-center gap-2">
                     <Terminal className="w-5 h-5 text-emerald-400" />
                     <h2 className="text-xl font-bold text-white">
-                      {activeTab === "chat" ? "CHAT_LOG" : "CODEC_FEED"}
+                      {activeTab === "chat" ? "CHAT" : "CODEC"}
                     </h2>
                   </div>
                 </div>
@@ -648,8 +648,8 @@ const Index = () => {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="codec" className="mt-0 data-[state=active]:flex-1">
-                    <div className="space-y-4 h-full overflow-y-auto custom-scrollbar">
+                  <TabsContent value="codec" className="h-full overflow-y-auto mt-0">
+                    <div className="space-y-4">
                       {chatHistory
                         .filter(msg => msg.type === 'intel')
                         .map((intel, idx) => (
