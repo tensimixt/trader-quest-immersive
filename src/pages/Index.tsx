@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -630,7 +629,7 @@ const Index = () => {
                       </div>
                     </div>
                     
-                    <div className="absolute bottom-0 right-0 left-0 p-4">
+                    <div className="absolute bottom-0 right-0 w-[300px] p-4">
                       <div className="bg-black/50 backdrop-blur-sm border border-emerald-500/20 rounded-lg overflow-hidden">
                         <form onSubmit={handleUserMessage} className="relative">
                           <Input
