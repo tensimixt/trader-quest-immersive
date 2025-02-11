@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -399,6 +400,15 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
+      // Add analyzing message
+      setChatHistory(prev => [...prev, { 
+        message: "Analyzing Calls from Hsaka in 2024...", 
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const hsakaCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
       );
@@ -406,13 +416,19 @@ const Index = () => {
       if (isWinRateQuery && !isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
-        setFilteredHistory([]); // Clear the calls history
+        setFilteredHistory([]);
 
         setChatHistory(prev => [...prev, { 
-          message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
+          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
+
+        toast({
+          title: "Performance Data Found",
+          description: `Win rate for ${year}: ${performance.overall}%`,
+          duration: 3000,
+        });
       }
       else if (isCallsQuery && !isWinRateQuery) {
         const filteredCalls = hsakaCalls.map(call => ({
@@ -425,13 +441,19 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null); // Clear the performance chart data
+        setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
+
+        toast({
+          title: "Trading Calls Found",
+          description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
+          duration: 3000,
+        });
       }
       else if (isCallsQuery && isWinRateQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
@@ -449,10 +471,16 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
+          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
+
+        toast({
+          title: "Analysis Complete",
+          description: `Found ${filteredCalls.length} calls with ${performance.overall}% win rate`,
+          duration: 3000,
+        });
       } else {
         setChatHistory(prev => [...prev, { 
           message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
