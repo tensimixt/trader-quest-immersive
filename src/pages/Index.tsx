@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -332,6 +333,7 @@ const Index = () => {
   const [isHistoryView, setIsHistoryView] = useState(false);
   const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
   const [performanceData, setPerformanceData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("chat"); // Added this line
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
