@@ -2,11 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Terminal, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio
+  MessageCircle, Activity
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PredictionCard from '@/components/PredictionCard';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
@@ -322,24 +321,6 @@ const generatePerformanceData = (calls: any[], year: string) => {
   };
 };
 
-const formatAgentMessage = (message: string, type: 'analysis' | 'result' | 'info') => {
-  const icons = {
-    analysis: '<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-500/20 mr-2"><svg class="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20L15.8 15.8M18 10.5C18 14.6421 14.6421 18 10.5 18C6.35786 18 3 14.6421 3 10.5C3 6.35786 6.35786 3 10.5 3C14.6421 3 18 6.35786 18 10.5Z"/></svg></span>',
-    result: '<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-500/20 mr-2"><svg class="w-3 h-3 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg></span>',
-    info: '<span class="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-500/20 mr-2"><svg class="w-3 h-3 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>'
-  };
-
-  return `
-    <div class="flex flex-col space-y-2">
-      <div class="flex items-center text-xs font-mono text-emerald-400/70 mb-1">
-        ${icons[type]}
-        TRADING_AGENT::${type.toUpperCase()}
-      </div>
-      <div class="text-white">${message}</div>
-    </div>
-  `;
-};
-
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
@@ -352,7 +333,6 @@ const Index = () => {
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState("chat");
 
   const scrollToChart = () => {
     if (chartRef.current) {
@@ -416,18 +396,8 @@ const Index = () => {
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
 
-    setUserInput("");
-
     if (isHsakaQuery) {
       setIsHistoryView(true);
-      
-      setChatHistory(prev => [...prev, { 
-        message: formatAgentMessage("Analyzing Hsaka's trading data...", 'analysis'),
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const hsakaCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
@@ -436,13 +406,10 @@ const Index = () => {
       if (isWinRateQuery && !isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
-        setFilteredHistory([]);
+        setFilteredHistory([]); // Clear the calls history
 
         setChatHistory(prev => [...prev, { 
-          message: formatAgentMessage(
-            `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
-            'result'
-          ),
+          message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -458,13 +425,10 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null);
+        setPerformanceData(null); // Clear the performance chart data
 
         setChatHistory(prev => [...prev, { 
-          message: formatAgentMessage(
-            `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
-            'result'
-          ),
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -485,19 +449,13 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: formatAgentMessage(
-            `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
-            'result'
-          ),
+          message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
       } else {
         setChatHistory(prev => [...prev, { 
-          message: formatAgentMessage(
-            "You can ask about Hsaka's win rate or trading calls for specific time periods.",
-            'info'
-          ),
+          message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
           timestamp: formatJapanTime(new Date()),
           type: 'chat'
         }]);
@@ -505,24 +463,17 @@ const Index = () => {
     } else {
       setIsHistoryView(false);
       setPerformanceData(null);
-      
-      setChatHistory(prev => [...prev, { 
-        message: formatAgentMessage("Processing your request...", 'analysis'),
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      setChatHistory(prev => [...prev, { 
-        message: formatAgentMessage(
-          "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.",
-          'info'
-        ),
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
+      setTimeout(() => {
+        const aiResponse = "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.";
+        setChatHistory(prev => [...prev, { 
+          message: aiResponse, 
+          timestamp: formatJapanTime(new Date()),
+          type: 'chat'
+        }]);
+      }, 1000);
     }
+
+    setUserInput("");
   };
 
   useEffect(() => {
@@ -619,106 +570,66 @@ const Index = () => {
           >
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-              
-              <Tabs defaultValue="chat" className="w-full h-full flex flex-col" onValueChange={setActiveTab}>
-                <div className="flex items-center gap-4 mb-4">
-                  <TabsList className="bg-black/20 border border-emerald-500/20">
-                    <TabsTrigger 
-                      value="chat" 
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+              <div className="flex items-center gap-2 mb-4">
+                <Terminal className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-xl font-bold text-white">CODEC_FEED</h2>
+              </div>
+              <div className="relative flex-1 overflow-hidden">
+                <div 
+                  ref={chatContainerRef}
+                  className="absolute inset-0 overflow-y-auto custom-scrollbar space-y-4 pb-20"
+                >
+                  {chatHistory.map((msg, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                     >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      CHAT
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="codec" 
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
-                    >
-                      <Radio className="w-4 h-4 mr-2" />
-                      CODEC
-                    </TabsTrigger>
-                  </TabsList>
-                  <div className="flex items-center gap-2">
-                    <Terminal className="w-5 h-5 text-emerald-400" />
-                    <h2 className="text-xl font-bold text-white">
-                      {activeTab === "chat" ? "CHAT" : "CODEC"}
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="flex-1 relative flex flex-col min-h-0">
-                  <TabsContent value="chat" className="flex-1 flex flex-col mt-0 data-[state=active]:flex-1">
-                    <div 
-                      ref={chatContainerRef}
-                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 min-h-0"
-                    >
-                      <div className="flex flex-col">
-                        {chatHistory
-                          .filter(msg => msg.type === 'chat')
-                          .map((msg, idx) => (
-                          <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'} mb-4`}
-                          >
-                            <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                              msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                            }`}>
-                              <p 
-                                className="text-sm text-white font-mono whitespace-pre-line"
-                                dangerouslySetInnerHTML={{ __html: msg.message }}
-                              />
-                              <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <form onSubmit={handleUserMessage} className="relative">
-                        <Input
-                          type="text"
-                          placeholder="Enter command, Master Wayne..."
-                          value={userInput}
-                          onChange={(e) => setUserInput(e.target.value)}
-                          className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </form>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="codec" className="h-full overflow-y-auto mt-0">
-                    <div className="space-y-4">
-                      {chatHistory
-                        .filter(msg => msg.type === 'intel')
-                        .map((intel, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          className="glass-card p-3 rounded-xl bg-purple-500/20 border-purple-500/30"
-                        >
+                      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                        msg.type === 'intel' ? 'bg-purple-500/20 border-purple-500/30' :
+                        msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
+                        msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+                      }`}>
+                        {msg.type === 'intel' && (
                           <div className="flex items-center gap-2 mb-1">
                             <Network className="w-3 h-3 text-purple-400" />
                             <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
                           </div>
-                          <p className="text-sm text-white font-mono">{intel.message}</p>
-                          <p className="text-[10px] text-purple-400/50 mt-1">{intel.timestamp}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </TabsContent>
+                        )}
+                        {msg.type === 'history' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <History className="w-3 h-3 text-blue-400" />
+                            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+                          </div>
+                        )}
+                        <p 
+                          className="text-sm text-white font-mono whitespace-pre-line"
+                          dangerouslySetInnerHTML={{ __html: msg.message }}
+                        />
+                        <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-              </Tabs>
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+                  <form onSubmit={handleUserMessage} className="relative">
+                    <Input
+                      type="text"
+                      placeholder="Enter command, Master Wayne..."
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           </motion.div>
 
