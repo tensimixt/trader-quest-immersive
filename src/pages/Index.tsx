@@ -398,6 +398,8 @@ const Index = () => {
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
 
+    setUserInput("");
+
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
@@ -407,7 +409,7 @@ const Index = () => {
         type: 'chat'
       }]);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const hsakaCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
@@ -416,9 +418,9 @@ const Index = () => {
       if (isWinRateQuery && !isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
-        setFilteredHistory([]); // Clear the calls history
+        setFilteredHistory([]);
 
-        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+        setChatHistory(prev => [...prev, { 
           message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
@@ -437,7 +439,7 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         setPerformanceData(null);
 
-        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+        setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
@@ -458,13 +460,13 @@ const Index = () => {
 
         setFilteredHistory(filteredCalls);
         
-        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+        setChatHistory(prev => [...prev, { 
           message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
       } else {
-        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
+        setChatHistory(prev => [...prev, { 
           message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
           timestamp: formatJapanTime(new Date()),
           type: 'chat'
@@ -480,16 +482,14 @@ const Index = () => {
         type: 'chat'
       }]);
 
-      setTimeout(() => {
-        setChatHistory(prev => [...prev.slice(0, -1), { // Remove thinking message
-          message: "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.",
-          timestamp: formatJapanTime(new Date()),
-          type: 'chat'
-        }]);
-      }, 1000);
-    }
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-    setUserInput("");
+      setChatHistory(prev => [...prev, { 
+        message: "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.",
+        timestamp: formatJapanTime(new Date()),
+        type: 'chat'
+      }]);
+    }
   };
 
   useEffect(() => {
