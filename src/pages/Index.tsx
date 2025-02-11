@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -409,12 +408,12 @@ const Index = () => {
       if (isWinRateQuery && !isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
-        setFilteredHistory([]); // Clear the calls history
+        setFilteredHistory([]);
 
         setChatHistory(prev => [...prev, { 
           message: `Hsaka's overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
-          type: 'history'
+          type: 'chat'
         }]);
       }
       else if (isCallsQuery && !isWinRateQuery) {
@@ -428,12 +427,12 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null); // Clear the performance chart data
+        setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
-          type: 'history'
+          type: 'chat'
         }]);
       }
       else if (isCallsQuery && isWinRateQuery) {
@@ -454,7 +453,7 @@ const Index = () => {
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
-          type: 'history'
+          type: 'chat'
         }]);
       } else {
         setChatHistory(prev => [...prev, { 
@@ -606,24 +605,28 @@ const Index = () => {
                       ref={chatContainerRef}
                       className="flex-1 overflow-y-auto custom-scrollbar space-y-4 min-h-0"
                     >
-                      {chatHistory.filter(msg => msg.type === 'chat').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                            msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                          }`}>
-                            <p 
-                              className="text-sm text-white font-mono whitespace-pre-line"
-                              dangerouslySetInnerHTML={{ __html: msg.message }}
-                            />
-                            <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                          </div>
-                        </motion.div>
-                      ))}
+                      <div className="flex flex-col-reverse">
+                        {chatHistory
+                          .filter(msg => msg.type === 'chat')
+                          .map((msg, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'} mb-4`}
+                          >
+                            <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                              msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+                            }`}>
+                              <p 
+                                className="text-sm text-white font-mono whitespace-pre-line"
+                                dangerouslySetInnerHTML={{ __html: msg.message }}
+                              />
+                              <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
                     
                     <div className="mt-4 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
@@ -648,7 +651,9 @@ const Index = () => {
                   <TabsContent value="codec" className="flex-1 flex flex-col mt-0 data-[state=active]:flex-1">
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 min-h-0">
                       <div className="flex flex-col-reverse">
-                        {chatHistory.filter(msg => msg.type === 'intel' || msg.type === 'history').map((msg, idx) => (
+                        {chatHistory
+                          .filter(msg => msg.type === 'intel' || msg.type === 'history')
+                          .map((msg, idx) => (
                           <motion.div
                             key={idx}
                             initial={{ opacity: 0, y: -20 }}
