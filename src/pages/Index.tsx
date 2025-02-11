@@ -574,7 +574,7 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs defaultValue="chat" className="w-full h-full" onValueChange={setActiveTab}>
+              <Tabs defaultValue="chat" className="w-full h-full flex flex-col" onValueChange={setActiveTab}>
                 <div className="flex items-center gap-4 mb-4">
                   <TabsList className="bg-black/20 border border-emerald-500/20">
                     <TabsTrigger 
@@ -600,11 +600,11 @@ const Index = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 relative">
-                  <TabsContent value="chat" className="mt-0 absolute inset-0 flex flex-col">
+                <div className="flex-1 relative flex flex-col min-h-0">
+                  <TabsContent value="chat" className="flex-1 flex flex-col mt-0 data-[state=active]:flex-1">
                     <div 
                       ref={chatContainerRef}
-                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
+                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 min-h-0"
                     >
                       {chatHistory.filter(msg => msg.type === 'chat').map((msg, idx) => (
                         <motion.div
@@ -626,7 +626,7 @@ const Index = () => {
                       ))}
                     </div>
                     
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+                    <div className="mt-4 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
                       <form onSubmit={handleUserMessage} className="relative">
                         <Input
                           type="text"
@@ -645,8 +645,8 @@ const Index = () => {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="codec" className="mt-0 absolute inset-0">
-                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4">
+                  <TabsContent value="codec" className="flex-1 mt-0 overflow-y-auto">
+                    <div className="space-y-4">
                       {chatHistory.filter(msg => msg.type === 'intel' || msg.type === 'history').map((msg, idx) => (
                         <motion.div
                           key={idx}
