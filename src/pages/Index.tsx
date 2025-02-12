@@ -326,7 +326,16 @@ const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ message: string, timestamp: string, isUser?: boolean, type?: 'chat' | 'intel' | 'history' }>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ 
+    message: string, 
+    timestamp: string, 
+    isUser?: boolean, 
+    type?: 'chat' | 'intel' | 'history',
+    contextData?: {
+      showChart?: boolean,
+      showCalls?: boolean
+    }
+  }>>([]);
   const [predictions, setPredictions] = useState<Array<any>>([]);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
@@ -400,7 +409,6 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      // Add analyzing message
       setChatHistory(prev => [...prev, { 
         message: "Analyzing Calls from Hsaka in 2024...", 
         timestamp: formatJapanTime(new Date()),
@@ -416,12 +424,15 @@ const Index = () => {
       if (isWinRateQuery && !isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
-        setFilteredHistory([]);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
+          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
-          type: 'history'
+          type: 'history',
+          contextData: {
+            showChart: true,
+            showCalls: false
+          }
         }]);
 
         toast({
@@ -444,9 +455,13 @@ const Index = () => {
         setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
-          type: 'history'
+          type: 'history',
+          contextData: {
+            showChart: false,
+            showCalls: true
+          }
         }]);
 
         toast({
@@ -471,9 +486,13 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
+          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
-          type: 'history'
+          type: 'history',
+          contextData: {
+            showChart: true,
+            showCalls: false
+          }
         }]);
 
         toast({
@@ -507,16 +526,31 @@ const Index = () => {
   useEffect(() => {
     const handleChatClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.dataset.action === 'scroll-to-chart') {
-        setIsHistoryView(true);
-        // Wait for state update and component mount
-        setTimeout(() => {
-          setTimeout(() => {
-            if (chartRef.current) {
-              chartRef.current.scrollIntoView({ behavior: 'smooth' });
-            }
-          }, 100); // Additional delay for animation completion
-        }, 0);
+      if (target.dataset.messageId) {
+        const messageId = target.dataset.messageId;
+        const clickedMessage = chatHistory.find(msg => 
+          msg.message.includes(messageId)
+        );
+
+        if (clickedMessage?.contextData) {
+          setIsHistoryView(true);
+          if (clickedMessage.contextData.showChart) {
+            setPerformanceData(prev => prev); // Preserve current performance data
+            setTimeout(() => {
+              if (chartRef.current) {
+                chartRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          } else if (clickedMessage.contextData.showCalls) {
+            setPerformanceData(null); // Hide chart when showing calls
+            setTimeout(() => {
+              const firstCard = document.querySelector('.prediction-card');
+              if (firstCard) {
+                firstCard.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
+        }
       }
     };
 
@@ -530,7 +564,7 @@ const Index = () => {
         chatContainer.removeEventListener('click', handleChatClick);
       }
     };
-  }, []);
+  }, [chatHistory]);
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
