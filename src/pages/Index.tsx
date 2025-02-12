@@ -334,6 +334,7 @@ const Index = () => {
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const callsRef = useRef<HTMLDivElement>(null);
 
   const scrollToChart = () => {
     if (chartRef.current) {
@@ -400,7 +401,6 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      // Add analyzing message
       setChatHistory(prev => [...prev, { 
         message: "Analyzing Calls from Hsaka in 2024...", 
         timestamp: formatJapanTime(new Date()),
@@ -419,7 +419,7 @@ const Index = () => {
         setFilteredHistory([]);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the monthly breakdown chart.`,
+          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart" data-view="chart">Click here</span> to view the monthly breakdown chart.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -444,7 +444,7 @@ const Index = () => {
         setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the trades.`,
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart" data-view="calls">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -471,7 +471,7 @@ const Index = () => {
         setFilteredHistory(filteredCalls);
         
         setChatHistory(prev => [...prev, { 
-          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart">Click here</span> to view the details.`,
+          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-action="scroll-to-chart" data-view="chart">Click here</span> to view the details.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history'
         }]);
@@ -509,13 +509,16 @@ const Index = () => {
       const target = e.target as HTMLElement;
       if (target.dataset.action === 'scroll-to-chart') {
         setIsHistoryView(true);
-        // Wait for state update and component mount
+        const viewType = target.dataset.view;
+        
         setTimeout(() => {
           setTimeout(() => {
-            if (chartRef.current) {
+            if (viewType === 'chart' && chartRef.current) {
               chartRef.current.scrollIntoView({ behavior: 'smooth' });
+            } else if (viewType === 'calls' && callsRef.current) {
+              callsRef.current.scrollIntoView({ behavior: 'smooth' });
             }
-          }, 100); // Additional delay for animation completion
+          }, 100);
         }, 0);
       }
     };
@@ -793,23 +796,25 @@ const Index = () => {
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 <AnimatePresence mode="wait">
-                  {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
-                    <motion.div
-                      key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <PredictionCard
-                        symbol={prediction.market}
-                        prediction={prediction.direction === "LONG" ? "up" : "down"}
-                        confidence={prediction.confidence}
-                        timestamp={prediction.timestamp}
-                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                      />
-                    </motion.div>
-                  ))}
+                  <div ref={callsRef}>
+                    {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
+                      <motion.div
+                        key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <PredictionCard
+                          symbol={prediction.market}
+                          prediction={prediction.direction === "LONG" ? "up" : "down"}
+                          confidence={prediction.confidence}
+                          timestamp={prediction.timestamp}
+                          traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
                   {isHistoryView && performanceData && (
                     <motion.div
                       ref={chartRef}
