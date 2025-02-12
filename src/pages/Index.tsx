@@ -781,4 +781,84 @@ const Index = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => setIsHistoryView(false)}
-                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/
+                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Intel
+                      </Button>
+                    )}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                <AnimatePresence mode="wait">
+                  {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
+                    <motion.div
+                      key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <PredictionCard
+                        symbol={prediction.market}
+                        prediction={prediction.direction === "LONG" ? "up" : "down"}
+                        confidence={prediction.confidence}
+                        timestamp={prediction.timestamp}
+                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                      />
+                    </motion.div>
+                  ))}
+                  {isHistoryView && performanceData && (
+                    <motion.div
+                      ref={chartRef}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                    >
+                      <div className="h-[300px] mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={performanceData.monthlyData}>
+                            <XAxis 
+                              dataKey="month" 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                            />
+                            <YAxis 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(0,0,0,0.8)', 
+                                border: '1px solid rgba(16,185,129,0.2)',
+                                borderRadius: '8px'
+                              }}
+                            />
+                            <Bar
+                              dataKey="winRate"
+                              fill="#10B981"
+                              opacity={0.8}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="text-center text-emerald-400 font-mono">
+                        Monthly Win Rate Analysis
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Index;
