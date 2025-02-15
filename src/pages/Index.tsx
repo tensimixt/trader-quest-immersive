@@ -424,6 +424,7 @@ const Index = () => {
       if (isWinRateQuery && !isCallsQuery) {
         const performance = generatePerformanceData(hsakaCalls, year);
         setPerformanceData(performance);
+        setFilteredHistory([]); // Clear the calls when showing win rate
 
         setChatHistory(prev => [...prev, { 
           message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown chart.`,
@@ -452,7 +453,7 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null);
+        setPerformanceData(null); // Clear the performance data when showing calls
 
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
@@ -827,9 +828,30 @@ const Index = () => {
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 <AnimatePresence mode="wait">
-                  {(isHistoryView ? filteredHistory : predictions).map((prediction, index) => (
+                  {filteredHistory.length > 0 && (
+                    <div>
+                      {filteredHistory.map((prediction, index) => (
+                        <motion.div
+                          key={`history-${index}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <PredictionCard
+                            symbol={prediction.market}
+                            prediction={prediction.direction === "LONG" ? "up" : "down"}
+                            confidence={prediction.confidence}
+                            timestamp={prediction.timestamp}
+                            traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                  {!isHistoryView && predictions.map((prediction, index) => (
                     <motion.div
-                      key={`${isHistoryView ? 'history' : 'intel'}-${index}`}
+                      key={`intel-${index}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -844,7 +866,7 @@ const Index = () => {
                       />
                     </motion.div>
                   ))}
-                  {isHistoryView && performanceData && (
+                  {performanceData && (
                     <motion.div
                       ref={chartRef}
                       initial={{ opacity: 0, y: 20 }}
