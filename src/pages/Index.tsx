@@ -772,70 +772,86 @@ const Index = () => {
                       duration: 0.3
                     }
                   }}
-                  className="relative"
+                  className="relative h-full"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <motion.div
-                        animate={{
-                          rotate: isHistoryView ? [0, 180, 360] : 0
-                        }}
-                        transition={{
-                          duration: 0.5,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        {isHistoryView ? (
-                          <History className="w-5 h-5 text-blue-400" />
-                        ) : (
-                          <Eye className="w-5 h-5 text-emerald-400" />
-                        )}
-                      </motion.div>
-                      <motion.h2 
-                        className="text-xl font-bold text-white flex items-center gap-2"
-                      >
-                        {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
-                      </motion.h2>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                    {/* Prediction cards and performance data rendering */}
-                    <div className="flex flex-col gap-4">
-                      {performanceData && (
-                        <div className="flex flex-col gap-2">
-                          <h3 className="text-lg font-bold text-emerald-400">Performance Data</h3>
-                          <BarChart
-                            width={400}
-                            height={200}
-                            data={performanceData.monthlyData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  {isHistoryView ? (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <motion.div
+                            animate={{
+                              rotate: [0, 180, 360]
+                            }}
+                            transition={{
+                              duration: 0.5,
+                              ease: "easeInOut"
+                            }}
                           >
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="winRate" fill="#8884d8" />
-                          </BarChart>
+                            <History className="w-5 h-5 text-blue-400" />
+                          </motion.div>
+                          <h2 className="text-xl font-bold text-white">MARKET_HISTORY</h2>
                         </div>
-                      )}
-                      {filteredHistory.length > 0 && (
-                        <div className="flex flex-col gap-2">
-                          <h3 className="text-lg font-bold text-emerald-400">Trading Calls</h3>
-                          {filteredHistory.map(call => (
-                            <div key={call.market} className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-emerald-400">{call.market}</span>
-                                <span className="text-sm text-emerald-400">{call.direction}</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                        {performanceData && (
+                          <div className="flex flex-col gap-2">
+                            <h3 className="text-lg font-bold text-emerald-400">Performance Data</h3>
+                            <BarChart
+                              width={400}
+                              height={200}
+                              data={performanceData.monthlyData}
+                              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <XAxis dataKey="month" />
+                              <YAxis />
+                              <Tooltip />
+                              <Bar dataKey="winRate" fill="#8884d8" />
+                            </BarChart>
+                          </div>
+                        )}
+                        {filteredHistory.length > 0 && (
+                          <div className="flex flex-col gap-2">
+                            <h3 className="text-lg font-bold text-emerald-400">Trading Calls</h3>
+                            {filteredHistory.map(call => (
+                              <div key={call.market} className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm text-emerald-400">{call.market}</span>
+                                  <span className="text-sm text-emerald-400">{call.direction}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm text-emerald-400">{call.confidence}%</span>
+                                  <span className="text-sm text-emerald-400">{call.roi}%</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-emerald-400">{call.confidence}%</span>
-                                <span className="text-sm text-emerald-400">{call.roi}%</span>
-                              </div>
-                            </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-5 h-5 text-emerald-400" />
+                          <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="space-y-4">
+                          {predictions.map((prediction, index) => (
+                            <PredictionCard
+                              key={index}
+                              symbol={prediction.market}
+                              prediction={prediction.direction === "LONG" ? "up" : "down"}
+                              confidence={prediction.confidence}
+                              timestamp={prediction.timestamp}
+                              traderText={prediction.analysis}
+                            />
                           ))}
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>
