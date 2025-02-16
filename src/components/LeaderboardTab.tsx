@@ -85,10 +85,10 @@ const LeaderboardTab = () => {
         <table className="w-full">
           <thead className="sticky top-0 bg-black/50 backdrop-blur-sm">
             <tr className="border-b border-white/5">
-              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Rank</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider w-[80px]">Rank</th>
               <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Trader</th>
-              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Score</th>
-              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider min-w-[280px]">Latest Trade</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider w-[120px]">Score</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Latest Trade</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -126,15 +126,15 @@ const LeaderboardTab = () => {
                     <span className="text-sm text-white font-mono">{trader.score.toLocaleString()}</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 whitespace-nowrap">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-1.5 bg-white/5 rounded-full px-3 py-1 border border-white/5">
+                <td className="py-4 px-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 bg-white/5 rounded-full px-3 py-1 border border-white/5 w-fit">
                       {getActionIcon(trader.status.action)}
                       <span className={cn("text-sm font-medium", getStatusColor(trader.status.action))}>
                         {`${trader.status.action} ${trader.status.pair}`}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                    <div className="flex items-center gap-1.5 text-xs text-neutral-400 group-hover:text-emerald-400/50 transition-colors">
                       <Clock className="w-3 h-3" />
                       <span>{formatDistanceToNow(trader.status.timestamp)} ago</span>
                     </div>
