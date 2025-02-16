@@ -772,7 +772,7 @@ const Index = () => {
                       duration: 0.3
                     }
                   }}
-                  className="relative h-full"
+                  className="relative h-full flex flex-col"
                 >
                   {isHistoryView ? (
                     <>
@@ -837,7 +837,7 @@ const Index = () => {
                         </div>
                       </div>
                       <div className="flex-1 overflow-y-auto custom-scrollbar">
-                        <div className="space-y-4">
+                        <div className="space-y-4 pr-2">
                           {predictions.map((prediction, index) => (
                             <PredictionCard
                               key={index}
