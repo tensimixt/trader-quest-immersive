@@ -217,7 +217,7 @@ const LeaderboardTab = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="h-full flex flex-col"
+            className="h-full flex flex-col relative"
           >
             <div className="flex items-center gap-4 mb-6">
               <button
@@ -239,7 +239,7 @@ const LeaderboardTab = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4 pb-4">
               {chatHistory.map((msg, idx) => (
                 <motion.div
                   key={idx}
@@ -260,26 +260,26 @@ const LeaderboardTab = () => {
               ))}
             </div>
 
-            <form onSubmit={handleSendMessage} className="relative">
-              <Input
-                type="text"
-                placeholder="Type your message..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/95 to-transparent pt-8">
+              <form onSubmit={handleSendMessage} className="relative">
+                <Input
+                  type="text"
+                  placeholder="Message trader..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50 shadow-lg"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/80 to-transparent pointer-events-none" />
     </div>
   );
 };
