@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Trophy, Medal, CircleUser, ArrowUpRight, ArrowDownRight, Clock, Sparkles, Send } from 'lucide-react';
+import { Crown, Trophy, Medal, CircleUser, ArrowUpRight, ArrowDownRight, Clock, Sparkles, Send, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
