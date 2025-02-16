@@ -1,16 +1,20 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Crown, Trophy, Medal, CircleUser, Activity } from 'lucide-react';
+import { Crown, Trophy, Medal, CircleUser, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 
 type Trader = {
   id: number;
   name: string;
   rank: number;
   score: number;
-  status: 'active' | 'inactive' | 'trading';
-  winRate: number;
+  status: {
+    action: 'BUY' | 'SELL';
+    pair: string;
+    timestamp: Date;
+  };
   avatar?: string;
 };
 
@@ -19,8 +23,11 @@ const traders: Trader[] = Array.from({ length: 55 }, (_, i) => ({
   name: `Trader${i + 1}`,
   rank: i + 1,
   score: Math.floor(Math.random() * 10000),
-  status: ['active', 'inactive', 'trading'][Math.floor(Math.random() * 3)] as Trader['status'],
-  winRate: Math.floor(Math.random() * 40) + 60,
+  status: {
+    action: Math.random() > 0.5 ? 'BUY' : 'SELL',
+    pair: ['BTC/USD', 'ETH/USD', 'SOL/USD'][Math.floor(Math.random() * 3)],
+    timestamp: new Date(Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000))
+  },
   avatar: undefined
 }));
 
@@ -44,22 +51,21 @@ const getRankIcon = (rank: number) => {
   }
 };
 
-const getStatusColor = (status: Trader['status']) => {
-  switch (status) {
-    case 'active':
-      return 'bg-emerald-500';
-    case 'inactive':
-      return 'bg-neutral-500';
-    case 'trading':
-      return 'bg-blue-500';
-    default:
-      return 'bg-neutral-500';
-  }
+const getStatusColor = (action: 'BUY' | 'SELL') => {
+  return action === 'BUY' ? 'text-emerald-400' : 'text-red-400';
+};
+
+const getActionIcon = (action: 'BUY' | 'SELL') => {
+  return action === 'BUY' ? (
+    <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+  ) : (
+    <ArrowDownRight className="w-3 h-3 text-red-400" />
+  );
 };
 
 const LeaderboardTab = () => {
   return (
-    <div className="flex-1 overflow-hidden glass-card rounded-xl p-6">
+    <div className="flex-1 overflow-hidden glass-card rounded-xl p-6 bg-[#0a0a0c]/80">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <Trophy className="w-6 h-6 text-emerald-400" />
@@ -75,8 +81,7 @@ const LeaderboardTab = () => {
               <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Rank</th>
               <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Trader</th>
               <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Score</th>
-              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Win Rate</th>
-              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Latest Trade</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -95,8 +100,8 @@ const LeaderboardTab = () => {
                 </td>
                 <td className="py-4 px-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
-                      <CircleUser className="w-5 h-5 text-emerald-400" />
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1a1a1c] to-[#2a2a2c] border border-white/10 shadow-lg flex items-center justify-center">
+                      <CircleUser className="w-5 h-5 text-white/80" />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-white">{trader.name}</span>
@@ -105,18 +110,25 @@ const LeaderboardTab = () => {
                   </div>
                 </td>
                 <td className="py-4 px-4 whitespace-nowrap">
-                  <span className="text-sm text-white">{trader.score.toLocaleString()}</span>
-                </td>
-                <td className="py-4 px-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm text-white">{trader.winRate}%</span>
+                  <div className="bg-white/5 rounded-full px-3 py-1 inline-flex items-center">
+                    <span className="text-sm text-white font-mono">{trader.score.toLocaleString()}</span>
                   </div>
                 </td>
                 <td className="py-4 px-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", getStatusColor(trader.status))} />
-                    <span className="text-sm text-neutral-400 capitalize">{trader.status}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      {getActionIcon(trader.status.action)}
+                      <span className={cn("text-sm font-medium", getStatusColor(trader.status.action))}>
+                        {trader.status.action}
+                      </span>
+                      <span className="text-sm text-white font-medium">
+                        {trader.status.pair}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-neutral-400">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatDistanceToNow(trader.status.timestamp)} ago</span>
+                    </div>
                   </div>
                 </td>
               </motion.tr>
