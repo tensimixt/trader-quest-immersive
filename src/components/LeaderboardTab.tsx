@@ -67,15 +67,26 @@ const getActionIcon = (action: 'BUY' | 'SELL') => {
 
 const LeaderboardTab = () => {
   const [selectedTrader, setSelectedTrader] = React.useState<Trader | null>(null);
-  const [chatHistory, setChatHistory] = React.useState<
-    { message: string; timestamp: Date; isUser: boolean; contextData?: { showChart: boolean } }[]
-  >([]);
+  const [chatHistory, setChatHistory] = React.useState<{ message: string; timestamp: Date; isUser: boolean }[]>([]);
   const [message, setMessage] = React.useState('');
   const [performanceData, setPerformanceData] = React.useState<any>(null);
 
   const handleTraderSelect = (trader: Trader) => {
     setSelectedTrader(trader);
     setChatHistory([]);
+
+    // Generate random performance data for the selected trader
+    const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      winRate: Math.floor(Math.random() * 40) + 40, // Random win rate between 40-80%
+      calls: Math.floor(Math.random() * 50) + 20 // Random number of calls between 20-70
+    }));
+
+    setPerformanceData({
+      monthlyData,
+      totalCalls: monthlyData.reduce((acc, curr) => acc + curr.calls, 0),
+      averageWinRate: Math.floor(monthlyData.reduce((acc, curr) => acc + curr.winRate, 0) / monthlyData.length)
+    });
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -83,13 +94,33 @@ const LeaderboardTab = () => {
     if (!message.trim()) return;
 
     const newMessage = {
-      message: message,
+      message: message.trim(),
       timestamp: new Date(),
-      isUser: true,
+      isUser: true
     };
 
-    setChatHistory((prev) => [...prev, newMessage]);
+    setChatHistory(prev => [...prev, newMessage]);
     setMessage('');
+
+    // Simulate AI response
+    setTimeout(() => {
+      let response;
+      if (message.toLowerCase().includes('win rate') || message.toLowerCase().includes('performance')) {
+        response = {
+          message: `${selectedTrader?.name}'s average win rate is ${performanceData.averageWinRate}% across ${performanceData.totalCalls} trades in the last 12 months. Here's the monthly breakdown:`,
+          timestamp: new Date(),
+          isUser: false,
+          contextData: { showChart: true }
+        };
+      } else {
+        response = {
+          message: `Thank you for your message. ${selectedTrader?.name} typically responds within 24 hours.`,
+          timestamp: new Date(),
+          isUser: false
+        };
+      }
+      setChatHistory(prev => [...prev, response]);
+    }, 1000);
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -264,7 +295,7 @@ const LeaderboardTab = () => {
                   <p className="text-[10px] text-neutral-400 mt-1">
                     {formatDistanceToNow(msg.timestamp)} ago
                   </p>
-                  {msg.contextData?.showChart && performanceData && (
+                  {(msg as any).contextData?.showChart && performanceData && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
