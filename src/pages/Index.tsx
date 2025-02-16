@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Terminal, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio
+  MessageCircle, Activity, Radio, Trophy
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import PredictionCard from '@/components/PredictionCard';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
+import LeaderboardTab from '@/components/LeaderboardTab';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -651,6 +652,13 @@ const Index = () => {
                       <Radio className="w-4 h-4 mr-2" />
                       CODEC
                     </TabsTrigger>
+                    <TabsTrigger 
+                      value="leaderboard"
+                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Leaderboard
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -728,6 +736,10 @@ const Index = () => {
                     </div>
                   </div>
                 </TabsContent>
+
+                <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+                  <LeaderboardTab />
+                </TabsContent>
               </Tabs>
             </div>
           </motion.div>
@@ -791,130 +803,4 @@ const Index = () => {
                           className="text-xl font-bold text-white flex items-center gap-2"
                         >
                           {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
-                          />
-                        </motion.h2>
-                        <motion.div 
-                          className="absolute -bottom-1 left-0 right-0 h-[2px]"
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: 0.1 }}
-                          style={{
-                            background: isHistoryView 
-                              ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
-                              : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
-                          }}
-                        />
-                      </motion.div>
-                    </div>
-                    {isHistoryView && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsHistoryView(false)}
-                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Intel
-                      </Button>
-                    )}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-              
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                <AnimatePresence mode="wait">
-                  {filteredHistory.length > 0 && (
-                    <div>
-                      {filteredHistory.map((prediction, index) => (
-                        <motion.div
-                          key={`history-${index}`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <PredictionCard
-                            symbol={prediction.market}
-                            prediction={prediction.direction === "LONG" ? "up" : "down"}
-                            confidence={prediction.confidence}
-                            timestamp={prediction.timestamp}
-                            traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                  {!isHistoryView && predictions.map((prediction, index) => (
-                    <motion.div
-                      key={`intel-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <PredictionCard
-                        symbol={prediction.market}
-                        prediction={prediction.direction === "LONG" ? "up" : "down"}
-                        confidence={prediction.confidence}
-                        timestamp={prediction.timestamp}
-                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                      />
-                    </motion.div>
-                  ))}
-                  {performanceData && (
-                    <motion.div
-                      ref={chartRef}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
-                    >
-                      <div className="h-[300px] mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={performanceData.monthlyData}>
-                            <XAxis 
-                              dataKey="month" 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                            />
-                            <YAxis 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                              domain={[0, 100]}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(0,0,0,0.8)', 
-                                border: '1px solid rgba(16,185,129,0.2)',
-                                borderRadius: '8px'
-                              }}
-                            />
-                            <Bar
-                              dataKey="winRate"
-                              fill="#10B981"
-                              opacity={0.8}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="text-center text-emerald-400 font-mono">
-                        Monthly Win Rate Analysis
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-export default Index;
+                          <motion.
