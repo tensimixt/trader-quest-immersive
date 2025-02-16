@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle, Send, BarChart3, LayoutDashboard, Rocket, Flame } from 'lucide-react';
