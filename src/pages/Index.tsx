@@ -1,572 +1,53 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Eye, Network, Terminal, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Trophy
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { MessageCircle, Send, BarChart3, LayoutDashboard, Rocket, Flame } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PredictionCard from '@/components/PredictionCard';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
-import { format } from 'date-fns-tz';
-import { useToast } from '@/hooks/use-toast';
 import LeaderboardTab from '@/components/LeaderboardTab';
+import { formatDistanceToNow } from 'date-fns';
 
-const marketIntelligence = [
-  "Blackrock acquires 12,000 BTC in latest strategic move",
-  "Ethereum Foundation announces major protocol upgrade",
-  "MicroStrategy increases Bitcoin holdings by 8,000 BTC",
-  "JP Morgan updates crypto trading desk infrastructure",
-  "Major DeFi protocol reports record-breaking TVL"
-];
-
-const formatJapanTime = (date: Date) => {
-  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
-};
-
-const marketCalls = [
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "48,250",
-    timeframe: "4H",
-    analysis: "Double bottom pattern with volume.",
-    confidence: 94,
-    roi: 1250,
-    timestamp: formatJapanTime(new Date('2024-01-15'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "ETH/USD",
-    direction: "LONG",
-    entryPrice: "2,850",
-    timeframe: "1D",
-    analysis: "Breaking resistance.",
-    confidence: 92,
-    roi: -275,
-    timestamp: formatJapanTime(new Date('2024-01-15'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "SHORT",
-    entryPrice: "52,100",
-    timeframe: "4H",
-    analysis: "RSI divergence.",
-    confidence: 88,
-    roi: 820,
-    timestamp: formatJapanTime(new Date('2024-02-08'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "SOL/USD",
-    direction: "LONG",
-    entryPrice: "98.5",
-    timeframe: "1D",
-    analysis: "Accumulation phase complete, ready for breakout.",
-    confidence: 91,
-    roi: 1100,
-    timestamp: formatJapanTime(new Date('2024-02-07'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "55,300",
-    timeframe: "4H",
-    analysis: "Bull flag formation on high timeframe.",
-    confidence: 89,
-    roi: 750,
-    timestamp: formatJapanTime(new Date('2024-03-12'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "ETH/USD",
-    direction: "SHORT",
-    entryPrice: "3,150",
-    timeframe: "1D",
-    analysis: "Head and shoulders pattern forming.",
-    confidence: 87,
-    roi: -320,
-    timestamp: formatJapanTime(new Date('2024-03-20'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "57,800",
-    timeframe: "4H",
-    analysis: "Golden cross on daily timeframe.",
-    confidence: 93,
-    roi: 1500,
-    timestamp: formatJapanTime(new Date('2024-04-05'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "SOL/USD",
-    direction: "SHORT",
-    entryPrice: "125.5",
-    timeframe: "1D",
-    analysis: "Bearish divergence on RSI.",
-    confidence: 86,
-    roi: 650,
-    timestamp: formatJapanTime(new Date('2024-04-18'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "59,200",
-    timeframe: "4H",
-    analysis: "Support level bounce with volume.",
-    confidence: 90,
-    roi: 880,
-    timestamp: formatJapanTime(new Date('2024-05-03'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "ETH/USD",
-    direction: "LONG",
-    entryPrice: "3,450",
-    timeframe: "1D",
-    analysis: "Breaking out of consolidation.",
-    confidence: 91,
-    roi: -420,
-    timestamp: formatJapanTime(new Date('2024-05-22'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "SHORT",
-    entryPrice: "62,400",
-    timeframe: "4H",
-    analysis: "Distribution pattern at resistance.",
-    confidence: 88,
-    roi: 920,
-    timestamp: formatJapanTime(new Date('2024-06-08'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "SOL/USD",
-    direction: "LONG",
-    entryPrice: "145.5",
-    timeframe: "1D",
-    analysis: "Bullish engulfing pattern.",
-    confidence: 92,
-    roi: 1350,
-    timestamp: formatJapanTime(new Date('2024-06-25'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "63,800",
-    timeframe: "4H",
-    analysis: "Higher low pattern forming.",
-    confidence: 89,
-    roi: 780,
-    timestamp: formatJapanTime(new Date('2024-07-10'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "ETH/USD",
-    direction: "SHORT",
-    entryPrice: "3,850",
-    timeframe: "1D",
-    analysis: "Double top formation.",
-    confidence: 87,
-    roi: -280,
-    timestamp: formatJapanTime(new Date('2024-07-28'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "65,200",
-    timeframe: "4H",
-    analysis: "Ascending triangle breakout.",
-    confidence: 93,
-    roi: 1150,
-    timestamp: formatJapanTime(new Date('2024-08-05'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "SOL/USD",
-    direction: "SHORT",
-    entryPrice: "168.5",
-    timeframe: "1D",
-    analysis: "Overbought RSI conditions.",
-    confidence: 85,
-    roi: 720,
-    timestamp: formatJapanTime(new Date('2024-08-22'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "67,500",
-    timeframe: "4H",
-    analysis: "Breaking previous ATH.",
-    confidence: 94,
-    roi: 1680,
-    timestamp: formatJapanTime(new Date('2024-09-08'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "ETH/USD",
-    direction: "LONG",
-    entryPrice: "4,150",
-    timeframe: "1D",
-    analysis: "Cup and handle formation.",
-    confidence: 91,
-    roi: -350,
-    timestamp: formatJapanTime(new Date('2024-09-25'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "SHORT",
-    entryPrice: "71,200",
-    timeframe: "4H",
-    analysis: "Bearish divergence multiple timeframes.",
-    confidence: 88,
-    roi: 980,
-    timestamp: formatJapanTime(new Date('2024-10-12'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "SOL/USD",
-    direction: "LONG",
-    entryPrice: "182.5",
-    timeframe: "1D",
-    analysis: "Breaking resistance with volume.",
-    confidence: 90,
-    roi: 1250,
-    timestamp: formatJapanTime(new Date('2024-10-28'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "69,800",
-    timeframe: "4H",
-    analysis: "Higher low higher high pattern.",
-    confidence: 92,
-    roi: 850,
-    timestamp: formatJapanTime(new Date('2024-11-05'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "ETH/USD",
-    direction: "SHORT",
-    entryPrice: "4,450",
-    timeframe: "1D",
-    analysis: "Triple top pattern.",
-    confidence: 86,
-    roi: -420,
-    timestamp: formatJapanTime(new Date('2024-11-22'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "BTC/USD",
-    direction: "LONG",
-    entryPrice: "72,500",
-    timeframe: "4H",
-    analysis: "Bull flag breakout.",
-    confidence: 93,
-    roi: 1450,
-    timestamp: formatJapanTime(new Date('2024-12-08'))
-  },
-  {
-    traderProfile: "Hsaka",
-    market: "SOL/USD",
-    direction: "LONG",
-    entryPrice: "195.5",
-    timeframe: "1D",
-    analysis: "Accumulation complete.",
-    confidence: 91,
-    roi: 1180,
-    timestamp: formatJapanTime(new Date('2024-12-24'))
-  }
-];
-
-const generatePerformanceData = (calls: any[], year: string) => {
-  const targetWinRates = {
-    '01': 75,
-    '02': 65,
-    '03': 45,
-    '04': 85,
-    '05': 55,
-    '06': 65,
-    '07': 85,
-    '08': 95,
-    '09': 55,
-    '10': 75,
-    '11': 85,
-    '12': 65
-  };
-
-  const monthlyData = Object.entries(targetWinRates).map(([month, winRate]) => ({
-    month: `${month}`,
-    winRate,
-    calls: Math.floor(Math.random() * 10) + 5
-  }));
-
-  const totalCalls = monthlyData.reduce((acc, curr) => acc + curr.calls, 0);
-  const weightedWinRate = monthlyData.reduce((acc, curr) => acc + (curr.winRate * curr.calls), 0) / totalCalls;
-
-  return {
-    overall: weightedWinRate.toFixed(2),
-    monthlyData
-  };
+type Message = {
+  text: string;
+  timestamp: Date;
+  isUser: boolean;
 };
 
 const Index = () => {
-  const { toast } = useToast();
-  const [currentInsight, setCurrentInsight] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ 
-    message: string, 
-    timestamp: string, 
-    isUser?: boolean, 
-    type?: 'chat' | 'intel' | 'history',
-    contextData?: {
-      showChart?: boolean,
-      showCalls?: boolean
-    }
-  }>>([]);
-  const [predictions, setPredictions] = useState<Array<any>>([]);
-  const [userInput, setUserInput] = useState("");
-  const [isHistoryView, setIsHistoryView] = useState(false);
-  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
-  const [performanceData, setPerformanceData] = useState<any>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
-
-  const scrollToChart = () => {
-    if (chartRef.current) {
-      chartRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'marketIntel'>('leaderboard');
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
-      const newCall = {
-        ...randomCall,
-        timestamp: formatJapanTime(new Date())
-      };
-      setPredictions(prev => [newCall, ...prev].slice(0, 100));
-    }, 15000);
-
-    return () => clearInterval(interval);
+    setMessages([
+      {
+        text: "Hey! I'm CHAT_GPT, your AI trading assistant. Ask me anything about market analysis, trading strategies, or even predict future trends!",
+        timestamp: new Date(),
+        isUser: false
+      }
+    ]);
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
-      const timestamp = formatJapanTime(new Date());
-      setChatHistory(prev => [...prev, { 
-        message: randomIntel, 
-        timestamp, 
-        type: 'intel'
-      }]);
-    }, 20000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      const scrollOptions: ScrollIntoViewOptions = {
-        behavior: 'smooth',
-        block: 'end',
-      };
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatHistory]);
-
-  const handleUserMessage = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userInput.trim()) return;
+    if (!input.trim()) return;
 
-    const timestamp = formatJapanTime(new Date());
-    
-    setChatHistory(prev => [...prev, { 
-      message: userInput, 
-      timestamp, 
-      isUser: true, 
-      type: 'chat' 
-    }]);
+    const newMessage: Message = {
+      text: input.trim(),
+      timestamp: new Date(),
+      isUser: true
+    };
 
-    const query = userInput.toLowerCase();
-    const isWinRateQuery = query.includes('win rate');
-    const isCallsQuery = query.includes('calls') || query.includes('trades');
-    const isHsakaQuery = query.includes('hsaka');
-    const year = '2024';
+    setMessages(prev => [...prev, newMessage]);
+    setInput("");
 
-    if (isHsakaQuery) {
-      setIsHistoryView(true);
-      
-      setChatHistory(prev => [...prev, { 
-        message: "Analyzing Calls from Hsaka in 2024...", 
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const hsakaCalls = marketCalls.filter(call => 
-        call.traderProfile.toLowerCase() === 'hsaka'
-      );
-
-      if (isWinRateQuery && !isCallsQuery) {
-        const performance = generatePerformanceData(hsakaCalls, year);
-        setPerformanceData(performance);
-        setFilteredHistory([]); // Clear the calls when showing win rate
-
-        setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown chart.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history',
-          contextData: {
-            showChart: true,
-            showCalls: false
-          }
-        }]);
-
-        toast({
-          title: "Performance Data Found",
-          description: `Win rate for ${year}: ${performance.overall}%`,
-          duration: 3000,
-        });
-      }
-      else if (isCallsQuery && !isWinRateQuery) {
-        const filteredCalls = hsakaCalls.map(call => ({
-          market: call.market,
-          direction: call.direction,
-          confidence: call.confidence,
-          roi: call.roi,
-          trader: call.traderProfile,
-          timestamp: call.timestamp
-        }));
-
-        setFilteredHistory(filteredCalls);
-        setPerformanceData(null); // Clear the performance data when showing calls
-
-        setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history',
-          contextData: {
-            showChart: false,
-            showCalls: true
-          }
-        }]);
-
-        toast({
-          title: "Trading Calls Found",
-          description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
-          duration: 3000,
-        });
-      }
-      else if (isCallsQuery && isWinRateQuery) {
-        const performance = generatePerformanceData(hsakaCalls, year);
-        setPerformanceData(performance);
-
-        const filteredCalls = hsakaCalls.map(call => ({
-          market: call.market,
-          direction: call.direction,
-          confidence: call.confidence,
-          roi: call.roi,
-          trader: call.traderProfile,
-          timestamp: call.timestamp
-        }));
-
-        setFilteredHistory(filteredCalls);
-        
-        setChatHistory(prev => [...prev, { 
-          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the details.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history',
-          contextData: {
-            showChart: true,
-            showCalls: false
-          }
-        }]);
-
-        toast({
-          title: "Analysis Complete",
-          description: `Found ${filteredCalls.length} calls with ${performance.overall}% win rate`,
-          duration: 3000,
-        });
-      } else {
-        setChatHistory(prev => [...prev, { 
-          message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
-          timestamp: formatJapanTime(new Date()),
-          type: 'chat'
-        }]);
-      }
-    } else {
-      setIsHistoryView(false);
-      setPerformanceData(null);
-      setTimeout(() => {
-        const aiResponse = "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.";
-        setChatHistory(prev => [...prev, { 
-          message: aiResponse, 
-          timestamp: formatJapanTime(new Date()),
-          type: 'chat'
-        }]);
-      }, 1000);
-    }
-
-    setUserInput("");
+    setTimeout(() => {
+      const aiResponse: Message = {
+        text: "Analyzing market data... Please wait.",
+        timestamp: new Date(),
+        isUser: false
+      };
+      setMessages(prev => [...prev, aiResponse]);
+    }, 1000);
   };
-
-  useEffect(() => {
-    const handleChatClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.dataset.messageId) {
-        const messageId = target.dataset.messageId;
-        const clickedMessage = chatHistory.find(msg => 
-          msg.message.includes(messageId)
-        );
-
-        if (clickedMessage?.contextData) {
-          setIsHistoryView(true);
-          if (clickedMessage.contextData.showChart) {
-            setPerformanceData(prev => prev); // Preserve current performance data
-            setTimeout(() => {
-              if (chartRef.current) {
-                chartRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
-          } else if (clickedMessage.contextData.showCalls) {
-            setPerformanceData(null); // Hide chart when showing calls
-            setTimeout(() => {
-              const firstCard = document.querySelector('.prediction-card');
-              if (firstCard) {
-                firstCard.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
-          }
-        }
-      }
-    };
-
-    const chatContainer = chatContainerRef.current;
-    if (chatContainer) {
-      chatContainer.addEventListener('click', handleChatClick);
-    }
-
-    return () => {
-      if (chatContainer) {
-        chatContainer.removeEventListener('click', handleChatClick);
-      }
-    };
-  }, [chatHistory]);
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
@@ -576,54 +57,16 @@ const Index = () => {
         className="container mx-auto p-4 h-screen flex flex-col"
       >
         <motion.div 
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-center relative h-[10vh] flex items-center justify-center"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
-          <div className="relative">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="relative w-8 h-8">
-                <motion.div
-                  className="absolute inset-0 border-2 border-emerald-400 rounded-full"
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <motion.div
-                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
-                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                />
-                <div className="absolute inset-[8px] flex items-center justify-center">
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  />
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                  />
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 1 }}
-                  />
-                </div>
-              </div>
-              <h1 className="text-4xl font-bold text-white tracking-wider">
-                COPE<span className="text-emerald-400">NET</span>
-              </h1>
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-400/70" />
-              <p className="text-sm text-emerald-400/70 font-mono tracking-[0.2em]">
-                MARKET_INTELLIGENCE_MATRIX
-              </p>
-              <Network className="w-4 h-4 text-emerald-400/70" />
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-emerald-600">
+            AI Trading Platform
+          </h1>
+          <p className="text-neutral-400 tracking-wide">
+            Get real-time market insights and trade with confidence.
+          </p>
         </motion.div>
 
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
@@ -632,229 +75,101 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4"
           >
-            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
+            <div className="flex-1 glass-card rounded-2xl relative overflow-hidden p-6">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs defaultValue="chat" className="flex-1 flex flex-col">
-                <div className="flex items-center gap-4 mb-4">
-                  <TabsList className="bg-black/20 border border-emerald-500/20">
-                    <TabsTrigger 
-                      value="chat"
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Chat
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="codec"
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
-                    >
-                      <Radio className="w-4 h-4 mr-2" />
-                      CODEC
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="leaderboard"
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
-                    >
-                      <Trophy className="w-4 h-4 mr-2" />
-                      Leaderboard
-                    </TabsTrigger>
-                  </TabsList>
+              <div className="h-full flex flex-col">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-lg bg-white/5">
+                    <MessageCircle className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">CHAT_GPT</h2>
                 </div>
 
-                <TabsContent value="chat" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0 flex flex-col">
-                    <div 
-                      ref={chatContainerRef}
-                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
+                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4 pb-4">
+                  {messages.map((message, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`max-w-[80%] p-3 rounded-xl ${message.isUser ? 'ml-auto bg-emerald-500/20 text-white' : 'bg-white/5 text-neutral-200'}`}
                     >
-                      {chatHistory.filter(msg => msg.type !== 'intel').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                            msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-                            msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                          }`}>
-                            {msg.type === 'history' && (
-                              <div className="flex items-center gap-2 mb-1">
-                                <History className="w-3 h-3 text-blue-400" />
-                                <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-                              </div>
-                            )}
-                            <p 
-                              className="text-sm text-white font-mono whitespace-pre-line"
-                              dangerouslySetInnerHTML={{ __html: msg.message }}
-                            />
-                            <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-                      <form onSubmit={handleUserMessage} className="relative">
-                        <Input
-                          type="text"
-                          placeholder="Enter command, Master Wayne..."
-                          value={userInput}
-                          onChange={(e) => setUserInput(e.target.value)}
-                          className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </TabsContent>
+                      <p className="text-sm">{message.text}</p>
+                      <p className="text-[10px] text-neutral-400 mt-1">
+                        {formatDistanceToNow(message.timestamp)} ago
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
 
-                <TabsContent value="codec" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0">
-                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4">
-                      {chatHistory.filter(msg => msg.type === 'intel').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          className="glass-card p-3 rounded-xl bg-purple-500/20 border-purple-500/30"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Network className="w-3 h-3 text-purple-400" />
-                            <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
-                          </div>
-                          <p className="text-sm text-white font-mono">{msg.message}</p>
-                          <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="leaderboard" className="flex-1 relative mt-0">
-                  <LeaderboardTab />
-                </TabsContent>
-              </Tabs>
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/95 to-transparent pt-8">
+                  <form onSubmit={handleSubmit} className="relative">
+                    <Input
+                      type="text"
+                      placeholder="Ask anything..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50 shadow-lg"
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-start gap-4 w-full"
+            >
+              <button
+                onClick={() => setActiveTab('leaderboard')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'leaderboard' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-neutral-400 hover:text-white'}`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Leaderboard</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('marketIntel')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'marketIntel' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-neutral-400 hover:text-white'}`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Market Intel</span>
+              </button>
+            </motion.div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card rounded-2xl relative overflow-hidden p-6"
+            className="flex flex-col gap-4"
           >
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-            <div className="h-full flex flex-col">
-              <AnimatePresence mode="sync">
-                <motion.div 
-                  key={isHistoryView ? 'history' : 'intel'}
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ 
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                    transition: {
-                      duration: 0.5,
-                      ease: "easeInOut"
-                    }
-                  }}
-                  exit={{ 
-                    opacity: 0,
-                    scale: 1.1,
-                    y: -20,
-                    transition: {
-                      duration: 0.3
-                    }
-                  }}
-                  className="relative h-full flex flex-col"
-                >
-                  {isHistoryView ? (
-                    <>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <motion.div
-                            animate={{
-                              rotate: [0, 180, 360]
-                            }}
-                            transition={{
-                              duration: 0.5,
-                              ease: "easeInOut"
-                            }}
-                          >
-                            <History className="w-5 h-5 text-blue-400" />
-                          </motion.div>
-                          <h2 className="text-xl font-bold text-white">MARKET_HISTORY</h2>
-                        </div>
-                      </div>
-                      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                        {performanceData && (
-                          <div className="flex flex-col gap-2">
-                            <h3 className="text-lg font-bold text-emerald-400">Performance Data</h3>
-                            <BarChart
-                              width={400}
-                              height={200}
-                              data={performanceData.monthlyData}
-                              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                            >
-                              <XAxis dataKey="month" />
-                              <YAxis />
-                              <Tooltip />
-                              <Bar dataKey="winRate" fill="#8884d8" />
-                            </BarChart>
-                          </div>
-                        )}
-                        {filteredHistory.length > 0 && (
-                          <div className="flex flex-col gap-2">
-                            <h3 className="text-lg font-bold text-emerald-400">Trading Calls</h3>
-                            {filteredHistory.map(call => (
-                              <div key={call.market} className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-sm text-emerald-400">{call.market}</span>
-                                  <span className="text-sm text-emerald-400">{call.direction}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-sm text-emerald-400">{call.confidence}%</span>
-                                  <span className="text-sm text-emerald-400">{call.roi}%</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Eye className="w-5 h-5 text-emerald-400" />
-                          <h2 className="text-xl font-bold text-white">MARKET_INTEL</h2>
-                        </div>
-                      </div>
-                      <div className="flex-1 overflow-y-auto custom-scrollbar">
-                        <div className="space-y-4 pr-2">
-                          {predictions.map((prediction, index) => (
-                            <PredictionCard
-                              key={index}
-                              symbol={prediction.market}
-                              prediction={prediction.direction === "LONG" ? "up" : "down"}
-                              confidence={prediction.confidence}
-                              timestamp={prediction.timestamp}
-                              traderText={prediction.analysis}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+            {activeTab === 'leaderboard' ? (
+              <LeaderboardTab />
+            ) : (
+              <div className="glass-card rounded-2xl p-6 flex-1 flex flex-col">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-lg bg-white/5">
+                    <Rocket className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Market Intel</h2>
+                </div>
+                <p className="text-neutral-400">
+                  Real-time market analysis and insights.
+                </p>
+                <div className="mt-4 flex-1 flex flex-col items-center justify-center">
+                  <Flame className="w-12 h-12 text-red-500 animate-pulse" />
+                  <p className="text-sm text-neutral-500 mt-2">
+                    Coming Soon...
+                  </p>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </motion.div>
