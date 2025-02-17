@@ -11,6 +11,7 @@ import PredictionCard from '@/components/PredictionCard';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
+import TraderCard from '@/components/TraderCard';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -322,6 +323,54 @@ const generatePerformanceData = (calls: any[], year: string) => {
   };
 };
 
+const leaderboardData = [
+  {
+    trader: "Hsaka",
+    score: 158420,
+    status: {
+      action: "BUY" as const,
+      pair: "BTC/USD",
+      timestamp: new Date('2024-02-17T12:00:00')
+    }
+  },
+  {
+    trader: "CryptoKage",
+    score: 142850,
+    status: {
+      action: "SELL" as const,
+      pair: "ETH/USD",
+      timestamp: new Date('2024-02-17T11:30:00')
+    }
+  },
+  {
+    trader: "DefiWhale",
+    score: 136700,
+    status: {
+      action: "BUY" as const,
+      pair: "SOL/USD",
+      timestamp: new Date('2024-02-17T10:45:00')
+    }
+  },
+  {
+    trader: "AlphaHunter",
+    score: 128900,
+    status: {
+      action: "SELL" as const,
+      pair: "BTC/USD",
+      timestamp: new Date('2024-02-17T09:15:00')
+    }
+  },
+  {
+    trader: "SatsStack",
+    score: 115600,
+    status: {
+      action: "BUY" as const,
+      pair: "ETH/USD",
+      timestamp: new Date('2024-02-17T08:30:00')
+    }
+  }
+];
+
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
@@ -613,6 +662,13 @@ const Index = () => {
                       <Radio className="w-4 h-4 mr-2" />
                       CODEC
                     </TabsTrigger>
+                    <TabsTrigger 
+                      value="leaderboard"
+                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                    >
+                      <Activity className="w-4 h-4 mr-2" />
+                      Leaderboard
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -685,6 +741,40 @@ const Index = () => {
                           </div>
                           <p className="text-sm text-white font-mono">{msg.message}</p>
                           <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+                  <div className="absolute inset-0">
+                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4 pb-4">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Activity className="w-4 h-4 text-emerald-400" />
+                          <h2 className="text-lg font-bold text-white">Top Traders</h2>
+                        </div>
+                        <div className="h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+                      </motion.div>
+                      
+                      {leaderboardData.map((trader, index) => (
+                        <motion.div
+                          key={trader.trader}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <TraderCard
+                            trader={trader.trader}
+                            score={trader.score}
+                            status={trader.status}
+                            position={index + 1}
+                          />
                         </motion.div>
                       ))}
                     </div>
