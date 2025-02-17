@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Trophy, Medal, CircleUser, ArrowUpRight, ArrowDownRight, Clock, Sparkles, Send, ArrowLeft } from 'lucide-react';
@@ -126,10 +125,10 @@ const LeaderboardTab = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-black/90 border border-emerald-500/30 px-4 py-3 rounded-lg shadow-xl backdrop-blur-lg">
-          <p className="text-emerald-300 font-medium text-sm font-mono">{`Month ${label}`}</p>
-          <p className="text-white text-sm font-medium mt-1">{`Win Rate: ${payload[0].value}%`}</p>
-          <p className="text-neutral-400 text-xs mt-0.5">{`${payload[0].payload.calls} calls`}</p>
+        <div className="bg-[#1a1a1c]/95 border border-emerald-500/20 px-3 py-2 rounded-lg shadow-xl backdrop-blur-sm">
+          <p className="text-emerald-400 font-medium text-sm">{`Month ${label}`}</p>
+          <p className="text-white text-sm font-mono">{`Win Rate: ${payload[0].value}%`}</p>
+          <p className="text-neutral-400 text-xs">{`${payload[0].payload.calls} calls`}</p>
         </div>
       );
     }
@@ -299,39 +298,30 @@ const LeaderboardTab = () => {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-4 h-64 w-full bg-black/40 rounded-lg p-4 border border-emerald-500/20 backdrop-blur-sm"
+                      className="mt-4 h-64 w-full bg-white/5 rounded-lg p-4 border border-emerald-500/20"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={performanceData.monthlyData}>
                           <XAxis
                             dataKey="month"
-                            stroke="#374151"
-                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                            axisLine={{ strokeWidth: 1 }}
+                            stroke="#4b5563"
+                            tick={{ fill: '#9ca3af', fontSize: 12 }}
                           />
                           <YAxis
-                            stroke="#374151"
-                            tick={{ fill: '#6B7280', fontSize: 12 }}
+                            stroke="#4b5563"
+                            tick={{ fill: '#9ca3af', fontSize: 12 }}
                             domain={[0, 100]}
-                            axisLine={{ strokeWidth: 1 }}
                           />
                           <Tooltip
                             content={CustomTooltip}
-                            cursor={{ fill: 'rgba(0, 0, 0, 0.2)' }}
+                            cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
                           />
                           <Bar
                             dataKey="winRate"
-                            fill="url(#barGradient)"
-                            radius={[6, 6, 0, 0]}
+                            fill="#10b981"
+                            radius={[4, 4, 0, 0]}
                             maxBarSize={40}
-                          >
-                            <defs>
-                              <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#34D399" stopOpacity={0.8} />
-                                <stop offset="100%" stopColor="#059669" stopOpacity={0.9} />
-                              </linearGradient>
-                            </defs>
-                          </Bar>
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </motion.div>
