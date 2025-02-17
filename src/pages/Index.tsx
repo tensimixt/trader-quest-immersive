@@ -409,25 +409,13 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      setChatHistory(prev => [...prev, { 
-        message: "Analyzing Calls from Hsaka in 2024...", 
-        timestamp: formatJapanTime(new Date()),
-        type: 'chat'
-      }]);
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const hsakaCalls = marketCalls.filter(call => 
-        call.traderProfile.toLowerCase() === 'hsaka'
-      );
-
-      if (isWinRateQuery && !isCallsQuery) {
-        const performance = generatePerformanceData(hsakaCalls, year);
+      if (isWinRateQuery) {
+        const performance = generatePerformanceData(marketCalls, year);
         setPerformanceData(performance);
         setFilteredHistory([]); // Clear the calls when showing win rate
 
         setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown chart.`,
+          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. Here's the monthly breakdown:`,
           timestamp: formatJapanTime(new Date()),
           type: 'history',
           contextData: {
@@ -442,8 +430,10 @@ const Index = () => {
           duration: 3000,
         });
       }
-      else if (isCallsQuery && !isWinRateQuery) {
-        const filteredCalls = hsakaCalls.map(call => ({
+      else if (isCallsQuery) {
+        const filteredCalls = marketCalls.filter(call => 
+          call.traderProfile.toLowerCase() === 'hsaka'
+        ).map(call => ({
           market: call.market,
           direction: call.direction,
           confidence: call.confidence,
@@ -453,7 +443,7 @@ const Index = () => {
         }));
 
         setFilteredHistory(filteredCalls);
-        setPerformanceData(null); // Clear the performance data when showing calls
+        setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
           message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
@@ -468,37 +458,6 @@ const Index = () => {
         toast({
           title: "Trading Calls Found",
           description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
-          duration: 3000,
-        });
-      }
-      else if (isCallsQuery && isWinRateQuery) {
-        const performance = generatePerformanceData(hsakaCalls, year);
-        setPerformanceData(performance);
-
-        const filteredCalls = hsakaCalls.map(call => ({
-          market: call.market,
-          direction: call.direction,
-          confidence: call.confidence,
-          roi: call.roi,
-          trader: call.traderProfile,
-          timestamp: call.timestamp
-        }));
-
-        setFilteredHistory(filteredCalls);
-        
-        setChatHistory(prev => [...prev, { 
-          message: `Analysis complete: Found ${filteredCalls.length} trading calls from Hsaka with an overall win rate of ${performance.overall}% in ${year}. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the details.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history',
-          contextData: {
-            showChart: true,
-            showCalls: false
-          }
-        }]);
-
-        toast({
-          title: "Analysis Complete",
-          description: `Found ${filteredCalls.length} calls with ${performance.overall}% win rate`,
           duration: 3000,
         });
       } else {
