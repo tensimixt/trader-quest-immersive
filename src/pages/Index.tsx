@@ -502,7 +502,10 @@ const Index = () => {
         if (clickedMessage?.contextData) {
           setIsHistoryView(true);
           if (clickedMessage.contextData.showChart) {
-            setPerformanceData(prev => prev); // Preserve current performance data
+            const year = '2024';
+            const performance = generatePerformanceData(marketCalls, year);
+            setPerformanceData(performance);
+            setFilteredHistory([]); // Clear the calls when showing chart
             setTimeout(() => {
               if (chartRef.current) {
                 chartRef.current.scrollIntoView({ behavior: 'smooth' });
