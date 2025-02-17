@@ -387,6 +387,13 @@ const Index = () => {
     }
   }, [chatHistory]);
 
+  useEffect(() => {
+    if (!isHistoryView) {
+      setPerformanceData(null);
+      setFilteredHistory(marketCalls.slice(0, 6));
+    }
+  }, [isHistoryView]);
+
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim()) return;
