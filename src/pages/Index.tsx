@@ -422,7 +422,7 @@ const Index = () => {
         setFilteredHistory([]); // Clear the calls when showing win rate
 
         setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data. Overall win rate for ${year} is ${performance.overall}%. Here's the monthly breakdown:`,
+          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history',
           contextData: {
