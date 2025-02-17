@@ -467,26 +467,8 @@ const Index = () => {
           description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
           duration: 3000,
         });
-      } else {
-        setChatHistory(prev => [...prev, { 
-          message: "You can ask about Hsaka's win rate or trading calls for specific time periods.",
-          timestamp: formatJapanTime(new Date()),
-          type: 'chat'
-        }]);
       }
-    } else {
-      setIsHistoryView(false);
-      setPerformanceData(null);
-      setTimeout(() => {
-        const aiResponse = "I understand you're looking for trading information. You can ask about Hsaka's win rate or trading calls for 2024.";
-        setChatHistory(prev => [...prev, { 
-          message: aiResponse, 
-          timestamp: formatJapanTime(new Date()),
-          type: 'chat'
-        }]);
-      }, 1000);
     }
-
     setUserInput("");
   };
 
@@ -512,7 +494,18 @@ const Index = () => {
               }
             }, 100);
           } else if (clickedMessage.contextData.showCalls) {
-            setPerformanceData(null); // Hide chart when showing calls
+            const filteredCalls = marketCalls.filter(call => 
+              call.traderProfile.toLowerCase() === 'hsaka'
+            ).map(call => ({
+              market: call.market,
+              direction: call.direction,
+              confidence: call.confidence,
+              roi: call.roi,
+              trader: call.traderProfile,
+              timestamp: call.timestamp
+            }));
+            setPerformanceData(null);
+            setFilteredHistory(filteredCalls);
             setTimeout(() => {
               const firstCard = document.querySelector('.prediction-card');
               if (firstCard) {
