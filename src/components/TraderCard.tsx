@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Clock } from 'lucide-react';
@@ -179,10 +180,11 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
             <div className="flex items-center gap-3 ml-auto">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 backdrop-blur-sm"
+                className="group/time flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md relative"
               >
-                <Clock className="w-3 h-3 text-white/70" />
-                <span className="text-xs font-medium text-white/70">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 rounded-full opacity-0 group-hover/time:opacity-100 transition-opacity duration-300" />
+                <Clock className="w-3.5 h-3.5 text-white/70 group-hover/time:text-emerald-400/70 transition-colors duration-300" />
+                <span className="text-xs font-medium tracking-wide bg-gradient-to-r from-white/70 to-white/70 group-hover/time:from-emerald-400/90 group-hover/time:to-emerald-300/90 bg-clip-text text-transparent transition-all duration-300">
                   {formatDistanceToNow(status.timestamp, { addSuffix: true })}
                 </span>
               </motion.div>
@@ -191,12 +193,12 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className={cn(
-                  "flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full backdrop-blur-sm",
+                  "flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-full backdrop-blur-md",
                   getRankChangeColor(actualRankChange)
                 )}
               >
                 {getRankChangeIcon(actualRankChange)}
-                <span className="font-medium whitespace-nowrap">
+                <span className="font-medium whitespace-nowrap tracking-wide">
                   {getRankChangeLabel(actualRankChange)}
                 </span>
               </motion.div>
