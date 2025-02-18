@@ -72,21 +72,7 @@ const LeaderboardSection = ({
             <h2 className="text-lg font-bold text-white">Top Traders</h2>
           </div>
 
-          <div className="flex flex-col gap-3 mt-64">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
-              <Input
-                type="text"
-                placeholder="Search traders..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="bg-black/20 border-emerald-500/20 text-white placeholder:text-emerald-500/50 pl-8"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400/50 text-xs font-mono">
-                {traders.length} traders
-              </div>
-            </div>
-
+          <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2">
               <Button
                 variant="ghost"
@@ -121,6 +107,20 @@ const LeaderboardSection = ({
               >
                 Score {sortConfig.key === 'score' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </Button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
+              <Input
+                type="text"
+                placeholder="Search traders..."
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="bg-black/20 border-emerald-500/20 text-white placeholder:text-emerald-500/50 pl-8"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400/50 text-xs font-mono">
+                {traders.length} traders
+              </div>
             </div>
           </div>
 
