@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState } from 'react';
@@ -14,14 +13,16 @@ export const WalletAuthButton = () => {
   const { toast } = useToast();
 
   const resetVerification = async () => {
-    if (publicKey) {
-      try {
+    try {
+      setIsLoading(true);
+      if (publicKey) {
         // Configure Supabase client with the wallet address as the user
         supabase.auth.setSession({
           access_token: publicKey.toString(),
           refresh_token: '',
         });
 
+        // Delete all records for this wallet address
         const { error } = await supabase
           .from('wallet_auth')
           .delete()
@@ -32,11 +33,26 @@ export const WalletAuthButton = () => {
           throw error;
         }
         
+        console.log('Successfully deleted wallet authentication data');
         setIsVerified(false);
-      } catch (error) {
-        console.error('Reset verification error:', error);
-        throw error;
+        await disconnect();
+        
+        toast({
+          title: "Reset Successful",
+          description: "Your wallet authentication data has been cleared",
+          duration: 3000,
+        });
       }
+    } catch (error) {
+      console.error('Reset verification error:', error);
+      toast({
+        title: "Reset Error",
+        description: "There was an error resetting your wallet data. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -162,7 +178,6 @@ export const WalletAuthButton = () => {
     }
   };
 
-  // Update wallet provider config to auto-connect
   useEffect(() => {
     if (wallet && !connected && !connecting) {
       console.log('Auto-connecting to selected wallet:', wallet.adapter.name);
@@ -193,11 +208,11 @@ export const WalletAuthButton = () => {
         />
         {connected && (
           <button
-            onClick={handleLogout}
+            onClick={resetVerification}
             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg"
           >
             <LogOut className="w-4 h-4" />
-            <span>Logout</span>
+            <span>Reset</span>
           </button>
         )}
       </div>
