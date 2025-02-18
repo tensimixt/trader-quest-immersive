@@ -52,14 +52,18 @@ serve(async (req) => {
 
       console.log(`Found ${accounts.value.length} token accounts`);
       
+      // Create a Set of all mint addresses for easier comparison
+      const mintAddresses = new Set(accounts.value.map(account => 
+        account.account.data.parsed.info.mint
+      ));
+
+      // Log all mint addresses for debugging
+      console.log('All mint addresses:', Array.from(mintAddresses));
+      
       const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
       
       // Check if any token account belongs to our collection
-      const hasRequiredNFT = accounts.value.some(account => {
-        const mint = account.account.data.parsed.info.mint;
-        console.log(`Checking mint: ${mint}`);
-        return mint === VALID_COLLECTION_ADDRESS;
-      });
+      const hasRequiredNFT = mintAddresses.has(VALID_COLLECTION_ADDRESS);
 
       console.log(`NFT verification result: ${hasRequiredNFT}`);
 
@@ -69,17 +73,24 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       )
 
-      const { error: updateError } = await supabaseAdmin
+      // First try to delete any existing entries for this wallet
+      await supabaseAdmin
         .from('wallet_auth')
-        .upsert({
+        .delete()
+        .eq('wallet_address', walletAddress);
+
+      // Then insert the new record
+      const { error: insertError } = await supabaseAdmin
+        .from('wallet_auth')
+        .insert({
           wallet_address: walletAddress,
           nft_verified: hasRequiredNFT,
           last_verification: new Date().toISOString()
-        })
+        });
 
-      if (updateError) {
-        console.error('Database update error:', updateError);
-        throw updateError;
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw insertError;
       }
 
       return new Response(
