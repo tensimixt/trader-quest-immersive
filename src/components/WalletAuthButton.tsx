@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -42,15 +41,11 @@ export const WalletAuthButton = () => {
         .from('wallet_auth')
         .select('*')
         .eq('wallet_address', currentWalletAddress)
-        .single();
+        .maybeSingle();
 
       if (checkError) {
         console.error('Check error:', checkError);
-        if (checkError.code === 'PGRST116') {
-          console.log('No record found to delete');
-        } else {
-          throw checkError;
-        }
+        throw checkError;
       }
 
       if (existingRecord) {
@@ -68,10 +63,8 @@ export const WalletAuthButton = () => {
         }
         
         console.log('Delete response:', deleteData);
-        
-        if (!deleteData || deleteData.length === 0) {
-          throw new Error('Failed to delete wallet authentication record');
-        }
+      } else {
+        console.log('No record found to delete for wallet:', currentWalletAddress);
       }
       
       // Then disconnect the wallet
