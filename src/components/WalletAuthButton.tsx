@@ -86,9 +86,10 @@ export const WalletAuthButton = () => {
         toast({
           title: "Signature Required",
           description: "Please sign the message to verify wallet ownership",
-          variant: "destructive"
+          variant: "destructive",
+          duration: 5000,
         });
-        await disconnect();
+        // Don't disconnect here, give user a chance to sign
         return;
       }
 
