@@ -25,7 +25,6 @@ export const WalletAuthButton = () => {
     try {
       setIsLoading(true);
       if (publicKey) {
-        console.log('Starting reset process...');
         // Delete the verification record first
         const { error } = await supabase
           .from('wallet_auth')
@@ -37,12 +36,8 @@ export const WalletAuthButton = () => {
           throw error;
         }
         
-        console.log('Successfully deleted wallet authentication data');
-        
-        // Reset states
+        // Reset states and disconnect
         setIsVerified(false);
-        
-        // Disconnect wallet
         await disconnect();
         
         toast({
@@ -67,20 +62,30 @@ export const WalletAuthButton = () => {
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading) return;
     
-    setIsLoading(true);
     try {
-      console.log('Starting verification process...', publicKey.toString());
+      setIsLoading(true);
       
-      // Request message signing first
-      console.log('Requesting message signing...');
-      const message = new TextEncoder().encode(
-        `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
-      );
+      // First check if already verified
+      const { data: existingVerification } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (existingVerification?.nft_verified) {
+        setIsVerified(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Generate a nonce message
+      const nonce = `Sign this message for authenticating with your wallet: ${Date.now()}`;
+      const message = new TextEncoder().encode(nonce);
       
-      let signedMessage;
+      // Request signature
+      let signature;
       try {
-        signedMessage = await signMessage(message);
-        console.log('Message signed successfully:', bs58.encode(signedMessage));
+        signature = await signMessage(message);
       } catch (error) {
         console.error('Error signing message:', error);
         toast({
@@ -93,75 +98,44 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Check database verification status
-      const { data: existingVerification, error: checkError } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified')
-        .eq('wallet_address', publicKey.toString())
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Error checking verification status:', checkError);
-        throw checkError;
+      if (!signature) {
+        throw new Error('No signature received from wallet');
       }
 
-      console.log('Existing verification:', existingVerification);
-
-      if (!existingVerification?.nft_verified) {
-        // Verify NFT ownership
-        console.log('Calling verify-nft function...');
-        const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-nft', {
-          body: { 
-            walletAddress: publicKey.toString()
-          }
-        });
-
-        console.log('Verification response:', verificationData, verificationError);
-
-        if (verificationError) {
-          console.error('Verification function error:', verificationError);
-          throw verificationError;
+      // Verify NFT ownership
+      const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-nft', {
+        body: { 
+          walletAddress: publicKey.toString(),
+          message: bs58.encode(message),
+          signature: bs58.encode(signature)
         }
+      });
 
-        if (!verificationData || typeof verificationData.verified === 'undefined') {
-          console.error('Invalid verification response:', verificationData);
-          throw new Error('Invalid verification response from server');
-        }
+      if (verificationError) throw verificationError;
 
-        if (verificationData.verified === true) {
-          // Insert new verification record
-          const { error: insertError } = await supabase
-            .from('wallet_auth')
-            .insert({
-              wallet_address: publicKey.toString(),
-              nft_verified: true,
-              last_verification: new Date().toISOString()
-            });
-
-          if (insertError) {
-            console.error('Error updating verification status:', insertError);
-            throw insertError;
-          }
-
-          setIsVerified(true);
-          toast({
-            title: "Verification Successful",
-            description: "Your NFT ownership has been verified",
-            duration: 3000,
+      if (verificationData?.verified) {
+        // Store verification
+        await supabase
+          .from('wallet_auth')
+          .insert({
+            wallet_address: publicKey.toString(),
+            nft_verified: true,
+            last_verification: new Date().toISOString()
           });
-        } else {
-          console.log('NFT verification failed:', verificationData);
-          setIsVerified(false);
-          toast({
-            title: "NFT Verification Failed",
-            description: "You need to own an NFT from the required collection to access this feature.",
-            duration: 5000,
-          });
-          await disconnect();
-        }
-      } else {
-        console.log('Found existing verification, setting verified state');
+
         setIsVerified(true);
+        toast({
+          title: "Verification Successful",
+          description: "Your NFT ownership has been verified",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: "NFT Verification Failed",
+          description: "You need to own an NFT from the required collection to access this feature.",
+          duration: 5000,
+        });
+        await disconnect();
       }
     } catch (error) {
       console.error('Verification error:', error);
@@ -171,28 +145,17 @@ export const WalletAuthButton = () => {
         duration: 5000,
         variant: "destructive"
       });
-      setIsVerified(false);
       await disconnect();
     } finally {
       setIsLoading(false);
     }
   }, [publicKey, signMessage, isLoading, disconnect, toast]);
 
+  // Trigger verification when wallet connects
   useEffect(() => {
-    const checkAndVerify = async () => {
-      if (connected && publicKey && !isVerified && !isLoading) {
-        console.log('Triggering verification check...', {
-          connected,
-          publicKey: publicKey.toString(),
-          isVerified,
-          isLoading
-        });
-        
-        await verifyWallet();
-      }
-    };
-
-    checkAndVerify();
+    if (connected && publicKey && !isVerified && !isLoading) {
+      verifyWallet();
+    }
   }, [connected, publicKey, isVerified, isLoading, verifyWallet]);
 
   return (
