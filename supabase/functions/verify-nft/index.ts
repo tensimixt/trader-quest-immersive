@@ -39,27 +39,50 @@ serve(async (req) => {
     }
 
     try {
-      // Use Helius DAS API to get all NFTs
+      // Use Helius getAssetsByOwner API to get detailed asset information
       const response = await fetch(
-        `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`
+        'https://api.helius.xyz/v1/assets',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ownerAddress: walletAddress,
+            options: {
+              showCollectionMetadata: true,
+            },
+            apiKey: HELIUS_API_KEY,
+          }),
+        }
       );
 
       if (!response.ok) {
         throw new Error(`Helius API error: ${response.status}`);
       }
 
-      const nfts = await response.json();
-      console.log(`Found ${nfts.length} NFTs`);
+      const assets = await response.json();
+      console.log(`Found ${assets.length} assets`);
 
       const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
       
-      // Check if any NFT belongs to our collection
-      const hasRequiredNFT = nfts.some(nft => {
-        const isInCollection = nft.collection?.address === VALID_COLLECTION_ADDRESS;
+      // Check if any asset belongs to our collection
+      const hasRequiredNFT = assets.some(asset => {
+        // Check both collection address and grouping value
+        const isInCollection = 
+          asset.grouping?.find(g => 
+            g.group_key === "collection" && 
+            g.group_value === VALID_COLLECTION_ADDRESS
+          );
+        
         if (isInCollection) {
-          console.log(`Found matching NFT: ${nft.name} from collection ${nft.collection.address}`);
+          console.log(`Found matching NFT: ${asset.name}`);
+          console.log('Collection details:', {
+            name: asset.grouping?.find(g => g.group_key === "collection")?.group_value,
+            address: VALID_COLLECTION_ADDRESS
+          });
         }
-        return isInCollection;
+        return !!isInCollection;
       });
 
       console.log(`NFT verification result: ${hasRequiredNFT}`);
