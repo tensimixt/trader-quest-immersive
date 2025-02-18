@@ -9,6 +9,7 @@ import MarketIntel from '@/components/MarketIntel';
 import { useChat } from '@/hooks/useChat';
 import { leaderboardData, demoRankChanges, demoROI } from '@/data/marketData';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { MessageCircle, Radio, Activity } from 'lucide-react';
 
 const Index = () => {
   const { toast } = useToast();
@@ -96,9 +97,19 @@ const Index = () => {
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
               <Tabs defaultValue="chat" className="flex-1 flex flex-col">
-                <TabsList className="bg-black/20 border border-emerald-500/20">
-                  <TabsTrigger value="chat">Chat</TabsTrigger>
-                  <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+                <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-black/20 p-1 text-muted-foreground w-fit">
+                  <TabsTrigger value="chat" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Chat
+                  </TabsTrigger>
+                  <TabsTrigger value="codec" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm">
+                    <Radio className="w-4 h-4 mr-2" />
+                    CODEC
+                  </TabsTrigger>
+                  <TabsTrigger value="leaderboard" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm">
+                    <Activity className="w-4 h-4 mr-2" />
+                    Leaderboard
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="chat" className="flex-1 relative mt-0">
@@ -109,6 +120,14 @@ const Index = () => {
                     onSubmit={handleUserMessage}
                     containerRef={chatContainerRef}
                   />
+                </TabsContent>
+
+                <TabsContent value="codec" className="flex-1 relative mt-0">
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-emerald-400 font-mono text-sm">
+                      CODEC system initializing...
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="leaderboard" className="flex-1 relative mt-0">
