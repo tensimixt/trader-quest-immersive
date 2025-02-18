@@ -16,6 +16,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { ChatMessage } from '@/components/ChatMessage';
 import PredictionCard from '@/components/PredictionCard';
 import TraderCard from '@/components/TraderCard';
+import PerformanceChart from '@/components/PerformanceChart';
 
 // Import data
 import { marketIntelligence } from '@/data/marketIntelligence';
@@ -638,37 +639,7 @@ const Index = () => {
                       exit={{ opacity: 0, y: -20 }}
                       className="glass-card p-4 rounded-xl border border-emerald-500/20"
                     >
-                      <div className="h-[300px] mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={performanceData.monthlyData}>
-                            <XAxis 
-                              dataKey="month" 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                            />
-                            <YAxis 
-                              stroke="#10B981"
-                              tick={{ fill: '#10B981', fontSize: 12 }}
-                              domain={[0, 100]}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(0,0,0,0.8)', 
-                                border: '1px solid rgba(16,185,129,0.2)',
-                                borderRadius: '8px'
-                              }}
-                            />
-                            <Bar
-                              dataKey="winRate"
-                              fill="#10B981"
-                              opacity={0.8}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="text-center text-emerald-400 font-mono">
-                        Monthly Win Rate Analysis
-                      </div>
+                      <PerformanceChart monthlyData={performanceData.monthlyData} />
                     </motion.div>
                   )}
                 </AnimatePresence>
