@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -297,24 +298,24 @@ const Index = () => {
               
               <Tabs defaultValue="chat" className="flex-1 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
-                  <TabsList className="bg-black/20 border border-emerald-500/20">
+                  <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl">
                     <TabsTrigger 
                       value="chat"
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Chat
                     </TabsTrigger>
                     <TabsTrigger 
                       value="codec"
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-950 data-[state=active]:text-emerald-400 data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-200"
                     >
                       <Radio className="w-4 h-4 mr-2" />
                       CODEC
                     </TabsTrigger>
                     <TabsTrigger 
                       value="leaderboard"
-                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors"
                     >
                       <Activity className="w-4 h-4 mr-2" />
                       Leaderboard
