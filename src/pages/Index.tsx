@@ -1,17 +1,14 @@
-<lov-code>
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Terminal, Send, History, ArrowLeft, Activity, Radio } from 'lucide-react';
+import { Terminal, Send, History, ArrowLeft, Activity, Radio, Eye, Network, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PredictionCard from '@/components/PredictionCard';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import TraderCard from '@/components/TraderCard';
-import AppHeader from '@/components/AppHeader';
-import ChatTabs from '@/components/ChatTabs';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -790,7 +787,52 @@ const Index = () => {
         animate={{ opacity: 1 }}
         className="container mx-auto p-4 h-screen flex flex-col"
       >
-        <AppHeader />
+        <div className="text-center relative h-[10vh] flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
+          <div className="relative">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="relative w-8 h-8">
+                <motion.div
+                  className="absolute inset-0 border-2 border-emerald-400 rounded-full"
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+                <motion.div
+                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
+                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                />
+                <div className="absolute inset-[8px] flex items-center justify-center">
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  />
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                  />
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 1 }}
+                  />
+                </div>
+              </div>
+              <h1 className="text-4xl font-bold text-white tracking-wider">
+                COPE<span className="text-emerald-400">NET</span>
+              </h1>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <Eye className="w-4 h-4 text-emerald-400/70" />
+              <p className="text-sm text-emerald-400/70 font-mono tracking-[0.2em]">
+                MARKET_INTELLIGENCE_MATRIX
+              </p>
+              <Network className="w-4 h-4 text-emerald-400/70" />
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
           <motion.div
@@ -801,7 +843,20 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <ChatTabs>
+              <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+                <div className="flex items-center gap-4 mb-4">
+                  <TabsList className="bg-black/20 border border-emerald-500/20">
+                    <TabsTrigger value="chat" className="data-[state=active]:bg-emerald-500/20">
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Chat
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="data-[state=active]:bg-emerald-500/20">
+                      <History className="w-4 h-4 mr-2" />
+                      History
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
                 <TabsContent value="chat" className="flex-1 flex flex-col">
                   <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 mb-4">
                     {chatHistory.map((item, index) => (
@@ -824,7 +879,9 @@ const Index = () => {
                             </div>
                           )}
                           <span dangerouslySetInnerHTML={{ __html: item.message }} />
-                          <div className="absolute right-2 bottom-1 text-xs text-white/50">{item.timestamp}</div>
+                          <div className="absolute right-2 bottom-1 text-xs text-white/50">
+                            {item.timestamp}
+                          </div>
                         </div>
                       </motion.div>
                     ))}
@@ -844,6 +901,7 @@ const Index = () => {
                     </Button>
                   </form>
                 </TabsContent>
+
                 <TabsContent value="history" className="flex-1 overflow-hidden">
                   <div className="flex flex-col h-full">
                     {isHistoryView ? (
@@ -852,13 +910,60 @@ const Index = () => {
                         Back to Chat
                       </Button>
                     ) : null}
-                    {performanceData ? (
+                    {performanceData && (
                       <div ref={chartRef} className="p-4">
                         <h3 className="text-lg font-bold text-white mb-4">Monthly Win Rate</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <BarChart data={performanceData.monthlyData}>
                             <XAxis dataKey="month" stroke="#888888" />
                             <YAxis stroke="#888888" />
-                            <Tooltip wrapperStyle={{ backgroundColor: '#111', color: '#fff', padding: '10px', borderRadius: '5px' }} />
+                            <Tooltip 
+                              wrapperStyle={{ 
+                                backgroundColor: '#111', 
+                                color: '#fff', 
+                                padding: '10px', 
+                                borderRadius: '5px' 
+                              }} 
+                            />
                             <Bar dataKey="winRate" fill="#82ca9d" />
-                          </Bar
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 gap-4 p-4">
+                      {filteredHistory.map((prediction, index) => (
+                        <PredictionCard key={index} {...prediction} />
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="glass-card rounded-2xl p-6 flex-1 overflow-y-auto">
+              <h2 className="text-xl font-bold text-white mb-4">Live Trader Activity</h2>
+              {leaderboardData.map((trader, index) => (
+                <TraderCard
+                  key={trader.trader}
+                  trader={trader.trader}
+                  score={trader.score}
+                  status={trader.status}
+                  position={index + 1}
+                  rankChange={trader.rankChange}
+                />
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Index;
