@@ -47,27 +47,21 @@ serve(async (req) => {
     
     const { result: nfts } = await response.json();
     
-    // Replace with your actual collection address and verification details
-    const VALID_CREATOR_ADDRESS = "YOUR_CREATOR_ADDRESS";
-    const VALID_COLLECTION_ADDRESS = "YOUR_COLLECTION_ADDRESS";
+    // Updated collection address
+    const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
     
-    console.log(`Checking NFTs against creator: ${VALID_CREATOR_ADDRESS} and collection: ${VALID_COLLECTION_ADDRESS}`);
+    console.log(`Checking NFTs against collection: ${VALID_COLLECTION_ADDRESS}`);
 
     // Check if any NFT matches our criteria
     const hasRequiredNFT = nfts.some((nftEvent: any) => {
       const nft = nftEvent.nft;
       
-      // Check for creator address
-      const hasValidCreator = nft.creators?.some((creator: any) => 
-        creator.address === VALID_CREATOR_ADDRESS && creator.verified
-      );
-
       // Check for collection address
       const hasValidCollection = nft.collection?.address === VALID_COLLECTION_ADDRESS;
 
-      console.log(`NFT ${nft.name}: Creator valid: ${hasValidCreator}, Collection valid: ${hasValidCollection}`);
+      console.log(`NFT ${nft.name}: Collection valid: ${hasValidCollection}`);
       
-      return hasValidCreator && hasValidCollection;
+      return hasValidCollection;
     });
 
     console.log(`NFT verification result: ${hasRequiredNFT}`);
