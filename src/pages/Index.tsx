@@ -4,25 +4,21 @@ import {
   Eye, Network, Send, History, ArrowLeft,
   MessageCircle, Activity, Radio, Search
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 // Import components
 import { AppHeader } from '@/components/AppHeader';
-import { ChatInput } from '@/components/ChatInput';
-import { ChatMessage } from '@/components/ChatMessage';
 import PredictionCard from '@/components/PredictionCard';
-import TraderCard from '@/components/TraderCard';
 import PerformanceChart from '@/components/PerformanceChart';
+import ChatSection from '@/components/ChatSection';
+import LeaderboardSection from '@/components/LeaderboardSection';
 
 // Import data
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
 import { demoRankChanges, demoROI } from '@/data/demoData';
-import { leaderboardData, type TraderData } from '@/data/leaderboardData';
+import { leaderboardData } from '@/data/leaderboardData';
 
 // Import utilities
 import { formatJapanTime } from '@/utils/dateUtils';
@@ -47,66 +43,14 @@ const Index = () => {
   const [isHistoryView, setIsHistoryView] = useState(false);
   const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
   const [performanceData, setPerformanceData] = useState<any>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
-
-  // Add new state for search and sort
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{
     key: 'rank' | 'roi' | 'score' | null,
     direction: 'asc' | 'desc'
   }>({ key: null, direction: 'asc' });
-
-  const sortedAndFilteredLeaderboard = useMemo(() => {
-    let filtered = leaderboardData.filter(trader =>
-      trader.trader.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        if (sortConfig.key === 'rank') {
-          const aChange = demoRankChanges[leaderboardData.indexOf(a) % demoRankChanges.length];
-          const bChange = demoRankChanges[leaderboardData.indexOf(b) % demoRankChanges.length];
-          return sortConfig.direction === 'asc' ? aChange - bChange : bChange - aChange;
-        }
-        if (sortConfig.key === 'roi') {
-          const aROI = demoROI[leaderboardData.indexOf(a) % 20];
-          const bROI = demoROI[leaderboardData.indexOf(b) % 20];
-          return sortConfig.direction === 'asc' ? aROI - bROI : bROI - aROI;
-        }
-        if (sortConfig.key === 'score') {
-          return sortConfig.direction === 'asc' ? 
-            a.score - b.score : 
-            b.score - a.score;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [searchQuery, sortConfig]);
-
-  const handleSort = (key: 'rank' | 'roi' | 'score') => {
-    setSortConfig(current => ({
-      key,
-      direction: 
-        current.key === key && current.direction === 'asc' 
-          ? 'desc' 
-          : 'asc'
-    }));
-
-    toast({
-      title: `Sorted by ${key}`,
-      description: `Order: ${sortConfig.direction === 'asc' ? 'ascending' : 'descending'}`,
-      duration: 2000,
-    });
-  };
-
-  const scrollToChart = () => {
-    if (chartRef.current) {
-      chartRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -287,6 +231,51 @@ const Index = () => {
     };
   }, [chatHistory]);
 
+  const sortedAndFilteredLeaderboard = useMemo(() => {
+    let filtered = leaderboardData.filter(trader =>
+      trader.trader.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        if (sortConfig.key === 'rank') {
+          const aChange = demoRankChanges[leaderboardData.indexOf(a) % demoRankChanges.length];
+          const bChange = demoRankChanges[leaderboardData.indexOf(b) % demoRankChanges.length];
+          return sortConfig.direction === 'asc' ? aChange - bChange : bChange - aChange;
+        }
+        if (sortConfig.key === 'roi') {
+          const aROI = demoROI[leaderboardData.indexOf(a) % 20];
+          const bROI = demoROI[leaderboardData.indexOf(b) % 20];
+          return sortConfig.direction === 'asc' ? aROI - bROI : bROI - aROI;
+        }
+        if (sortConfig.key === 'score') {
+          return sortConfig.direction === 'asc' ? 
+            a.score - b.score : 
+            b.score - a.score;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [searchQuery, sortConfig]);
+
+  const handleSort = (key: 'rank' | 'roi' | 'score') => {
+    setSortConfig(current => ({
+      key,
+      direction: 
+        current.key === key && current.direction === 'asc' 
+          ? 'desc' 
+          : 'asc'
+    }));
+
+    toast({
+      title: `Sorted by ${key}`,
+      description: `Order: ${sortConfig.direction === 'asc' ? 'ascending' : 'descending'}`,
+      duration: 2000,
+    });
+  };
+
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
       <motion.div
@@ -333,165 +322,34 @@ const Index = () => {
                 </div>
 
                 <TabsContent value="chat" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0 flex flex-col">
-                    <div 
-                      ref={chatContainerRef}
-                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
-                    >
-                      {chatHistory.filter(msg => msg.type !== 'intel').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                            msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-                            msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                          }`}>
-                            {msg.type === 'history' && (
-                              <div className="flex items-center gap-2 mb-1">
-                                <History className="w-3 h-3 text-blue-400" />
-                                <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-                              </div>
-                            )}
-                            <p 
-                              className="text-sm text-white font-mono whitespace-pre-line"
-                              dangerouslySetInnerHTML={{ __html: msg.message }}
-                            />
-                            <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-                      <form onSubmit={handleUserMessage} className="relative">
-                        <Input
-                          type="text"
-                          placeholder="Enter command, Master Wayne..."
-                          value={userInput}
-                          onChange={(e) => setUserInput(e.target.value)}
-                          className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </form>
-                    </div>
-                  </div>
+                  <ChatSection
+                    chatHistory={chatHistory}
+                    userInput={userInput}
+                    onUserInput={setUserInput}
+                    onSubmit={handleUserMessage}
+                    containerRef={chatContainerRef}
+                  />
                 </TabsContent>
 
                 <TabsContent value="codec" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0">
-                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4">
-                      {chatHistory.filter(msg => msg.type === 'intel').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          className="glass-card p-3 rounded-xl bg-purple-500/20 border-purple-500/30"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Network className="w-3 h-3 text-purple-400" />
-                            <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
-                          </div>
-                          <p className="text-sm text-white font-mono">{msg.message}</p>
-                          <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                  <ChatSection
+                    chatHistory={chatHistory}
+                    userInput={userInput}
+                    onUserInput={setUserInput}
+                    onSubmit={handleUserMessage}
+                    containerRef={chatContainerRef}
+                    showIntel={true}
+                  />
                 </TabsContent>
 
                 <TabsContent value="leaderboard" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0">
-                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4 pb-4">
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-4 space-y-4"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-emerald-400" />
-                          <h2 className="text-lg font-bold text-white">Top Traders</h2>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
-                            <Input
-                              type="text"
-                              placeholder="Search traders..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="bg-black/20 border-emerald-500/20 text-white placeholder:text-emerald-500/50 pl-8"
-                            />
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400/50 text-xs font-mono">
-                              {sortedAndFilteredLeaderboard.length} traders
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('rank')}
-                              className={cn(
-                                "text-xs font-mono whitespace-nowrap",
-                                sortConfig.key === 'rank' && "bg-emerald-500/10 text-emerald-400"
-                              )}
-                            >
-                              Rank Change {sortConfig.key === 'rank' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('roi')}
-                              className={cn(
-                                "text-xs font-mono whitespace-nowrap",
-                                sortConfig.key === 'roi' && "bg-emerald-500/10 text-emerald-400"
-                              )}
-                            >
-                              ROI {sortConfig.key === 'roi' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('score')}
-                              className={cn(
-                                "text-xs font-mono whitespace-nowrap",
-                                sortConfig.key === 'score' && "bg-emerald-500/10 text-emerald-400"
-                              )}
-                            >
-                              Score {sortConfig.key === 'score' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-                      </motion.div>
-                      
-                      {sortedAndFilteredLeaderboard.map((trader, index) => (
-                        <motion.div
-                          key={trader.trader}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <TraderCard
-                            trader={trader.trader}
-                            score={trader.score}
-                            status={trader.status}
-                            position={index + 1}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                  <LeaderboardSection
+                    traders={sortedAndFilteredLeaderboard}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    onSort={handleSort}
+                    sortConfig={sortConfig}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
