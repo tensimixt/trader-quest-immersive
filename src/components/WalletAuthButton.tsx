@@ -69,7 +69,7 @@ export const WalletAuthButton = () => {
     
     setIsLoading(true);
     try {
-      console.log('Starting verification process...');
+      console.log('Starting verification process...', publicKey.toString());
       
       // Check database verification status
       const { data: existingVerification, error: checkError } = await supabase
@@ -83,14 +83,17 @@ export const WalletAuthButton = () => {
         throw checkError;
       }
 
+      console.log('Existing verification:', existingVerification);
+
       if (existingVerification?.nft_verified) {
-        console.log('Found existing verification:', existingVerification);
+        console.log('Found existing verification, setting verified state');
         setIsVerified(true);
         setIsLoading(false);
         return;
       }
 
-      // Request message signing
+      // Always request message signing for new verifications
+      console.log('Requesting message signing...');
       const message = new TextEncoder().encode(
         `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
       );
@@ -107,8 +110,8 @@ export const WalletAuthButton = () => {
           variant: "destructive",
           duration: 5000,
         });
-        await disconnect();
         setIsLoading(false);
+        await disconnect();
         return;
       }
 
@@ -178,11 +181,21 @@ export const WalletAuthButton = () => {
     }
   };
 
+  // Modified useEffect to ensure verification happens when connected
   useEffect(() => {
-    if (connected && publicKey && !isVerified && !isLoading) {
-      console.log('Triggering verification check...');
-      verifyWallet();
-    }
+    const checkAndVerify = async () => {
+      if (connected && publicKey && !isVerified && !isLoading) {
+        console.log('Triggering verification check...', {
+          connected,
+          publicKey: publicKey.toString(),
+          isVerified,
+          isLoading
+        });
+        await verifyWallet();
+      }
+    };
+
+    checkAndVerify();
   }, [connected, publicKey, isVerified, isLoading]);
 
   return (
