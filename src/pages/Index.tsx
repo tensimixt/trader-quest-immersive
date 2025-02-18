@@ -1,17 +1,14 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Network, Terminal, Send, History, ArrowLeft, MessageCircle, Activity, Radio, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
+import { MessageCircle, Activity, Radio } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PredictionCard from '@/components/PredictionCard';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
-import TraderCard from '@/components/TraderCard';
 import { cn } from '@/lib/utils';
 import CopenetHeader from '@/components/CopenetHeader';
 import ChatInterface from '@/components/ChatInterface';
+import Leaderboard from '@/components/Leaderboard';
+import MarketIntel from '@/components/MarketIntel';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -867,4 +864,33 @@ const Index = () => {
                     userInput={userInput}
                     onInputChange={(value) => setUserInput(value)}
                     onSubmit={handleUserMessage}
-                    containerRef={
+                    containerRef={chatContainerRef}
+                  />
+                </TabsContent>
+
+                <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+                  <Leaderboard
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    handleSort={handleSort}
+                    sortedAndFilteredLeaderboard={sortedAndFilteredLeaderboard}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </motion.div>
+
+          <MarketIntel
+            predictions={predictions}
+            isHistoryView={isHistoryView}
+            filteredHistory={filteredHistory}
+            performanceData={performanceData}
+            chartRef={chartRef}
+          />
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Index;
