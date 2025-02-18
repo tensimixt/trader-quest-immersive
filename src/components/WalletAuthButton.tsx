@@ -65,20 +65,7 @@ export const WalletAuthButton = () => {
     
     setIsLoading(true);
     try {
-      // First check if already verified
-      const { data: existingVerification } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified')
-        .eq('wallet_address', publicKey.toString())
-        .maybeSingle();
-
-      if (existingVerification?.nft_verified) {
-        setIsVerified(true);
-        console.log('Already verified, skipping verification process');
-        return;
-      }
-
-      // Request message signing
+      // Request message signing first
       const message = new TextEncoder().encode(
         `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
       );
@@ -95,6 +82,21 @@ export const WalletAuthButton = () => {
           variant: "destructive",
           duration: 5000,
         });
+        setIsLoading(false);
+        return;
+      }
+
+      // After successful signing, check if already verified
+      const { data: existingVerification } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (existingVerification?.nft_verified) {
+        setIsVerified(true);
+        console.log('Already verified, skipping verification process');
+        setIsLoading(false);
         return;
       }
 
