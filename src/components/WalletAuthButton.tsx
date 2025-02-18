@@ -4,12 +4,15 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import bs58 from 'bs58';
+import { useNavigate } from 'react-router-dom';
 
 export const WalletAuthButton = () => {
-  const { publicKey, connected, connecting } = useWallet();
+  const { publicKey, connected, connecting, signMessage } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -20,11 +23,30 @@ export const WalletAuthButton = () => {
   }, [connected, publicKey]);
 
   const verifyWallet = async () => {
-    if (!publicKey) return;
+    if (!publicKey || !signMessage) return;
     
     setIsLoading(true);
     try {
-      // First check if we have a recent verification
+      // First, request message signing
+      const message = new TextEncoder().encode(
+        `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
+      );
+      
+      try {
+        const signedMessage = await signMessage(message);
+        console.log('Message signed successfully:', bs58.encode(signedMessage));
+      } catch (error) {
+        console.error('Error signing message:', error);
+        toast({
+          title: "Signature Required",
+          description: "Please sign the message to verify wallet ownership",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if we have a recent verification
       const { data: walletData, error: fetchError } = await supabase
         .from('wallet_auth')
         .select('nft_verified, last_verification')
@@ -42,13 +64,14 @@ export const WalletAuthButton = () => {
 
       if (!needsVerification && walletData?.nft_verified) {
         setIsVerified(true);
+        navigate('/chat');
         return;
       }
 
       // Verify NFT ownership
       const { data, error } = await supabase.functions.invoke('verify-nft', {
         body: { 
-          walletAddress: publicKey.toString() 
+          walletAddress: publicKey.toString()
         }
       });
 
@@ -63,7 +86,9 @@ export const WalletAuthButton = () => {
 
       setIsVerified(data.verified);
       
-      if (!data.verified) {
+      if (data.verified) {
+        navigate('/chat');
+      } else {
         toast({
           title: "NFT Verification Failed",
           description: "You need to own an NFT from the required collection to access this feature.",

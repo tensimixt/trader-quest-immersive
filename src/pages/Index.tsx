@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -9,29 +8,28 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { supabase } from '@/integrations/supabase/client'; // Fixed import path
-import { WalletAuthButton } from '@/components/WalletAuthButton'; // Added import
+import { supabase } from '@/integrations/supabase/client';
+import { WalletAuthButton } from '@/components/WalletAuthButton';
 
-// Import components
 import { AppHeader } from '@/components/AppHeader';
 import PredictionCard from '@/components/PredictionCard';
 import PerformanceChart from '@/components/PerformanceChart';
 import ChatSection from '@/components/ChatSection';
 import LeaderboardSection from '@/components/LeaderboardSection';
 
-// Import data
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
 import { demoRankChanges, demoROI } from '@/data/demoData';
 import { leaderboardData } from '@/data/leaderboardData';
 
-// Import utilities
 import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
   const { toast } = useToast();
   const { publicKey } = useWallet();
+  const [isVerified, setIsVerified] = useState(false);
+
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ 
@@ -54,8 +52,7 @@ const Index = () => {
     key: 'rank' | 'roi' | 'score' | null,
     direction: 'asc' | 'desc'
   }>({ key: null, direction: 'asc' });
-  const [isVerified, setIsVerified] = useState(false);
-  
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -142,7 +139,6 @@ const Index = () => {
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
 
-    // Simulate some processing time
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (isHsakaQuery) {
