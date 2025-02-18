@@ -117,22 +117,22 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3 min-w-0">
-              <h3 className="text-lg font-bold text-white tracking-tight truncate">{trader}</h3>
+              <h3 className="text-lg font-mono uppercase tracking-widest text-white/90 font-bold truncate">{trader}</h3>
               {position <= 3 && (
                 <motion.span 
                   whileHover={{ scale: 1.05 }}
                   className={cn(
-                    "text-xs font-mono px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm",
+                    "text-[10px] font-mono uppercase tracking-[0.2em] px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm",
                     getRankText(position)
                   )}
                 >
-                  #{position}
+                  FOX-{position}
                 </motion.span>
               )}
             </div>
             <motion.span 
               whileHover={{ scale: 1.05 }}
-              className="text-xl font-mono text-emerald-400 font-bold tracking-tight px-3 py-1 rounded-full bg-emerald-400/5"
+              className="text-xl font-mono text-emerald-400 font-bold tracking-[0.15em] px-3 py-1 rounded-full bg-emerald-400/5"
             >
               {score.toLocaleString()}
             </motion.span>
@@ -158,7 +158,7 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               <motion.span
                 whileHover={{ scale: 1.02 }}
                 className={cn(
-                  "text-sm font-mono font-medium px-3 py-1 rounded-full backdrop-blur-sm",
+                  "text-xs uppercase tracking-[0.15em] font-mono font-medium px-3 py-1 rounded-full backdrop-blur-sm",
                   isPositive ? "text-emerald-400 bg-emerald-400/5" : "text-red-400 bg-red-400/5"
                 )}
               >
@@ -169,7 +169,7 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 className={cn(
-                  "text-sm font-mono font-medium px-3 py-1 rounded-full backdrop-blur-sm",
+                  "text-xs uppercase tracking-[0.15em] font-mono font-medium px-3 py-1 rounded-full backdrop-blur-sm",
                   demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
                 )}
               >
@@ -184,7 +184,7 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 rounded-full opacity-0 group-hover/time:opacity-100 transition-opacity duration-300" />
                 <Clock className="w-3.5 h-3.5 text-white/70 group-hover/time:text-emerald-400/70 transition-colors duration-300" />
-                <span className="text-xs font-medium tracking-wide bg-gradient-to-r from-white/70 to-white/70 group-hover/time:from-emerald-400/90 group-hover/time:to-emerald-300/90 bg-clip-text text-transparent transition-all duration-300">
+                <span className="text-[10px] uppercase tracking-[0.25em] font-mono bg-gradient-to-r from-white/70 to-white/70 group-hover/time:from-emerald-400/90 group-hover/time:to-emerald-300/90 bg-clip-text text-transparent transition-all duration-300">
                   {formatDistanceToNow(status.timestamp, { addSuffix: true })}
                 </span>
               </motion.div>
@@ -193,12 +193,12 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className={cn(
-                  "flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-full backdrop-blur-md",
+                  "flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-mono px-3 py-1.5 rounded-full backdrop-blur-md",
                   getRankChangeColor(actualRankChange)
                 )}
               >
                 {getRankChangeIcon(actualRankChange)}
-                <span className="font-medium whitespace-nowrap tracking-wide">
+                <span className="font-medium whitespace-nowrap">
                   {getRankChangeLabel(actualRankChange)}
                 </span>
               </motion.div>
