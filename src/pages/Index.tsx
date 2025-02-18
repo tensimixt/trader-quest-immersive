@@ -8,6 +8,7 @@ import Leaderboard from '@/components/Leaderboard';
 import MarketIntel from '@/components/MarketIntel';
 import { useChat } from '@/hooks/useChat';
 import { leaderboardData, demoRankChanges, demoROI } from '@/data/marketData';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const Index = () => {
   const { toast } = useToast();
