@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
-import { Connection, PublicKey } from 'https://esm.sh/@solana/web3.js@1.87.6'
+import { PublicKey } from 'https://esm.sh/@solana/web3.js@1.87.6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,32 +38,29 @@ serve(async (req) => {
       throw new Error('Invalid wallet address format');
     }
 
-    // Connect to Helius RPC (mainnet)
-    const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
-    
     try {
-      // Get all token accounts for the wallet
-      const accounts = await connection.getParsedTokenAccountsByOwner(
-        new PublicKey(walletAddress),
-        {
-          programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-        }
+      // Use Helius DAS API to get all NFTs
+      const response = await fetch(
+        `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`
       );
 
-      console.log(`Found ${accounts.value.length} token accounts`);
-      
-      // Create a Set of all mint addresses for easier comparison
-      const mintAddresses = new Set(accounts.value.map(account => 
-        account.account.data.parsed.info.mint
-      ));
+      if (!response.ok) {
+        throw new Error(`Helius API error: ${response.status}`);
+      }
 
-      // Log all mint addresses for debugging
-      console.log('All mint addresses:', Array.from(mintAddresses));
-      
+      const nfts = await response.json();
+      console.log(`Found ${nfts.length} NFTs`);
+
       const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
       
-      // Check if any token account belongs to our collection
-      const hasRequiredNFT = mintAddresses.has(VALID_COLLECTION_ADDRESS);
+      // Check if any NFT belongs to our collection
+      const hasRequiredNFT = nfts.some(nft => {
+        const isInCollection = nft.collection?.address === VALID_COLLECTION_ADDRESS;
+        if (isInCollection) {
+          console.log(`Found matching NFT: ${nft.name} from collection ${nft.collection.address}`);
+        }
+        return isInCollection;
+      });
 
       console.log(`NFT verification result: ${hasRequiredNFT}`);
 
@@ -103,7 +100,7 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } catch (error) {
-      console.error('RPC or database error:', error);
+      console.error('Helius API or database error:', error);
       throw new Error('Failed to verify NFT ownership');
     }
 
