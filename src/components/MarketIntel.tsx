@@ -18,6 +18,7 @@ interface MarketIntelProps {
   filteredHistory: Array<any>;
   performanceData: any;
   chartRef: React.RefObject<HTMLDivElement>;
+  onBackToIntel?: () => void;
 }
 
 const MarketIntel = ({
@@ -25,7 +26,8 @@ const MarketIntel = ({
   isHistoryView,
   filteredHistory,
   performanceData,
-  chartRef
+  chartRef,
+  onBackToIntel
 }: MarketIntelProps) => {
   return (
     <motion.div
@@ -40,7 +42,10 @@ const MarketIntel = ({
             <h2 className="text-lg font-mono text-[#5ebbff]">MARKET_HISTORY</h2>
             <span className="w-2 h-2 rounded-full bg-[#5ebbff] ml-2"></span>
           </div>
-          <button className="flex items-center gap-2 text-[#4ade80] hover:text-[#4ade80]/80 transition-colors">
+          <button 
+            onClick={onBackToIntel}
+            className="flex items-center gap-2 text-[#4ade80] hover:text-[#4ade80]/80 transition-colors"
+          >
             <ArrowLeft className="w-4 h-4" />
             <span className="font-mono">Back to Intel</span>
           </button>

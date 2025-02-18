@@ -756,6 +756,12 @@ const Index = () => {
     setUserInput("");
   };
 
+  const handleBackToIntel = () => {
+    setIsHistoryView(false);
+    setPerformanceData(null);
+    setFilteredHistory(marketCalls.slice(0, 6));
+  };
+
   useEffect(() => {
     const handleChatClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -908,6 +914,7 @@ const Index = () => {
             filteredHistory={filteredHistory}
             performanceData={performanceData}
             chartRef={chartRef}
+            onBackToIntel={handleBackToIntel}
           />
         </div>
       </motion.div>
