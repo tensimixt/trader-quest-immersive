@@ -1,7 +1,7 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Wallet } from 'lucide-react';
@@ -12,6 +12,7 @@ export const WalletAuthButton = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const verificationInProgress = useRef(false);
 
   const handleReset = async () => {
     try {
@@ -47,9 +48,10 @@ export const WalletAuthButton = () => {
   };
 
   const verifyWallet = useCallback(async () => {
-    if (!publicKey || !signMessage || isLoading) return;
+    if (!publicKey || !signMessage || isLoading || verificationInProgress.current) return;
     
     try {
+      verificationInProgress.current = true;
       setIsLoading(true);
       
       // Check if already verified
@@ -63,13 +65,6 @@ export const WalletAuthButton = () => {
         setIsVerified(true);
         return;
       }
-
-      // Show verification toast
-      toast({
-        title: "Wallet Verification Required",
-        description: "Please sign the message in your wallet to verify ownership",
-        duration: 5000,
-      });
 
       // Generate verification message
       const message = new TextEncoder().encode(
@@ -107,13 +102,15 @@ export const WalletAuthButton = () => {
       if (verificationError) throw verificationError;
 
       if (verificationData?.verified) {
-        await supabase
+        const { error: insertError } = await supabase
           .from('wallet_auth')
           .insert({
             wallet_address: publicKey.toString(),
             nft_verified: true,
             last_verification: new Date().toISOString()
           });
+
+        if (insertError) throw insertError;
 
         setIsVerified(true);
         toast({
@@ -140,11 +137,12 @@ export const WalletAuthButton = () => {
       await disconnect();
     } finally {
       setIsLoading(false);
+      verificationInProgress.current = false;
     }
   }, [publicKey, signMessage, isLoading, disconnect, toast]);
 
   useEffect(() => {
-    if (connected && publicKey && !isVerified) {
+    if (connected && publicKey && !isVerified && !verificationInProgress.current) {
       verifyWallet();
     }
   }, [connected, publicKey, isVerified, verifyWallet]);
