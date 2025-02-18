@@ -5,14 +5,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import bs58 from 'bs58';
-import { useNavigate } from 'react-router-dom';
 
 export const WalletAuthButton = () => {
   const { publicKey, connected, connecting, signMessage } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -64,7 +62,6 @@ export const WalletAuthButton = () => {
 
       if (!needsVerification && walletData?.nft_verified) {
         setIsVerified(true);
-        navigate('/chat');
         return;
       }
 
@@ -86,9 +83,7 @@ export const WalletAuthButton = () => {
 
       setIsVerified(data.verified);
       
-      if (data.verified) {
-        navigate('/chat');
-      } else {
+      if (!data.verified) {
         toast({
           title: "NFT Verification Failed",
           description: "You need to own an NFT from the required collection to access this feature.",
