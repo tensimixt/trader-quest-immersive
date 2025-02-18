@@ -21,8 +21,31 @@ const marketIntelligence = [
   "Major DeFi protocol reports record-breaking TVL"
 ];
 
-const formatJapanTime = (date: Date) => {
-  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+interface PerformanceData {
+  monthlyData: Array<{
+    month: string;
+    winRate: number;
+  }>;
+  overall: number;
+}
+
+const generatePerformanceData = (calls: any[], year: string): PerformanceData => {
+  const monthlyData = Array.from({ length: 12 }, (_, i) => {
+    const monthDate = new Date(parseInt(year), i);
+    return {
+      month: format(monthDate, 'MMM'),
+      winRate: Math.floor(Math.random() * 30) + 70 // Random win rate between 70-100
+    };
+  });
+
+  const overall = Math.floor(
+    monthlyData.reduce((acc, month) => acc + month.winRate, 0) / monthlyData.length
+  );
+
+  return {
+    monthlyData,
+    overall
+  };
 };
 
 const marketCalls = [
@@ -530,6 +553,10 @@ const leaderboardData = [
     }
   }
 ];
+
+const formatJapanTime = (date: Date) => {
+  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+};
 
 const Index = () => {
   const { toast } = useToast();
