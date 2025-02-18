@@ -7,19 +7,31 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
 
+// Create a helper to manage verification state in localStorage
+const VERIFICATION_KEY = 'wallet_verification_status';
+const clearVerificationState = () => {
+  localStorage.removeItem(VERIFICATION_KEY);
+  sessionStorage.removeItem(VERIFICATION_KEY);
+};
+
+const setVerificationState = (state: boolean) => {
+  localStorage.setItem(VERIFICATION_KEY, state ? 'true' : 'false');
+};
+
 export const WalletAuthButton = () => {
-  const { publicKey, connected, connecting, signMessage, disconnect, select, wallet } = useWallet();
+  const { publicKey, connected, connecting, signMessage, disconnect } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
   const { toast } = useToast();
 
-  // Reset all states when wallet disconnects
+  // Reset all states when component mounts or wallet disconnects
   useEffect(() => {
     if (!connected) {
       setIsVerified(false);
       setHasAttemptedVerification(false);
       setIsLoading(false);
+      clearVerificationState();
     }
   }, [connected]);
 
@@ -27,10 +39,12 @@ export const WalletAuthButton = () => {
     try {
       setIsLoading(true);
       if (publicKey) {
-        // First disconnect the wallet to clear its state
-        await disconnect();
-        
-        // Then delete the verification record
+        // Clear all states first
+        setIsVerified(false);
+        setHasAttemptedVerification(false);
+        clearVerificationState();
+
+        // Delete the verification record
         const { error } = await supabase
           .from('wallet_auth')
           .delete()
@@ -43,17 +57,16 @@ export const WalletAuthButton = () => {
         
         console.log('Successfully deleted wallet authentication data');
         
-        // Reset all states
-        setIsVerified(false);
-        setHasAttemptedVerification(false);
-        
         toast({
           title: "Reset Successful",
           description: "Your wallet authentication data has been cleared",
           duration: 3000,
         });
 
-        // Force a page reload to ensure clean state
+        // Disconnect wallet last
+        await disconnect();
+
+        // Force a clean reload after everything is cleared
         window.location.reload();
       }
     } catch (error) {
@@ -76,7 +89,10 @@ export const WalletAuthButton = () => {
     try {
       console.log('Starting verification process...');
       
-      // Always check verification status from database first
+      // Double check verification state
+      clearVerificationState();
+      
+      // Check database verification status
       const { data: existingVerification, error: checkError } = await supabase
         .from('wallet_auth')
         .select('nft_verified')
@@ -91,6 +107,7 @@ export const WalletAuthButton = () => {
       if (existingVerification?.nft_verified) {
         console.log('Found existing verification:', existingVerification);
         setIsVerified(true);
+        setVerificationState(true);
         setHasAttemptedVerification(true);
         setIsLoading(false);
         return;
@@ -114,6 +131,7 @@ export const WalletAuthButton = () => {
           duration: 5000,
         });
         await disconnect();
+        clearVerificationState();
         setIsLoading(false);
         return;
       }
@@ -140,7 +158,13 @@ export const WalletAuthButton = () => {
       }
 
       if (verificationData.verified === true) {
-        console.log('NFT verification successful, updating database...');
+        // Delete any existing records first
+        await supabase
+          .from('wallet_auth')
+          .delete()
+          .eq('wallet_address', publicKey.toString());
+
+        // Insert new verification record
         const { error: insertError } = await supabase
           .from('wallet_auth')
           .insert({
@@ -155,6 +179,7 @@ export const WalletAuthButton = () => {
         }
 
         setIsVerified(true);
+        setVerificationState(true);
         toast({
           title: "Verification Successful",
           description: "Your NFT ownership has been verified",
@@ -163,6 +188,7 @@ export const WalletAuthButton = () => {
       } else {
         console.log('NFT verification failed:', verificationData);
         setIsVerified(false);
+        clearVerificationState();
         toast({
           title: "NFT Verification Failed",
           description: "You need to own an NFT from the required collection to access this feature.",
@@ -179,6 +205,7 @@ export const WalletAuthButton = () => {
         variant: "destructive"
       });
       setIsVerified(false);
+      clearVerificationState();
       await disconnect();
     } finally {
       setIsLoading(false);
