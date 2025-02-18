@@ -9,40 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PredictionCard from '@/components/PredictionCard';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
-import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import TraderCard from '@/components/TraderCard';
 import { cn } from '@/lib/utils';
 
-// Import data from new files
+// Import data
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
 import { demoRankChanges, demoROI } from '@/data/demoData';
 import { leaderboardData, type TraderData } from '@/data/leaderboardData';
 
-const formatJapanTime = (date: Date) => {
-  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
-};
-
-const generatePerformanceData = (calls: any[], year: string) => {
-  const monthlyData = Array(12).fill(null).map((_, i) => {
-    const month = String(i + 1).padStart(2, '0');
-    const monthCalls = calls.filter(call => call.timestamp.startsWith(`${year}-${month}`));
-    const totalCalls = monthCalls.length;
-    const winningCalls = monthCalls.filter(call => call.roi > 0).length;
-    const winRate = totalCalls > 0 ? (winningCalls / totalCalls) * 100 : 0;
-    return { month: month, winRate: parseFloat(winRate.toFixed(2)) };
-  });
-
-  const totalCalls = calls.filter(call => call.timestamp.startsWith(year)).length;
-  const winningCalls = calls.filter(call => call.timestamp.startsWith(year) && call.roi > 0).length;
-  const overallWinRate = totalCalls > 0 ? (winningCalls / totalCalls) * 100 : 0;
-
-  return {
-    overall: parseFloat(overallWinRate.toFixed(2)),
-    monthlyData: monthlyData
-  };
-};
+// Import utilities
+import { formatJapanTime } from '@/utils/dateUtils';
+import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
   const { toast } = useToast();
