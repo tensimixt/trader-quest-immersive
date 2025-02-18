@@ -15,14 +15,16 @@ export const WalletAuthButton = () => {
 
   const resetVerification = async () => {
     if (publicKey) {
-      // Clear the verification in the database
-      await supabase
+      // Delete the wallet_auth entry completely
+      const { error } = await supabase
         .from('wallet_auth')
-        .update({
-          nft_verified: false,
-          last_verification: null
-        })
+        .delete()
         .eq('wallet_address', publicKey.toString());
+      
+      if (error) {
+        console.error('Error deleting wallet auth:', error);
+        throw error;
+      }
       
       setIsVerified(false);
     }
