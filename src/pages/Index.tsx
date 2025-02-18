@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,6 +21,10 @@ const marketIntelligence = [
   "JP Morgan updates crypto trading desk infrastructure",
   "Major DeFi protocol reports record-breaking TVL"
 ];
+
+const formatJapanTime = (date: Date) => {
+  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+};
 
 const marketCalls = [
   {
@@ -652,11 +657,12 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedAndFilteredLeaderboard.map((trader, index) => (
                 <TraderCard
-                  key={trader.trader}
-                  trader={trader}
+                  key={`${trader.trader}-${index}`}
+                  trader={trader.trader}
+                  score={trader.score}
+                  status={trader.status}
                   position={index + 1}
                   rankChange={demoRankChanges[index % demoRankChanges.length]}
-                  roi={demoROI[index % 20]}
                 />
               ))}
             </div>
