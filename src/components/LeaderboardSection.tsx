@@ -72,8 +72,8 @@ const LeaderboardSection = ({
             <h2 className="text-lg font-bold text-white">Top Traders</h2>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2">
+          <div className="flex flex-col gap-3 mt-24">
+            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2 mt-32">
               <Button
                 variant="ghost"
                 size="sm"
