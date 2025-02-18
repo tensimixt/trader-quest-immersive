@@ -82,7 +82,7 @@ const LeaderboardSection = ({
 
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
-              <Input type="text" placeholder="Search traders..." value={searchQuery} onChange={e => onSearchChange(e.target.value)} className="bg-black/20 border-emerald-500/20 text-white placeholder:text-emerald-500/50 pl-8" />
+              <Input type="text" placeholder="Search traders..." value={searchQuery} onChange={e => onSearchChange(e.target.value)} className="bg-black/20 border-emerald-500/20 text-white placeholder:text-emerald-500/50 pl-8 px-[26px]" />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400/50 text-xs font-mono">
                 {traders.length} traders
               </div>
