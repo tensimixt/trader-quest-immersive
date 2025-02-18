@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,17 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 
+// Import components
 import { AppHeader } from '@/components/AppHeader';
 import PredictionCard from '@/components/PredictionCard';
 import PerformanceChart from '@/components/PerformanceChart';
 import ChatSection from '@/components/ChatSection';
 import LeaderboardSection from '@/components/LeaderboardSection';
 
+// Import data
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
 import { demoRankChanges, demoROI } from '@/data/demoData';
 import { leaderboardData } from '@/data/leaderboardData';
 
+// Import utilities
 import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
@@ -94,7 +98,7 @@ const Index = () => {
     }
   }, [isHistoryView]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
@@ -319,37 +323,28 @@ const Index = () => {
                   </TabsList>
                 </div>
 
-                <TabsContent value="chat" className="flex-1 relative">
+                <TabsContent value="chat" className="flex-1 relative mt-0">
                   <ChatSection
                     chatHistory={chatHistory}
                     userInput={userInput}
                     onUserInput={setUserInput}
-                    onSubmit={handleSubmit}
+                    onSubmit={handleUserMessage}
                     containerRef={chatContainerRef}
                   />
                 </TabsContent>
 
-                <TabsContent value="codec" className="flex-1 relative">
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Network className="w-5 h-5 text-[#9b87f5]" />
-                      <span className="text-[#9b87f5] font-medium tracking-wider text-sm">
-                        MARKET INTEL
-                      </span>
-                      <div className="w-2 h-2 rounded-full bg-[#9b87f5] animate-pulse" />
-                    </div>
-                    <ChatSection
-                      chatHistory={chatHistory}
-                      userInput={userInput}
-                      onUserInput={setUserInput}
-                      onSubmit={handleSubmit}
-                      containerRef={chatContainerRef}
-                      showIntel={true}
-                    />
-                  </div>
+                <TabsContent value="codec" className="flex-1 relative mt-0">
+                  <ChatSection
+                    chatHistory={chatHistory}
+                    userInput={userInput}
+                    onUserInput={setUserInput}
+                    onSubmit={handleUserMessage}
+                    containerRef={chatContainerRef}
+                    showIntel={true}
+                  />
                 </TabsContent>
 
-                <TabsContent value="leaderboard" className="flex-1">
+                <TabsContent value="leaderboard" className="flex-1 relative mt-0">
                   <LeaderboardSection
                     traders={sortedAndFilteredLeaderboard}
                     searchQuery={searchQuery}

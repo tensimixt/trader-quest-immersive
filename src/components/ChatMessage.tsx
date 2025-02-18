@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { History, Network } from 'lucide-react';
+import { History } from 'lucide-react';
 
 interface ChatMessageProps {
   message: string;
@@ -19,22 +19,12 @@ export const ChatMessage = ({ message, timestamp, isUser, type }: ChatMessagePro
     >
       <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
         type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-        type === 'intel' ? 'bg-[#9b87f5]/10 border-[#9b87f5]/30' :
         isUser ? 'bg-emerald-500/20' : 'bg-white/5'
       }`}>
         {type === 'history' && (
           <div className="flex items-center gap-2 mb-1">
             <History className="w-3 h-3 text-blue-400" />
             <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-          </div>
-        )}
-        {type === 'intel' && (
-          <div className="flex items-center gap-2 mb-2">
-            <Network className="w-4 h-4 text-[#9b87f5]" />
-            <span className="text-[#9b87f5] text-xs font-medium tracking-wider">
-              MARKET INTEL
-            </span>
-            <div className="w-1.5 h-1.5 rounded-full bg-[#9b87f5] animate-pulse" />
           </div>
         )}
         <p 

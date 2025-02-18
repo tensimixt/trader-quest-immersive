@@ -1,9 +1,9 @@
+
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { demoRankChanges, demoROI } from '@/data/demoData';
 
 interface TraderCardProps {
   trader: string;
@@ -70,9 +70,18 @@ const getRankChangeIcon = (change: number) => {
 const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderCardProps) => {
   const isPositive = status.action === 'BUY';
   
-  const actualRankChange = demoRankChanges[position - 1] || 0;
+  const demoRankChanges = [
+    2, -1, 3, 0, -2, 1, 4, -3, 0, 2,
+    -4, 1, -2, 3, 0, 2, -1, 5, -2, 1,
+    0, 3, -2, 1, -3
+  ];
   
-  const currentROI = demoROI[position % demoROI.length];
+  const actualRankChange = demoRankChanges[position % demoRankChanges.length];
+  
+  const demoROI = [
+    8.42, -3.21, 12.54, 5.67, -2.18, 15.32, 7.89, -4.56, 9.23, 3.45,
+    -1.98, 6.78, 11.23, -5.43, 4.56, 8.90, -2.34, 13.45, 6.78, -3.21
+  ][position % 20];
   
   return (
     <motion.div 
@@ -153,9 +162,9 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                 
                 <span className={cn(
                   "text-xs uppercase tracking-wide font-mono",
-                  currentROI >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
+                  demoROI >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
                 )}>
-                  {formatROI(currentROI)}
+                  {formatROI(demoROI)}
                 </span>
                 
                 <div className="w-[1px] h-3 bg-white/10 mx-1" />
