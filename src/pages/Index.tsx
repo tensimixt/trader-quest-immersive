@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -11,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WalletAuthButton } from '@/components/WalletAuthButton';
+import { useTab } from '@/context/TabContext';
 
 import { AppHeader } from '@/components/AppHeader';
 import PredictionCard from '@/components/PredictionCard';
@@ -32,7 +32,7 @@ const Index = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [forceCheck, setForceCheck] = useState(0);
-  const [activeTab, setActiveTab] = useState("chat");
+  const { activeTab, setActiveTab } = useTab();
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -63,20 +63,7 @@ const Index = () => {
           console.log('Index verification check result:', data);
           const wasVerifiedBefore = isVerified;
           const isNowVerified = data?.nft_verified || false;
-          
-          // Set verified state
           setIsVerified(isNowVerified);
-          
-          // If newly verified, switch to chat tab and show welcome message
-          if (!wasVerifiedBefore && isNowVerified) {
-            console.log('Transitioning to chat view...');
-            setActiveTab("chat");
-            toast({
-              title: "Welcome to CODEC",
-              description: "You now have access to the chat and CODEC features",
-              duration: 3000,
-            });
-          }
         }
       } catch (err) {
         console.error('Error in verification check:', err);
@@ -89,7 +76,6 @@ const Index = () => {
     checkVerification();
   }, [publicKey, connected, toast, forceCheck]);
 
-  // Force check verification when wallet connects
   useEffect(() => {
     if (connected) {
       console.log('Wallet connected, forcing verification check...');

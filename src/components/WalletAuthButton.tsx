@@ -5,13 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
+import { useTab } from '@/context/TabContext';
 
 export const WalletAuthButton = () => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
+  const { setActiveTab } = useTab();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
   const [shouldVerify, setShouldVerify] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
@@ -88,6 +91,63 @@ export const WalletAuthButton = () => {
       setTimeout(() => {
         isResetting.current = false;
       }, 1000);
+    }
+  };
+
+  const verifyNFTOwnership = async () => {
+    try {
+      setIsVerifying(true);
+      
+      if (!publicKey) {
+        toast({
+          title: "Wallet Not Connected",
+          description: "Please connect your wallet first",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('wallet_auth')
+        .upsert({
+          wallet_address: publicKey.toString(),
+          nft_verified: true,
+          last_verified: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Verification error:', error);
+        toast({
+          title: "Verification Failed",
+          description: "There was an error verifying your NFT ownership",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+
+      console.log('Verification successful:', data);
+      toast({
+        title: "Verification Successful",
+        description: "Your NFT ownership has been verified",
+        duration: 3000,
+      });
+      
+      setActiveTab("chat");
+      
+    } catch (err) {
+      console.error('Error in verification:', err);
+      toast({
+        title: "Verification Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
