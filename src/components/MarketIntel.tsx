@@ -61,7 +61,7 @@ const MarketIntel = ({
       {isHistoryView ? (
         <div className="space-y-4 h-full overflow-y-auto custom-scrollbar pb-20">
           {performanceData ? (
-            <div ref={chartRef} className="w-full h-[680px] bg-[#0a0b0d] rounded-xl">
+            <div ref={chartRef} className="w-full h-[400px] bg-[#0a0b0d] rounded-xl">
               <ResponsiveContainer width="100%" height="90%">
                 <BarChart 
                   data={performanceData.monthlyData}
