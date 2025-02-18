@@ -5,16 +5,21 @@ import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign
 import { format } from 'date-fns-tz';
 
 interface PredictionCardProps {
-  symbol: string;
-  prediction: 'up' | 'down';
-  confidence: number;
-  timestamp: string;
-  traderText?: string;
+  prediction: {
+    market: string;
+    direction: string;
+    confidence: number;
+    timestamp: string;
+    analysis: string;
+    roi: number;
+  };
 }
 
-const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
-  // Convert timestamp string back to Date and format in Japan time
-  const formattedTimestamp = format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+const PredictionCard = ({ prediction }: PredictionCardProps) => {
+  // Safely handle the timestamp formatting
+  const formattedTimestamp = prediction.timestamp ? 
+    format(new Date(prediction.timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' }) : 
+    'N/A';
 
   return (
     <motion.div
@@ -50,13 +55,13 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
       {/* Market Info Section */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-2xl font-bold text-white font-mono tracking-wider">{symbol}</h3>
+          <h3 className="text-2xl font-bold text-white font-mono tracking-wider">{prediction.market}</h3>
           <div className="flex items-center mt-1 space-x-2">
             <BarChart2 className="w-4 h-4 text-emerald-400" />
             <span className="text-sm text-emerald-400 font-mono">SIGNAL_ACTIVE</span>
           </div>
         </div>
-        {prediction === 'up' ? (
+        {prediction.direction === 'LONG' ? (
           <div className="flex flex-col items-end">
             <ArrowUpCircle className="w-10 h-10 text-emerald-500 animate-pulse" />
             <span className="text-xs text-emerald-400 font-mono mt-1">LONG_POSITION</span>
@@ -76,7 +81,7 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
           <span className="text-sm font-medium text-emerald-400 font-mono">ANALYSIS.LOG</span>
         </div>
         <p className="text-sm text-emerald-400/70 font-mono leading-relaxed">
-          {traderText}
+          {prediction.analysis}
         </p>
       </div>
       
@@ -87,17 +92,17 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
             <Target className="w-4 h-4 text-emerald-400" />
             <span className="text-sm text-emerald-400/70 font-mono">CONFIDENCE_RATING</span>
           </div>
-          <span className="text-lg font-bold text-emerald-400 font-mono">{confidence}%</span>
+          <span className="text-lg font-bold text-emerald-400 font-mono">{prediction.confidence}%</span>
         </div>
         
         {/* Progress Bar */}
         <div className="w-full bg-black/40 rounded-full h-1.5 relative overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${confidence}%` }}
+            animate={{ width: `${prediction.confidence}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
             className={`h-full rounded-full ${
-              prediction === 'up' ? 'bg-emerald-500' : 'bg-red-500'
+              prediction.direction === 'LONG' ? 'bg-emerald-500' : 'bg-red-500'
             }`}
           />
         </div>
@@ -110,7 +115,7 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
               <span className="text-xs text-emerald-400/70 font-mono">SIGNAL</span>
             </div>
             <span className="text-xs font-medium text-emerald-400 font-mono">
-              {confidence > 80 ? 'STRONG' : 'MODERATE'}
+              {prediction.confidence > 80 ? 'STRONG' : 'MODERATE'}
             </span>
           </div>
           
@@ -119,8 +124,8 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
               <DollarSign className="w-4 h-4 text-emerald-400" />
               <span className="text-xs text-emerald-400/70 font-mono">ROI</span>
             </div>
-            <span className={`text-xs font-medium font-mono ${prediction === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {prediction === 'up' ? '+' : '-'}${Math.floor(Math.random() * 1000)}
+            <span className={`text-xs font-medium font-mono ${prediction.direction === 'LONG' ? 'text-emerald-400' : 'text-red-400'}`}>
+              {prediction.roi > 0 ? '+' : ''}{prediction.roi}
             </span>
           </div>
         </div>
@@ -130,4 +135,3 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
 };
 
 export default PredictionCard;
-

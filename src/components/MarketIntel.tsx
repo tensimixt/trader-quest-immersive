@@ -1,11 +1,17 @@
 
 import React from 'react';
-import { format } from 'date-fns-tz';
 import PredictionCard from './PredictionCard';
 import { motion } from 'framer-motion';
 
 interface MarketIntelProps {
-  predictions: Array<any>;
+  predictions: Array<{
+    market: string;
+    direction: string;
+    confidence: number;
+    timestamp: string;
+    analysis: string;
+    roi: number;
+  }>;
   isHistoryView: boolean;
   filteredHistory: Array<any>;
   performanceData: any;
