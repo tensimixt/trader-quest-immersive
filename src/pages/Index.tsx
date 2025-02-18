@@ -837,23 +837,39 @@ const Index = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
           <div className="relative">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="relative w-8 h-8">
-                <motion.div
-                  className="absolute inset-0 border-2 border-emerald-400 rounded-full"
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <motion.div
-                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
-                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                />
-                <div className="absolute inset-[8px] flex items-center justify-center">
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  />
-                  <motion.div
-                    className="w-1 h-1
+            <h1 className="text-2xl font-bold text-gray-800">Trader Quest</h1>
+            <p className="text-sm text-gray-600">Real-time Trading Intelligence</p>
+          </div>
+        </motion.div>
+
+        <Tabs defaultValue="leaderboard" className="flex-1 flex flex-col">
+          <TabsList className="flex justify-center mb-4">
+            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+            <div className="mb-4 flex gap-2">
+              <Input
+                type="search"
+                placeholder="Search traders..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="max-w-xs"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleSort('rank')}
+              >
+                <Activity className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleSort('roi')}
+              >
+                <Radio className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap
