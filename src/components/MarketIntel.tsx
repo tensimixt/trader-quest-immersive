@@ -3,7 +3,7 @@ import React from 'react';
 import PredictionCard from './PredictionCard';
 import { motion } from 'framer-motion';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { History, ArrowLeft } from 'lucide-react';
+import { History, ArrowLeft, Eye } from 'lucide-react';
 
 interface MarketIntelProps {
   predictions: Array<{
@@ -35,38 +35,21 @@ const MarketIntel = ({
       animate={{ opacity: 1, x: 0 }}
       className="glass-card rounded-2xl relative overflow-hidden p-6 bg-[#0a0b0d]"
     >
-      {isHistoryView ? (
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <History className="w-5 h-5 text-[#5ebbff]" />
-            <h2 className="text-lg font-mono text-[#5ebbff]">MARKET_HISTORY</h2>
-            <span className="w-2 h-2 rounded-full bg-[#5ebbff] ml-2"></span>
-          </div>
-          <button 
-            onClick={onBackToIntel}
-            className="flex items-center gap-2 text-[#4ade80] hover:text-[#4ade80]/80 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="font-mono">Back to Intel</span>
-          </button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Eye className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-lg font-mono text-emerald-400">MARKET_INTEL</h2>
         </div>
-      ) : (
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <History className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-mono text-emerald-400">MARKET_INTEL</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs text-emerald-400/70 font-mono">LIVE</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs text-emerald-400/70 font-mono">LIVE</span>
         </div>
-      )}
+      </div>
       
       {isHistoryView ? (
         <div className="space-y-4 h-full overflow-y-auto custom-scrollbar pb-20">
           {performanceData ? (
-            <div ref={chartRef} className="w-full h-[400px] bg-[#0a0b0d] rounded-xl">
+            <div ref={chartRef} className="w-full h-[400px] bg-[#0a0b0d] rounded-xl p-4">
               <ResponsiveContainer width="100%" height="90%">
                 <BarChart 
                   data={performanceData.monthlyData}
@@ -104,7 +87,9 @@ const MarketIntel = ({
                   />
                 </BarChart>
               </ResponsiveContainer>
-              <h3 className="text-[#4ade80] font-mono text-center mt-2 text-lg">Monthly Win Rate Analysis</h3>
+              <h3 className="text-emerald-400 font-mono text-center mt-2 text-lg">
+                Monthly Win Rate Analysis
+              </h3>
             </div>
           ) : (
             filteredHistory.map((prediction, index) => (

@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -7,9 +6,10 @@ import ChatInterface from '@/components/ChatInterface';
 import Leaderboard from '@/components/Leaderboard';
 import MarketIntel from '@/components/MarketIntel';
 import { useChat } from '@/hooks/useChat';
-import { leaderboardData, demoRankChanges, demoROI } from '@/data/marketData';
+import { leaderboardData, demoRankChanges, demoROI, marketIntelligence } from '@/data/marketData';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { MessageCircle, Radio, Activity } from 'lucide-react';
+import { format } from 'date-fns';
 
 const Index = () => {
   const { toast } = useToast();
@@ -93,11 +93,11 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4"
           >
-            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
+            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full bg-[#0a0b0d]">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
               <Tabs defaultValue="chat" className="flex-1 flex flex-col">
-                <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-black/20 p-1 text-muted-foreground w-fit">
+                <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-black/20 p-1 text-muted-foreground w-fit border border-emerald-500/20">
                   <TabsTrigger value="chat" className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm">
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Chat
@@ -123,10 +123,19 @@ const Index = () => {
                 </TabsContent>
 
                 <TabsContent value="codec" className="flex-1 relative mt-0">
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-emerald-400 font-mono text-sm">
-                      CODEC system initializing...
+                  <div className="h-full flex flex-col space-y-4">
+                    <div className="flex items-center gap-2 text-purple-400 font-mono text-sm">
+                      <Activity className="w-4 h-4" />
+                      <span>MARKET INTEL</span>
                     </div>
+                    {marketIntelligence.map((intel, index) => (
+                      <div key={index} className="bg-black/40 rounded-lg p-4 border border-emerald-500/10">
+                        <p className="text-emerald-400 font-mono text-sm">{intel}</p>
+                        <p className="text-xs text-emerald-400/50 font-mono mt-2">
+                          {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </TabsContent>
 
