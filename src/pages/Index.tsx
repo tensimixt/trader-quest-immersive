@@ -868,6 +868,16 @@ const Index = () => {
                   />
                 </TabsContent>
 
+                <TabsContent value="codec" className="flex-1 relative mt-0">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                      <div className="p-4 bg-black/20 rounded-lg border border-emerald-500/20">
+                        <p className="text-emerald-400 font-mono">CODEC System Online</p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
                 <TabsContent value="leaderboard" className="flex-1 relative mt-0">
                   <Leaderboard
                     searchQuery={searchQuery}
