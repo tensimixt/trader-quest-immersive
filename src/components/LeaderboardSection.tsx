@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import TraderCard from './TraderCard';
 import { TraderData } from '@/data/leaderboardData';
+import { demoRankChanges } from '@/data/demoData';
 
 interface LeaderboardSectionProps {
   traders: TraderData[];
@@ -26,6 +27,18 @@ const LeaderboardSection = ({
   onSort,
   sortConfig
 }: LeaderboardSectionProps) => {
+  // Sort traders based on rank changes when rank sort is active
+  const sortedTraders = React.useMemo(() => {
+    if (sortConfig.key === 'rank') {
+      return [...traders].sort((a, b) => {
+        const rankA = demoRankChanges[(traders.findIndex(t => t.trader === a.trader))] || 0;
+        const rankB = demoRankChanges[(traders.findIndex(t => t.trader === b.trader))] || 0;
+        return sortConfig.direction === 'desc' ? rankB - rankA : rankA - rankB;
+      });
+    }
+    return traders;
+  }, [traders, sortConfig]);
+
   return (
     <div className="absolute inset-0">
       <div className="h-full overflow-y-auto custom-scrollbar space-y-4 pb-4">
@@ -94,7 +107,7 @@ const LeaderboardSection = ({
           <div className="h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
         </motion.div>
         
-        {traders.map((trader, index) => (
+        {sortedTraders.map((trader, index) => (
           <motion.div
             key={trader.trader}
             initial={{ opacity: 0, x: -20 }}
