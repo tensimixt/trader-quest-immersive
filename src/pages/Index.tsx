@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -865,18 +866,20 @@ const Index = () => {
           </div>
         </motion.div>
 
-        <TabsList className="flex justify-center">
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="leaderboard" className="flex-1 flex flex-col">
+          <TabsList className="flex justify-center">
+            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="leaderboard" className="flex-1 relative mt-0">
-          <Leaderboard
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            handleSort={handleSort}
-            sortedAndFilteredLeaderboard={sortedAndFilteredLeaderboard}
-          />
-        </TabsContent>
+          <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+            <Leaderboard
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              handleSort={handleSort}
+              sortedAndFilteredLeaderboard={sortedAndFilteredLeaderboard}
+            />
+          </TabsContent>
+        </Tabs>
       </motion.div>
     </div>
   );
