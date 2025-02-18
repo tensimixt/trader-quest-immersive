@@ -25,43 +25,33 @@ serve(async (req) => {
 
     console.log(`Verifying NFTs for wallet: ${walletAddress}`);
 
-    // Fetch NFTs owned by the wallet using Helius API
+    // Use the getAssetsByOwner endpoint instead of nft-events
     const response = await fetch(
-      `https://api.helius.xyz/v1/nft-events?api-key=${HELIUS_API_KEY}`,
+      `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: {
-            ownerAddress: walletAddress,
-            types: ["NFT_MINT"],
-          },
-          options: {
-            limit: 100,
-          },
-        }),
+        }
       }
     );
     
-    const { result: nfts } = await response.json();
+    if (!response.ok) {
+      console.error('Helius API error:', await response.text());
+      throw new Error('Failed to fetch NFTs from Helius');
+    }
+
+    const nfts = await response.json();
     
-    // Updated collection address
     const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
     
-    console.log(`Checking NFTs against collection: ${VALID_COLLECTION_ADDRESS}`);
+    console.log(`Checking ${nfts.length} NFTs against collection: ${VALID_COLLECTION_ADDRESS}`);
 
     // Check if any NFT matches our criteria
-    const hasRequiredNFT = nfts.some((nftEvent: any) => {
-      const nft = nftEvent.nft;
-      
-      // Check for collection address
-      const hasValidCollection = nft.collection?.address === VALID_COLLECTION_ADDRESS;
-
-      console.log(`NFT ${nft.name}: Collection valid: ${hasValidCollection}`);
-      
-      return hasValidCollection;
+    const hasRequiredNFT = nfts.some((nft: any) => {
+      const collectionAddress = nft.collection?.address;
+      console.log(`Checking NFT: ${nft.name}, Collection: ${collectionAddress}`);
+      return collectionAddress === VALID_COLLECTION_ADDRESS;
     });
 
     console.log(`NFT verification result: ${hasRequiredNFT}`);
@@ -80,7 +70,10 @@ serve(async (req) => {
         last_verification: new Date().toISOString()
       })
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('Database update error:', updateError);
+      throw updateError;
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -95,7 +88,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Verification error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Failed to verify NFT ownership. Please try again.'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400 
