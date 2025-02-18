@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Clock } from 'lucide-react';
+import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -11,7 +12,6 @@ interface TraderCardProps {
     action: 'BUY' | 'SELL';
     pair: string;
     timestamp: Date;
-    roi?: number;
   };
   position: number;
   rankChange?: number;
@@ -20,11 +20,11 @@ interface TraderCardProps {
 const getRankColor = (position: number) => {
   switch (position) {
     case 1:
-      return "from-[#FFD700]/20 to-[#FFD700]/40";
+      return "from-[#FFD700]/20 to-[#FFD700]/40"; // Gold
     case 2:
-      return "from-[#C0C0C0]/20 to-[#C0C0C0]/40";
+      return "from-[#C0C0C0]/20 to-[#C0C0C0]/40"; // Silver
     case 3:
-      return "from-[#CD7F32]/20 to-[#CD7F32]/40";
+      return "from-[#CD7F32]/20 to-[#CD7F32]/40"; // Bronze
     default:
       return "from-emerald-500/10 to-emerald-500/20";
   }
@@ -52,12 +52,7 @@ const getRankChangeColor = (change: number) => {
 const getRankChangeLabel = (change: number) => {
   if (change > 0) return `Moved up ${change} position${change > 1 ? 's' : ''}`;
   if (change < 0) return `Moved down ${Math.abs(change)} position${Math.abs(change) > 1 ? 's' : ''}`;
-  return "Rank unchanged";
-};
-
-const formatROI = (roi: number) => {
-  const formattedROI = roi.toFixed(2);
-  return roi > 0 ? `+${formattedROI}%` : `${formattedROI}%`;
+  return "Position unchanged";
 };
 
 const getRankChangeIcon = (change: number) => {
@@ -69,120 +64,83 @@ const getRankChangeIcon = (change: number) => {
 const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderCardProps) => {
   const isPositive = status.action === 'BUY';
   
-  const demoRankChanges = [
-    2, -1, 3, 0, -2, 1, 4, -3, 0, 2,
-    -4, 1, -2, 3, 0, 2, -1, 5, -2, 1,
-    0, 3, -2, 1, -3
-  ];
-  
-  const actualRankChange = demoRankChanges[position % demoRankChanges.length];
-  
-  const demoROI = [
-    8.42, -3.21, 12.54, 5.67, -2.18, 15.32, 7.89, -4.56, 9.23, 3.45,
-    -1.98, 6.78, 11.23, -5.43, 4.56, 8.90, -2.34, 13.45, 6.78, -3.21
-  ][position % 20];
-  
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-5 rounded-xl mb-4 hover:bg-white/[0.02] transition-all duration-500 group relative overflow-hidden"
-    >
+    <div className="glass-card p-4 rounded-xl mb-3 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
+      {/* Ranking Column */}
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b",
+        "absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b",
         getRankColor(position)
       )} />
       
-      <div className="flex items-start gap-5">
-        <div className="relative shrink-0">
+      <div className="flex items-center gap-4">
+        <div className="relative">
           <div className={cn(
-            "absolute -inset-1 rounded-full bg-gradient-to-r blur-md opacity-50",
+            "absolute -inset-1 rounded-full bg-gradient-to-r blur-sm group-hover:blur-md transition-all duration-300",
             getRankColor(position)
           )} />
-          <motion.div whileHover={{ scale: 1.05 }} className="relative">
-            <CircleUserRound className="w-10 h-10 text-white/90" />
+          <div className="relative">
+            <CircleUserRound className="w-12 h-12 text-white/80" />
             <div className={cn(
-              "absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center text-xs font-mono font-bold border border-white/5",
+              "absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-xs font-mono",
               getRankText(position)
             )}>
               {position}
             </div>
-          </motion.div>
+          </div>
         </div>
         
-        <div className="flex-1 min-w-0 space-y-3">
+        <div className="flex-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <h3 className="text-base font-mono uppercase tracking-wide text-white/90 font-medium truncate">{trader}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white">{trader}</h3>
               {position <= 3 && (
                 <span className={cn(
-                  "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/40",
+                  "text-xs font-mono px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm",
                   getRankText(position)
                 )}>
-                  FOX-{position}
+                  #{position} Ranked
                 </span>
               )}
             </div>
-            
-            <motion.span 
-              whileHover={{ scale: 1.02 }}
-              className="text-lg font-mono text-emerald-400/90 font-bold tracking-wider"
-            >
-              {score.toLocaleString()}
-            </motion.span>
+            <span className="text-2xl font-mono text-emerald-400">{score.toLocaleString()}</span>
           </div>
           
-          <div className="flex items-center gap-x-3 gap-y-2 flex-wrap">
+          <div className="flex items-center gap-2 mt-2">
             <div className="flex items-center gap-2">
-              <div className={cn(
-                "p-1.5 rounded-full",
-                isPositive ? "bg-emerald-400/5" : "bg-red-400/5"
-              )}>
-                {isPositive ? (
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400/90" />
-                ) : (
-                  <TrendingDown className="w-3.5 h-3.5 text-red-400/90" />
-                )}
-              </div>
+              {isPositive ? (
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-400" />
+              )}
               <span className={cn(
-                "text-xs uppercase tracking-wide font-mono",
-                isPositive ? "text-emerald-400/90" : "text-red-400/90"
+                "text-sm font-mono",
+                isPositive ? "text-emerald-400" : "text-red-400"
               )}>
                 {status.action} {status.pair}
               </span>
-              
-              <span className={cn(
-                "text-xs uppercase tracking-wide font-mono",
-                demoROI >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
-              )}>
-                {formatROI(demoROI)}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2 ml-auto">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className={cn(
-                  "flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-mono px-2.5 py-1 rounded-full",
-                  getRankChangeColor(actualRankChange)
-                )}
-              >
-                {getRankChangeIcon(actualRankChange)}
-                <span className="font-medium whitespace-nowrap">
-                  {getRankChangeLabel(actualRankChange)}
-                </span>
-              </motion.div>
-              
-              <span className="text-[10px] uppercase tracking-wide font-mono text-white/40">
-                <Clock className="w-3 h-3 inline-block mr-1.5 text-white/40" />
+              <span className="text-xs text-white/50">
                 {formatDistanceToNow(status.timestamp, { addSuffix: true })}
               </span>
             </div>
+            
+            {/* Enhanced Rank Change Indicator */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={cn(
+                "ml-auto flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded-full backdrop-blur-sm border border-white/5",
+                getRankChangeColor(rankChange)
+              )}
+            >
+              {getRankChangeIcon(rankChange)}
+              <span className="font-medium whitespace-nowrap">
+                {getRankChangeLabel(rankChange)}
+              </span>
+            </motion.div>
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
