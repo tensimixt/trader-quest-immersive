@@ -22,17 +22,34 @@ export const WalletAuthButton = () => {
       isResetting.current = true;
       setIsLoading(true);
       
-      // First disconnect the wallet
-      await disconnect();
+      // Store the wallet address before disconnecting
+      const currentWalletAddress = publicKey?.toString();
       
-      if (publicKey) {
-        const { error } = await supabase
-          .from('wallet_auth')
-          .delete()
-          .eq('wallet_address', publicKey.toString());
-        
-        if (error) throw error;
+      if (!currentWalletAddress) {
+        throw new Error("No wallet address found to reset");
       }
+
+      // First clear the database record
+      const { error: deleteError } = await supabase
+        .from('wallet_auth')
+        .delete()
+        .eq('wallet_address', currentWalletAddress);
+      
+      if (deleteError) throw deleteError;
+      
+      // Verify the record was deleted
+      const { data: checkData } = await supabase
+        .from('wallet_auth')
+        .select('*')
+        .eq('wallet_address', currentWalletAddress)
+        .maybeSingle();
+        
+      if (checkData) {
+        throw new Error("Failed to delete wallet authentication record");
+      }
+      
+      // Then disconnect the wallet
+      await disconnect();
       
       // Reset all states
       setIsVerified(false);
