@@ -20,7 +20,6 @@ const Leaderboard = ({
 }: LeaderboardProps) => {
   return (
     <div className="h-full flex flex-col">
-      {/* Search and Filters */}
       <div className="mb-4 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 w-4 h-4" />
@@ -62,7 +61,6 @@ const Leaderboard = ({
         </div>
       </div>
 
-      {/* Leaderboard List */}
       <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
         {sortedAndFilteredLeaderboard.map((trader, index) => (
           <TraderCard
