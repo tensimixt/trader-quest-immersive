@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState } from 'react';
@@ -12,7 +13,7 @@ export const WalletAuthButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const resetVerification = async () => {
+  const handleReset = async () => {
     try {
       setIsLoading(true);
       if (publicKey) {
@@ -35,13 +36,16 @@ export const WalletAuthButton = () => {
         
         console.log('Successfully deleted wallet authentication data');
         setIsVerified(false);
-        await disconnect();
         
         toast({
           title: "Reset Successful",
           description: "Your wallet authentication data has been cleared",
           duration: 3000,
         });
+
+        // Disconnect after showing the toast
+        await disconnect();
+        window.location.reload(); // Ensure clean state
       }
     } catch (error) {
       console.error('Reset verification error:', error);
@@ -56,38 +60,24 @@ export const WalletAuthButton = () => {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      setIsLoading(true);
-      await resetVerification();
-      await disconnect();
-      setIsVerified(false);
-      
-      toast({
-        title: "Logged Out Successfully",
-        description: "Your wallet has been disconnected and verification reset",
-        duration: 3000,
-      });
-      
-      window.location.reload();
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast({
-        title: "Logout Error",
-        description: "There was an error during logout. Please try again.",
-        variant: "destructive",
-        duration: 3000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const verifyWallet = async () => {
-    if (!publicKey || !signMessage) return;
+    if (!publicKey || !signMessage || isLoading) return;
     
     setIsLoading(true);
     try {
+      // First check if already verified
+      const { data: existingVerification } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (existingVerification?.nft_verified) {
+        setIsVerified(true);
+        console.log('Already verified, skipping verification process');
+        return;
+      }
+
       // Request message signing
       const message = new TextEncoder().encode(
         `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
@@ -105,7 +95,6 @@ export const WalletAuthButton = () => {
           variant: "destructive",
           duration: 5000,
         });
-        // Don't disconnect here, give user a chance to sign
         return;
       }
 
@@ -188,15 +177,10 @@ export const WalletAuthButton = () => {
   }, [wallet, connected, connecting]);
 
   useEffect(() => {
-    const checkVerification = async () => {
-      if (connected && publicKey) {
-        await verifyWallet();
-      } else {
-        setIsVerified(false);
-      }
-    };
-
-    checkVerification();
+    if (connected && publicKey && !isVerified && !isLoading) {
+      console.log('Triggering verification check...');
+      verifyWallet();
+    }
   }, [connected, publicKey]);
 
   return (
@@ -208,8 +192,9 @@ export const WalletAuthButton = () => {
         />
         {connected && (
           <button
-            onClick={resetVerification}
+            onClick={handleReset}
             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg"
+            disabled={isLoading}
           >
             <LogOut className="w-4 h-4" />
             <span>Reset</span>
