@@ -15,31 +15,30 @@ export const WalletAuthButton = () => {
 
   const resetVerification = async () => {
     if (publicKey) {
-      // Delete the wallet_auth entry completely
-      const { error } = await supabase
-        .from('wallet_auth')
-        .delete()
-        .eq('wallet_address', publicKey.toString());
-      
-      if (error) {
-        console.error('Error deleting wallet auth:', error);
+      try {
+        const { error } = await supabase
+          .from('wallet_auth')
+          .delete()
+          .eq('wallet_address', publicKey.toString());
+        
+        if (error) {
+          console.error('Error deleting wallet auth:', error);
+          throw error;
+        }
+        
+        setIsVerified(false);
+      } catch (error) {
+        console.error('Reset verification error:', error);
         throw error;
       }
-      
-      setIsVerified(false);
     }
   };
 
   const handleLogout = async () => {
     try {
       setIsLoading(true);
-      // First reset the verification status
       await resetVerification();
-      
-      // Then disconnect the wallet
       await disconnect();
-      
-      // Clear all local state
       setIsVerified(false);
       
       toast({
@@ -48,7 +47,6 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
       
-      // Force reload the page to ensure clean state
       window.location.reload();
     } catch (error) {
       console.error('Logout error:', error);
@@ -68,7 +66,7 @@ export const WalletAuthButton = () => {
     
     setIsLoading(true);
     try {
-      // First, request message signing
+      // Request message signing
       const message = new TextEncoder().encode(
         `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
       );
@@ -84,33 +82,39 @@ export const WalletAuthButton = () => {
           description: "Please sign the message to verify wallet ownership",
           variant: "destructive"
         });
-        // Disconnect wallet if user rejects signing
         await disconnect();
-        setIsLoading(false);
         return;
       }
 
       // Verify NFT ownership
-      const { data, error } = await supabase.functions.invoke('verify-nft', {
+      const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-nft', {
         body: { 
           walletAddress: publicKey.toString()
         }
       });
 
-      if (error) {
-        console.error('Verification function error:', error);
-        throw error;
+      if (verificationError) {
+        console.error('Verification function error:', verificationError);
+        throw verificationError;
       }
 
-      if (!data) {
+      if (!verificationData) {
         throw new Error('No data received from verification function');
       }
 
-      // Update verification status in database
-      if (data.verified) {
+      console.log('Verification result:', verificationData);
+
+      if (verificationData.verified) {
+        // First delete any existing entries
+        await supabase
+          .from('wallet_auth')
+          .delete()
+          .eq('wallet_address', publicKey.toString());
+
+        // Then insert new verification
         const { error: upsertError } = await supabase
           .from('wallet_auth')
-          .upsert({
+          .insert({
             wallet_address: publicKey.toString(),
             nft_verified: true,
             last_verification: new Date().toISOString()
@@ -120,17 +124,20 @@ export const WalletAuthButton = () => {
           console.error('Error updating verification status:', upsertError);
           throw upsertError;
         }
-      }
 
-      setIsVerified(data.verified);
-      
-      if (!data.verified) {
+        setIsVerified(true);
+        toast({
+          title: "Verification Successful",
+          description: "Your NFT ownership has been verified",
+          duration: 3000,
+        });
+      } else {
+        setIsVerified(false);
         toast({
           title: "NFT Verification Failed",
           description: "You need to own an NFT from the required collection to access this feature.",
           duration: 5000,
         });
-        // Disconnect wallet if verification fails
         await disconnect();
       }
     } catch (error) {
@@ -142,7 +149,6 @@ export const WalletAuthButton = () => {
         variant: "destructive"
       });
       setIsVerified(false);
-      // Disconnect wallet on error
       await disconnect();
     } finally {
       setIsLoading(false);
@@ -152,7 +158,6 @@ export const WalletAuthButton = () => {
   useEffect(() => {
     const checkVerification = async () => {
       if (connected && publicKey) {
-        // Always verify when connecting
         await verifyWallet();
       } else {
         setIsVerified(false);
