@@ -14,15 +14,23 @@ export const WalletAuthButton = () => {
   const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
   const { toast } = useToast();
 
+  // Reset all states when wallet disconnects
+  useEffect(() => {
+    if (!connected) {
+      setIsVerified(false);
+      setHasAttemptedVerification(false);
+      setIsLoading(false);
+    }
+  }, [connected]);
+
   const handleReset = async () => {
     try {
       setIsLoading(true);
       if (publicKey) {
-        supabase.auth.setSession({
-          access_token: publicKey.toString(),
-          refresh_token: '',
-        });
-
+        // First disconnect the wallet to clear its state
+        await disconnect();
+        
+        // Then delete the verification record
         const { error } = await supabase
           .from('wallet_auth')
           .delete()
@@ -34,6 +42,8 @@ export const WalletAuthButton = () => {
         }
         
         console.log('Successfully deleted wallet authentication data');
+        
+        // Reset all states
         setIsVerified(false);
         setHasAttemptedVerification(false);
         
@@ -43,7 +53,7 @@ export const WalletAuthButton = () => {
           duration: 3000,
         });
 
-        await disconnect();
+        // Force a page reload to ensure clean state
         window.location.reload();
       }
     } catch (error) {
@@ -64,17 +74,24 @@ export const WalletAuthButton = () => {
     
     setIsLoading(true);
     try {
-      // Check if already verified first
-      const { data: existingVerification } = await supabase
+      console.log('Starting verification process...');
+      
+      // Always check verification status from database first
+      const { data: existingVerification, error: checkError } = await supabase
         .from('wallet_auth')
         .select('nft_verified')
         .eq('wallet_address', publicKey.toString())
         .maybeSingle();
 
+      if (checkError) {
+        console.error('Error checking verification status:', checkError);
+        throw checkError;
+      }
+
       if (existingVerification?.nft_verified) {
+        console.log('Found existing verification:', existingVerification);
         setIsVerified(true);
         setHasAttemptedVerification(true);
-        console.log('Already verified, skipping verification process');
         setIsLoading(false);
         return;
       }
@@ -96,15 +113,10 @@ export const WalletAuthButton = () => {
           variant: "destructive",
           duration: 5000,
         });
+        await disconnect();
         setIsLoading(false);
         return;
       }
-
-      // Set the wallet address as the user for RLS
-      supabase.auth.setSession({
-        access_token: publicKey.toString(),
-        refresh_token: '',
-      });
 
       // Verify NFT ownership
       console.log('Calling verify-nft function...');
@@ -172,15 +184,6 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (wallet && !connected && !connecting) {
-      console.log('Auto-connecting to selected wallet:', wallet.adapter.name);
-      wallet.adapter.connect().catch((error) => {
-        console.error('Auto-connect error:', error);
-      });
-    }
-  }, [wallet, connected, connecting]);
 
   useEffect(() => {
     if (connected && publicKey && !isVerified && !hasAttemptedVerification && !isLoading) {
