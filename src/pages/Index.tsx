@@ -871,9 +871,21 @@ const Index = () => {
                 <TabsContent value="codec" className="flex-1 relative mt-0">
                   <div className="h-full flex flex-col">
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                      <div className="p-4 bg-black/20 rounded-lg border border-emerald-500/20">
-                        <p className="text-emerald-400 font-mono">CODEC System Online</p>
-                      </div>
+                      {chatHistory.filter(msg => msg.type === 'intel').map((message, index) => (
+                        <div 
+                          key={index} 
+                          className="p-4 bg-black/20 rounded-lg border border-emerald-500/20"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <Activity className="w-4 h-4 text-emerald-400" />
+                              <span className="text-xs font-mono text-emerald-400">MARKET INTEL</span>
+                            </div>
+                            <span className="text-xs font-mono text-emerald-400/50">{message.timestamp}</span>
+                          </div>
+                          <p className="text-emerald-400/70 font-mono">{message.message}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </TabsContent>
