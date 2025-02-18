@@ -134,12 +134,16 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-4">
                 {isPositive ? (
-                  <TrendingUp className="w-6 h-6 text-emerald-400" />
+                  <div className="p-2 rounded-full bg-emerald-400/10">
+                    <TrendingUp className="w-6 h-6 text-emerald-400" />
+                  </div>
                 ) : (
-                  <TrendingDown className="w-6 h-6 text-red-400" />
+                  <div className="p-2 rounded-full bg-red-400/10">
+                    <TrendingDown className="w-6 h-6 text-red-400" />
+                  </div>
                 )}
                 <span className={cn(
-                  "text-base font-mono font-medium px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/10",
+                  "text-base font-mono font-medium px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
                   isPositive ? "text-emerald-400 bg-emerald-400/5" : "text-red-400 bg-red-400/5"
                 )}>
                   {status.action} {status.pair}
@@ -147,19 +151,23 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               </div>
               
               {/* ROI indicator with enhanced visual treatment */}
-              <span className={cn(
-                "text-base font-mono px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/10",
-                demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
-              )}>
+              <motion.span
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                className={cn(
+                  "text-base font-mono font-medium px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
+                  demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
+                )}
+              >
                 {formatROI(demoROI)}
-              </span>
+              </motion.span>
             </div>
             
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mt-2">
               {/* Enhanced timestamp with better spacing */}
-              <div className="flex items-center gap-2 text-white/60">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm font-medium">
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm">
+                <Clock className="w-4 h-4 text-white/60" />
+                <span className="text-sm font-medium text-white/60">
                   {formatDistanceToNow(status.timestamp, { addSuffix: true })}
                 </span>
               </div>
@@ -168,8 +176,9 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 100 }}
                 className={cn(
-                  "flex items-center gap-2 text-sm font-mono px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
+                  "flex items-center gap-2.5 text-sm font-mono px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
                   getRankChangeColor(actualRankChange)
                 )}
               >
