@@ -11,6 +11,7 @@ export const WalletAuthButton = () => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [userRejected, setUserRejected] = useState(false);
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
 
@@ -26,6 +27,7 @@ export const WalletAuthButton = () => {
         if (error) throw error;
         
         setIsVerified(false);
+        setUserRejected(false);
         await disconnect();
         
         toast({
@@ -48,7 +50,7 @@ export const WalletAuthButton = () => {
   };
 
   const verifyWallet = useCallback(async () => {
-    if (!publicKey || !signMessage || isLoading || verificationInProgress.current) return;
+    if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected) return;
     
     try {
       verificationInProgress.current = true;
@@ -79,14 +81,26 @@ export const WalletAuthButton = () => {
       let signature;
       try {
         signature = await signMessage(message);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Signature error:', error);
-        toast({
-          title: "Verification Failed",
-          description: "You need to sign the message to verify wallet ownership",
-          variant: "destructive",
-          duration: 5000,
-        });
+        // Check if the error is due to user rejection
+        if (error?.message?.includes('User rejected')) {
+          setUserRejected(true);
+          toast({
+            title: "Verification Cancelled",
+            description: "You cancelled the signature request. Please reset and try again if you want to verify.",
+            variant: "destructive",
+            duration: 5000,
+          });
+          await disconnect();
+        } else {
+          toast({
+            title: "Verification Failed",
+            description: "There was an error requesting your signature. Please try again.",
+            variant: "destructive",
+            duration: 5000,
+          });
+        }
         return;
       }
 
@@ -139,13 +153,13 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
       verificationInProgress.current = false;
     }
-  }, [publicKey, signMessage, isLoading, disconnect, toast]);
+  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected]);
 
   useEffect(() => {
-    if (connected && publicKey && !isVerified && !verificationInProgress.current) {
+    if (connected && publicKey && !isVerified && !verificationInProgress.current && !userRejected) {
       verifyWallet();
     }
-  }, [connected, publicKey, isVerified, verifyWallet]);
+  }, [connected, publicKey, isVerified, verifyWallet, userRejected]);
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
@@ -154,7 +168,7 @@ export const WalletAuthButton = () => {
           className="!bg-[#1A1F2C] hover:!bg-[#403E43] !transition-all !duration-300 !border !border-[#9b87f5]/20 !shadow-lg hover:!shadow-[#9b87f5]/10 !rounded-xl !px-6 !py-3 !h-auto !font-medium tracking-wide backdrop-blur-sm !text-[#9b87f5]" 
           startIcon={<Wallet className="w-5 h-5 text-[#9b87f5]" />}
         />
-        {connected && (
+        {(connected || userRejected) && (
           <button
             onClick={handleReset}
             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg"
