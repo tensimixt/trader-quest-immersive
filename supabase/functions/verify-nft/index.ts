@@ -26,8 +26,8 @@ serve(async (req) => {
 
     console.log(`Verifying NFTs for wallet: ${walletAddress}`);
 
-    // Connect to Helius RPC
-    const connection = new Connection(`https://rpc-devnet.helius.xyz/?api-key=${HELIUS_API_KEY}`);
+    // Connect to Helius RPC (mainnet)
+    const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
     
     // Get all token accounts for the wallet
     const accounts = await connection.getParsedTokenAccountsByOwner(
