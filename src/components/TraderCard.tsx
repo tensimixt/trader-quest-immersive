@@ -130,12 +130,29 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                 </motion.span>
               )}
             </div>
-            <motion.span 
-              whileHover={{ scale: 1.05 }}
-              className="text-xl font-mono text-emerald-400 font-bold tracking-[0.15em] px-3 py-1 rounded-full bg-emerald-400/5"
-            >
-              {score.toLocaleString()}
-            </motion.span>
+            
+            <div className="flex items-center gap-3">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={cn(
+                  "flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-mono px-3 py-1.5 rounded-full backdrop-blur-md",
+                  getRankChangeColor(actualRankChange)
+                )}
+              >
+                {getRankChangeIcon(actualRankChange)}
+                <span className="font-medium whitespace-nowrap">
+                  {getRankChangeLabel(actualRankChange)}
+                </span>
+              </motion.div>
+              
+              <motion.span 
+                whileHover={{ scale: 1.05 }}
+                className="text-xl font-mono text-emerald-400 font-bold tracking-[0.15em] px-3 py-1 rounded-full bg-emerald-400/5"
+              >
+                {score.toLocaleString()}
+              </motion.span>
+            </div>
           </div>
           
           <div className="flex items-center gap-3 flex-wrap">
@@ -177,32 +194,16 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               </motion.span>
             </div>
             
-            <div className="flex items-center gap-3 ml-auto">
-              <motion.div 
-                whileHover={{ scale: 1.05 }}
-                className="group/time flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md relative"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 rounded-full opacity-0 group-hover/time:opacity-100 transition-opacity duration-300" />
-                <Clock className="w-3.5 h-3.5 text-white/70 group-hover/time:text-emerald-400/70 transition-colors duration-300" />
-                <span className="text-[10px] uppercase tracking-[0.25em] font-mono bg-gradient-to-r from-white/70 to-white/70 group-hover/time:from-emerald-400/90 group-hover/time:to-emerald-300/90 bg-clip-text text-transparent transition-all duration-300">
-                  {formatDistanceToNow(status.timestamp, { addSuffix: true })}
-                </span>
-              </motion.div>
-              
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={cn(
-                  "flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-mono px-3 py-1.5 rounded-full backdrop-blur-md",
-                  getRankChangeColor(actualRankChange)
-                )}
-              >
-                {getRankChangeIcon(actualRankChange)}
-                <span className="font-medium whitespace-nowrap">
-                  {getRankChangeLabel(actualRankChange)}
-                </span>
-              </motion.div>
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="group/time flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md relative ml-auto"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 rounded-full opacity-0 group-hover/time:opacity-100 transition-opacity duration-300" />
+              <Clock className="w-3.5 h-3.5 text-white/70 group-hover/time:text-emerald-400/70 transition-colors duration-300" />
+              <span className="text-[10px] uppercase tracking-[0.25em] font-mono bg-gradient-to-r from-white/70 to-white/70 group-hover/time:from-emerald-400/90 group-hover/time:to-emerald-300/90 bg-clip-text text-transparent transition-all duration-300">
+                {formatDistanceToNow(status.timestamp, { addSuffix: true })}
+              </span>
+            </motion.div>
           </div>
         </div>
       </div>
