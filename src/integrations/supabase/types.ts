@@ -210,6 +210,36 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_auth: {
+        Row: {
+          created_at: string
+          id: string
+          last_verification: string | null
+          nft_verified: boolean | null
+          status: Database["public"]["Enums"]["wallet_status"] | null
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_verification?: string | null
+          nft_verified?: boolean | null
+          status?: Database["public"]["Enums"]["wallet_status"] | null
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_verification?: string | null
+          nft_verified?: boolean | null
+          status?: Database["public"]["Enums"]["wallet_status"] | null
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -218,7 +248,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      wallet_status: "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
