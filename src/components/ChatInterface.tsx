@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Send, ArrowLeft, History } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -28,13 +28,16 @@ const ChatInterface = ({
   onSubmit,
   containerRef
 }: ChatInterfaceProps) => {
+  // Filter out codec messages from the chat view
+  const chatMessages = messages.filter(msg => msg.type !== 'intel');
+  
   return (
     <div className="h-full flex flex-col">
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
       >
-        {messages.map((msg, idx) => (
+        {chatMessages.map((msg, idx) => (
           <div
             key={idx}
             className={cn(
@@ -42,34 +45,15 @@ const ChatInterface = ({
               msg.isUser ? "justify-start" : "justify-start"
             )}
           >
-            {msg.isUser ? (
-              <div className="bg-black/40 p-3 rounded-lg max-w-[80%]">
-                <p className="text-sm text-emerald-400 font-mono">{msg.message}</p>
-                <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-              </div>
-            ) : msg.type === 'history' ? (
-              <div className="bg-black/40 p-3 rounded-lg max-w-[80%]">
-                <div className="flex items-center gap-2 mb-2">
-                  <History className="w-4 h-4 text-blue-400" />
-                  <span className="text-xs font-mono text-blue-400">TRADING HISTORY</span>
-                </div>
-                <p 
-                  className="text-sm text-white font-mono"
-                  dangerouslySetInnerHTML={{ 
-                    __html: msg.message.replace(
-                      'Click here',
-                      '<span class="text-emerald-400 cursor-pointer hover:underline">Click here</span>'
-                    )
-                  }}
-                />
-                <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-              </div>
-            ) : (
-              <div className="bg-black/40 p-3 rounded-lg max-w-[80%]">
-                <p className="text-sm text-white font-mono">{msg.message}</p>
-                <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-              </div>
-            )}
+            <div className="bg-black/40 p-3 rounded-lg max-w-[80%]">
+              <p className={cn(
+                "text-sm font-mono",
+                msg.isUser ? "text-emerald-400" : "text-white"
+              )}>
+                {msg.message}
+              </p>
+              <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+            </div>
           </div>
         ))}
       </div>
