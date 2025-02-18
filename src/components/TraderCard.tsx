@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CircleUserRound, TrendingUp, TrendingDown } from 'lucide-react';
+import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TraderCardProps {
@@ -13,6 +13,7 @@ interface TraderCardProps {
     timestamp: Date;
   };
   position: number;
+  rankChange?: number; // Can be positive (up), negative (down), or 0 (no change)
 }
 
 const getRankColor = (position: number) => {
@@ -41,7 +42,18 @@ const getRankText = (position: number) => {
   }
 };
 
-const TraderCard = ({ trader, score, status, position }: TraderCardProps) => {
+const getRankChangeIcon = (change: number | undefined) => {
+  if (!change || change === 0) {
+    return <Minus className="w-3 h-3 text-white/50" />;
+  }
+  return change > 0 ? (
+    <ArrowUp className="w-3 h-3 text-emerald-400" />
+  ) : (
+    <ArrowDown className="w-3 h-3 text-red-400" />
+  );
+};
+
+const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderCardProps) => {
   const isPositive = status.action === 'BUY';
   
   return (
@@ -53,7 +65,7 @@ const TraderCard = ({ trader, score, status, position }: TraderCardProps) => {
       )} />
       
       <div className="flex items-center gap-4">
-        <div className="relative">
+        <div className="relative min-w-[48px]">
           <div className={cn(
             "absolute -inset-1 rounded-full bg-gradient-to-r blur-sm group-hover:blur-md transition-all duration-300",
             getRankColor(position)
@@ -65,6 +77,18 @@ const TraderCard = ({ trader, score, status, position }: TraderCardProps) => {
               getRankText(position)
             )}>
               {position}
+            </div>
+            {/* Rank Change Indicator */}
+            <div className="absolute -left-1 -top-1 bg-black/40 backdrop-blur-sm rounded-full p-1 flex items-center justify-center gap-0.5">
+              {getRankChangeIcon(rankChange)}
+              {rankChange !== 0 && (
+                <span className={cn(
+                  "text-[10px] font-mono",
+                  rankChange > 0 ? "text-emerald-400" : "text-red-400"
+                )}>
+                  {Math.abs(rankChange)}
+                </span>
+              )}
             </div>
           </div>
         </div>
