@@ -39,9 +39,9 @@ serve(async (req) => {
     }
 
     try {
-      // Use Helius getAssetsByOwner API to get detailed asset information
+      // Use Helius DAS API getAssetsByOwner endpoint
       const response = await fetch(
-        'https://api.helius.xyz/v1/assets',
+        'https://api.helius.xyz/v0/assets/getAssetsByOwner',
         {
           method: 'POST',
           headers: {
@@ -49,40 +49,46 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             ownerAddress: walletAddress,
-            options: {
+            displayOptions: {
               showCollectionMetadata: true,
             },
-            apiKey: HELIUS_API_KEY,
+            api_key: HELIUS_API_KEY,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Helius API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Helius API error response:', errorText);
+        throw new Error(`Helius API error: ${response.status} - ${errorText}`);
       }
 
       const assets = await response.json();
       console.log(`Found ${assets.length} assets`);
+      
+      // Log all assets for debugging
+      console.log('All assets:', JSON.stringify(assets, null, 2));
 
       const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
       
       // Check if any asset belongs to our collection
       const hasRequiredNFT = assets.some(asset => {
-        // Check both collection address and grouping value
-        const isInCollection = 
-          asset.grouping?.find(g => 
-            g.group_key === "collection" && 
-            g.group_value === VALID_COLLECTION_ADDRESS
-          );
+        // Check collection address in various possible locations
+        const collectionAddress = 
+          asset.collection?.address || 
+          asset.grouping?.find(g => g.group_key === "collection")?.group_value;
+        
+        const isInCollection = collectionAddress === VALID_COLLECTION_ADDRESS;
         
         if (isInCollection) {
           console.log(`Found matching NFT: ${asset.name}`);
           console.log('Collection details:', {
-            name: asset.grouping?.find(g => g.group_key === "collection")?.group_value,
-            address: VALID_COLLECTION_ADDRESS
+            collectionAddress,
+            assetId: asset.id,
+            mint: asset.id // in Helius v0, id is the mint address
           });
         }
-        return !!isInCollection;
+        return isInCollection;
       });
 
       console.log(`NFT verification result: ${hasRequiredNFT}`);
@@ -124,7 +130,7 @@ serve(async (req) => {
       )
     } catch (error) {
       console.error('Helius API or database error:', error);
-      throw new Error('Failed to verify NFT ownership');
+      throw new Error(`Failed to verify NFT ownership: ${error.message}`);
     }
 
   } catch (error) {
