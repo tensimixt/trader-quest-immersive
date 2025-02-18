@@ -13,18 +13,30 @@ export const WalletAuthButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const clearWalletStates = useCallback(async () => {
+    // Clear any stored wallet states
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('walletAdapter');
+      localStorage.removeItem('wallet');
+      sessionStorage.clear();
+    }
+    setIsVerified(false);
+    setIsLoading(false);
+    await disconnect();
+  }, [disconnect]);
+
   // Reset verification when wallet disconnects
   useEffect(() => {
     if (!connected) {
-      setIsVerified(false);
-      setIsLoading(false);
+      clearWalletStates();
     }
-  }, [connected]);
+  }, [connected, clearWalletStates]);
 
   const handleReset = async () => {
     try {
       setIsLoading(true);
       if (publicKey) {
+        console.log('Starting reset process...');
         // Delete the verification record first
         const { error } = await supabase
           .from('wallet_auth')
@@ -38,18 +50,17 @@ export const WalletAuthButton = () => {
         
         console.log('Successfully deleted wallet authentication data');
         
-        // Reset state and disconnect
-        setIsVerified(false);
-        await disconnect();
+        // Clear all wallet states and disconnect
+        await clearWalletStates();
         
         toast({
           title: "Reset Successful",
-          description: "Your wallet authentication data has been cleared",
+          description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
           duration: 3000,
         });
 
-        // Instead of reloading, just ensure clean state
-        setIsLoading(false);
+        // Force a clean reload
+        window.location.reload();
       }
     } catch (error) {
       console.error('Reset verification error:', error);
@@ -59,6 +70,7 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -188,7 +200,19 @@ export const WalletAuthButton = () => {
           isVerified,
           isLoading
         });
-        await verifyWallet();
+        
+        // Check if there's an existing verification
+        const { data: existingVerification } = await supabase
+          .from('wallet_auth')
+          .select('nft_verified')
+          .eq('wallet_address', publicKey.toString())
+          .maybeSingle();
+
+        if (!existingVerification?.nft_verified) {
+          await verifyWallet();
+        } else {
+          setIsVerified(true);
+        }
       }
     };
 

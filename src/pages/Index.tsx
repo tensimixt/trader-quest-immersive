@@ -27,9 +27,10 @@ import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
   const { toast } = useToast();
-  const { publicKey } = useWallet();
+  const { publicKey, connected } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
-  const [isCheckingVerification, setIsCheckingVerification] = useState(true);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
+  const [forceCheck, setForceCheck] = useState(0);
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -57,6 +58,7 @@ const Index = () => {
             duration: 3000,
           });
         } else {
+          console.log('Index verification check result:', data);
           setIsVerified(data?.nft_verified || false);
         }
       } catch (err) {
@@ -68,7 +70,13 @@ const Index = () => {
     };
 
     checkVerification();
-  }, [publicKey, toast]);
+  }, [publicKey, toast, forceCheck]);
+
+  useEffect(() => {
+    if (connected) {
+      setForceCheck(prev => prev + 1);
+    }
+  }, [connected]);
 
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
