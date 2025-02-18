@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CircleUserRound, TrendingUp, TrendingDown } from 'lucide-react';
+import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface TraderCardProps {
   trader: string;
@@ -13,6 +14,7 @@ interface TraderCardProps {
     timestamp: Date;
   };
   position: number;
+  rankChange?: number;
 }
 
 const getRankColor = (position: number) => {
@@ -41,7 +43,19 @@ const getRankText = (position: number) => {
   }
 };
 
-const TraderCard = ({ trader, score, status, position }: TraderCardProps) => {
+const getRankChangeColor = (change: number) => {
+  if (change > 0) return "text-emerald-400 bg-emerald-400/10";
+  if (change < 0) return "text-rose-400 bg-rose-400/10";
+  return "text-blue-400 bg-blue-400/10";
+};
+
+const getRankChangeIcon = (change: number) => {
+  if (change > 0) return <ArrowUp className="w-3 h-3" />;
+  if (change < 0) return <ArrowDown className="w-3 h-3" />;
+  return <Minus className="w-3 h-3" />;
+};
+
+const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderCardProps) => {
   const isPositive = status.action === 'BUY';
   
   return (
@@ -81,6 +95,19 @@ const TraderCard = ({ trader, score, status, position }: TraderCardProps) => {
                   #{position} Ranked
                 </span>
               )}
+              
+              {/* Rank Change Indicator */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={cn(
+                  "flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/5",
+                  getRankChangeColor(rankChange)
+                )}
+              >
+                {getRankChangeIcon(rankChange)}
+                <span className="font-bold">{Math.abs(rankChange)}</span>
+              </motion.div>
             </div>
             <span className="text-2xl font-mono text-emerald-400">{score.toLocaleString()}</span>
           </div>
