@@ -41,21 +41,28 @@ serve(async (req) => {
     try {
       const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
 
-      // First, get all NFTs in the collection
+      // First, get all NFTs in the collection using RPC endpoint
       console.log('Fetching collection assets...');
       const collectionResponse = await fetch(
-        `https://api.helius.xyz/v0/token-metadata?api-key=${HELIUS_API_KEY}`,
+        `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: {
-              collection: VALID_COLLECTION_ADDRESS
-            },
-            options: {
-              limit: 10000
+            jsonrpc: "2.0",
+            id: "my-id",
+            method: "getAssetsByGroup",
+            params: {
+              groupKey: "collection",
+              groupValue: VALID_COLLECTION_ADDRESS,
+              page: 1,
+              limit: 1000,
+              options: {
+                showUnverifiedCollections: false,
+                showCollectionMetadata: false
+              }
             }
           }),
         }
@@ -67,12 +74,29 @@ serve(async (req) => {
         throw new Error(`Helius API error: ${collectionResponse.status} - ${errorText}`);
       }
 
-      const collectionAssets = await collectionResponse.json();
+      const collectionData = await collectionResponse.json();
+      const collectionAssets = collectionData.result.items;
       console.log(`Found ${collectionAssets.length} assets in collection`);
       
-      // Get all NFTs owned by the wallet
+      // Get all NFTs owned by the wallet using RPC endpoint
       const walletResponse = await fetch(
-        `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`
+        `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: "my-id",
+            method: "getAssetsByOwner",
+            params: {
+              ownerAddress: walletAddress,
+              page: 1,
+              limit: 1000
+            }
+          })
+        }
       );
 
       if (!walletResponse.ok) {
@@ -81,17 +105,18 @@ serve(async (req) => {
         throw new Error(`Helius API error: ${walletResponse.status} - ${errorText}`);
       }
 
-      const walletAssets = await walletResponse.json();
+      const walletData = await walletResponse.json();
+      const walletAssets = walletData.result.items;
       console.log(`Found ${walletAssets.length} assets in wallet`);
 
       // Create a Set of mint addresses from the collection for faster lookup
-      const collectionMints = new Set(collectionAssets.map(asset => asset.mint));
+      const collectionMints = new Set(collectionAssets.map(asset => asset.id));
       
       // Check if any wallet NFT is in the collection
       const hasRequiredNFT = walletAssets.some(asset => {
-        const isInCollection = collectionMints.has(asset.mint);
+        const isInCollection = collectionMints.has(asset.id);
         if (isInCollection) {
-          console.log(`Found matching NFT: ${asset.name} (${asset.mint})`);
+          console.log(`Found matching NFT: ${asset.content?.metadata?.name} (${asset.id})`);
         }
         return isInCollection;
       });
