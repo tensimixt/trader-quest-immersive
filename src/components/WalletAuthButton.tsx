@@ -8,51 +8,23 @@ import { LogOut, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
 
 export const WalletAuthButton = () => {
-  const { publicKey, connected, connecting, signMessage, disconnect } = useWallet();
+  const { publicKey, connected, signMessage, disconnect } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [attemptingConnection, setAttemptingConnection] = useState(false);
   const { toast } = useToast();
-
-  // Reset states when wallet disconnects
-  useEffect(() => {
-    if (!connected) {
-      setIsVerified(false);
-      setIsLoading(false);
-      setAttemptingConnection(false);
-    }
-  }, [connected]);
-
-  // Handle initial connection attempt
-  useEffect(() => {
-    if (connecting && !attemptingConnection) {
-      setAttemptingConnection(true);
-      toast({
-        title: "Connecting Wallet",
-        description: "Please select your wallet to connect...",
-        duration: 3000,
-      });
-    }
-  }, [connecting, attemptingConnection, toast]);
 
   const handleReset = async () => {
     try {
       setIsLoading(true);
       if (publicKey) {
-        // Delete the verification record first
         const { error } = await supabase
           .from('wallet_auth')
           .delete()
           .eq('wallet_address', publicKey.toString());
         
-        if (error) {
-          console.error('Error deleting wallet auth:', error);
-          throw error;
-        }
+        if (error) throw error;
         
-        // Reset states and disconnect
         setIsVerified(false);
-        setAttemptingConnection(false);
         await disconnect();
         
         toast({
@@ -79,9 +51,8 @@ export const WalletAuthButton = () => {
     
     try {
       setIsLoading(true);
-      console.log('Starting verification process');
       
-      // First check if already verified
+      // Check if already verified
       const { data: existingVerification } = await supabase
         .from('wallet_auth')
         .select('nft_verified')
@@ -90,32 +61,25 @@ export const WalletAuthButton = () => {
 
       if (existingVerification?.nft_verified) {
         setIsVerified(true);
-        setIsLoading(false);
         return;
       }
 
-      // Generate a nonce message
-      const nonce = `Sign this message for authenticating with your wallet: ${Date.now()}`;
+      // Generate nonce message
+      const nonce = `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`;
       const message = new TextEncoder().encode(nonce);
       
-      // Request signature
+      // Get signature
       let signature;
       try {
         signature = await signMessage(message);
       } catch (error) {
-        console.error('Error signing message:', error);
         toast({
           title: "Signature Required",
           description: "Please sign the message to verify wallet ownership",
           variant: "destructive",
           duration: 5000,
         });
-        setIsLoading(false);
         return;
-      }
-
-      if (!signature) {
-        throw new Error('No signature received from wallet');
       }
 
       // Verify NFT ownership
@@ -130,7 +94,6 @@ export const WalletAuthButton = () => {
       if (verificationError) throw verificationError;
 
       if (verificationData?.verified) {
-        // Store verification
         await supabase
           .from('wallet_auth')
           .insert({
@@ -164,17 +127,14 @@ export const WalletAuthButton = () => {
       await disconnect();
     } finally {
       setIsLoading(false);
-      setAttemptingConnection(false);
     }
   }, [publicKey, signMessage, isLoading, disconnect, toast]);
 
-  // Trigger verification when wallet connects
   useEffect(() => {
-    if (connected && publicKey && !isVerified && !isLoading) {
-      console.log('Wallet connected, starting verification');
+    if (connected && publicKey && !isVerified) {
       verifyWallet();
     }
-  }, [connected, publicKey, isVerified, isLoading, verifyWallet]);
+  }, [connected, publicKey, isVerified, verifyWallet]);
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
@@ -194,7 +154,7 @@ export const WalletAuthButton = () => {
           </button>
         )}
       </div>
-      {(isLoading || connecting || attemptingConnection) && (
+      {isLoading && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#9b87f5]"></div>
         </div>
