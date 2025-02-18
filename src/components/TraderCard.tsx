@@ -70,12 +70,6 @@ const getRankChangeIcon = (change: number) => {
 const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderCardProps) => {
   const isPositive = status.action === 'BUY';
   
-  const demoRankChanges = [
-    2, -1, 3, 0, -2, 1, 4, -3, 0, 2,
-    -4, 1, -2, 3, 0, 2, -1, 5, -2, 1,
-    0, 3, -2, 1, -3
-  ];
-  
   const actualRankChange = demoRankChanges[position % demoRankChanges.length];
   
   const demoROI = [
