@@ -1,17 +1,17 @@
+<lov-code>
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Eye, Network, Terminal, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Terminal, Send, History, ArrowLeft, Activity, Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import PredictionCard from '@/components/PredictionCard';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import TraderCard from '@/components/TraderCard';
+import AppHeader from '@/components/AppHeader';
+import ChatTabs from '@/components/ChatTabs';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -790,56 +790,7 @@ const Index = () => {
         animate={{ opacity: 1 }}
         className="container mx-auto p-4 h-screen flex flex-col"
       >
-        <motion.div 
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-center relative h-[10vh] flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
-          <div className="relative">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="relative w-8 h-8">
-                <motion.div
-                  className="absolute inset-0 border-2 border-emerald-400 rounded-full"
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <motion.div
-                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
-                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                />
-                <div className="absolute inset-[8px] flex items-center justify-center">
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  />
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                  />
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 1 }}
-                  />
-                </div>
-              </div>
-              <h1 className="text-4xl font-bold text-white tracking-wider">
-                COPE<span className="text-emerald-400">NET</span>
-              </h1>
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-400/70" />
-              <p className="text-sm text-emerald-400/70 font-mono tracking-[0.2em]">
-                MARKET_INTELLIGENCE_MATRIX
-              </p>
-              <Network className="w-4 h-4 text-emerald-400/70" />
-            </div>
-          </div>
-        </motion.div>
+        <AppHeader />
 
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
           <motion.div
@@ -850,8 +801,64 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs defaultValue="chat" className="flex-1 flex flex-col">
-                <div className="flex items-center gap-4 mb-4">
-                  <TabsList className="bg-black/20 border border-emerald-500/20">
-                    <TabsTrigger value="chat" className="data-[state=active]:bg-emerald-500/20">
-                      <
+              <ChatTabs>
+                <TabsContent value="chat" className="flex-1 flex flex-col">
+                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 mb-4">
+                    {chatHistory.map((item, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className={`mb-2 ${item.isUser ? 'text-right' : 'text-left'}`}
+                      >
+                        <div className={`inline-block rounded-xl px-4 py-2 ${item.isUser ? 'bg-emerald-500/20 text-white' : 'bg-black/20 text-emerald-400'} relative`}>
+                          {item.type === 'intel' && (
+                            <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                              <Activity className="w-4 h-4 text-emerald-400/70" />
+                            </div>
+                          )}
+                          {item.type === 'history' && (
+                            <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                              <Radio className="w-4 h-4 text-emerald-400/70" />
+                            </div>
+                          )}
+                          <span dangerouslySetInnerHTML={{ __html: item.message }} />
+                          <div className="absolute right-2 bottom-1 text-xs text-white/50">{item.timestamp}</div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                  <form onSubmit={handleUserMessage} className="flex items-center gap-2 p-4 border-t border-emerald-500/20">
+                    <Terminal className="w-5 h-5 text-emerald-400" />
+                    <Input
+                      type="text"
+                      placeholder="Enter your message..."
+                      className="flex-1 bg-black/20 border-emerald-500/20 text-white focus-visible:ring-emerald-500"
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                    />
+                    <Button type="submit" className="bg-emerald-500 hover:bg-emerald-400">
+                      <Send className="w-4 h-4 mr-2" />
+                      Send
+                    </Button>
+                  </form>
+                </TabsContent>
+                <TabsContent value="history" className="flex-1 overflow-hidden">
+                  <div className="flex flex-col h-full">
+                    {isHistoryView ? (
+                      <Button variant="ghost" onClick={() => setIsHistoryView(false)} className="self-start m-4">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Chat
+                      </Button>
+                    ) : null}
+                    {performanceData ? (
+                      <div ref={chartRef} className="p-4">
+                        <h3 className="text-lg font-bold text-white mb-4">Monthly Win Rate</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={performanceData.monthlyData}>
+                            <XAxis dataKey="month" stroke="#888888" />
+                            <YAxis stroke="#888888" />
+                            <Tooltip wrapperStyle={{ backgroundColor: '#111', color: '#fff', padding: '10px', borderRadius: '5px' }} />
+                            <Bar dataKey="winRate" fill="#82ca9d" />
+                          </Bar
