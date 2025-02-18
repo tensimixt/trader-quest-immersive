@@ -63,35 +63,6 @@ export const WalletAuthButton = () => {
     }
   };
 
-  useEffect(() => {
-    const checkVerification = async () => {
-      if (connected && publicKey) {
-        const { data, error } = await supabase
-          .from('wallet_auth')
-          .select('nft_verified')
-          .eq('wallet_address', publicKey.toString())
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error checking verification:', error);
-          setIsVerified(false);
-          return;
-        }
-
-        if (!data || !data.nft_verified) {
-          setIsVerified(false);
-          await verifyWallet();
-        } else {
-          setIsVerified(true);
-        }
-      } else {
-        setIsVerified(false);
-      }
-    };
-
-    checkVerification();
-  }, [connected, publicKey]);
-
   const verifyWallet = async () => {
     if (!publicKey || !signMessage) return;
     
@@ -113,6 +84,8 @@ export const WalletAuthButton = () => {
           description: "Please sign the message to verify wallet ownership",
           variant: "destructive"
         });
+        // Disconnect wallet if user rejects signing
+        await disconnect();
         setIsLoading(false);
         return;
       }
@@ -157,6 +130,8 @@ export const WalletAuthButton = () => {
           description: "You need to own an NFT from the required collection to access this feature.",
           duration: 5000,
         });
+        // Disconnect wallet if verification fails
+        await disconnect();
       }
     } catch (error) {
       console.error('Verification error:', error);
@@ -167,10 +142,25 @@ export const WalletAuthButton = () => {
         variant: "destructive"
       });
       setIsVerified(false);
+      // Disconnect wallet on error
+      await disconnect();
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (connected && publicKey) {
+        // Always verify when connecting
+        await verifyWallet();
+      } else {
+        setIsVerified(false);
+      }
+    };
+
+    checkVerification();
+  }, [connected, publicKey]);
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
