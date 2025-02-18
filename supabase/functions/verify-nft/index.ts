@@ -44,7 +44,7 @@ serve(async (req) => {
       // First, get all NFTs in the collection
       console.log('Fetching collection assets...');
       const collectionResponse = await fetch(
-        'https://api.helius.xyz/v0/token-metadata',
+        `https://api.helius.xyz/v0/token-metadata?api-key=${HELIUS_API_KEY}`,
         {
           method: 'POST',
           headers: {
@@ -56,8 +56,7 @@ serve(async (req) => {
             },
             options: {
               limit: 10000
-            },
-            api_key: HELIUS_API_KEY,
+            }
           }),
         }
       );
@@ -73,7 +72,7 @@ serve(async (req) => {
       
       // Get all NFTs owned by the wallet
       const walletResponse = await fetch(
-        'https://api.helius.xyz/v0/addresses/' + walletAddress + '/nfts?api-key=' + HELIUS_API_KEY
+        `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`
       );
 
       if (!walletResponse.ok) {
