@@ -68,7 +68,7 @@ const LeaderboardSection = ({
           </div>
 
           <div className="flex flex-col gap-3 mt-24 my-0">
-            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2 mt-32 mx-0 my-[40px]">
+            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2 mt-32 mx-0 my-[50px]">
               <Button variant="ghost" size="sm" onClick={() => onSort('rank')} className={cn("text-xs font-mono whitespace-nowrap", sortConfig.key === 'rank' && "bg-emerald-500/10 text-emerald-400")}>
                 Rank Change {sortConfig.key === 'rank' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </Button>
