@@ -853,6 +853,5 @@ const Index = () => {
               <Tabs defaultValue="chat" className="flex-1 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
                   <TabsList className="bg-black/20 border border-emerald-500/20">
-                    <TabsTrigger 
-                      value="chat"
-                      className="data-[state=active]:bg-emerald-500/2
+                    <TabsTrigger value="chat" className="data-[state=active]:bg-emerald-500/20">
+                      <
