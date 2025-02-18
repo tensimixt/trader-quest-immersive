@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -62,9 +63,13 @@ const Index = () => {
           console.log('Index verification check result:', data);
           const wasVerifiedBefore = isVerified;
           const isNowVerified = data?.nft_verified || false;
+          
+          // Set verified state
           setIsVerified(isNowVerified);
           
+          // If newly verified, switch to chat tab and show welcome message
           if (!wasVerifiedBefore && isNowVerified) {
+            console.log('Transitioning to chat view...');
             setActiveTab("chat");
             toast({
               title: "Welcome to CODEC",
@@ -82,10 +87,12 @@ const Index = () => {
     };
 
     checkVerification();
-  }, [publicKey, toast, forceCheck, isVerified]);
+  }, [publicKey, connected, toast, forceCheck]);
 
+  // Force check verification when wallet connects
   useEffect(() => {
     if (connected) {
+      console.log('Wallet connected, forcing verification check...');
       setForceCheck(prev => prev + 1);
     }
   }, [connected]);
