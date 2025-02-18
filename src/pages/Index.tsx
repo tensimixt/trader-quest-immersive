@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,6 +7,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { supabase } from '@/utils/supabase';
 
 // Import components
 import { AppHeader } from '@/components/AppHeader';
@@ -28,6 +29,7 @@ import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
   const { toast } = useToast();
+  const { publicKey } = useWallet();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ 
@@ -50,9 +52,29 @@ const Index = () => {
     key: 'rank' | 'roi' | 'score' | null,
     direction: 'asc' | 'desc'
   }>({ key: null, direction: 'asc' });
+  const [isVerified, setIsVerified] = useState(false);
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (!publicKey) {
+        setIsVerified(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .single();
+
+      setIsVerified(data?.nft_verified || false);
+    };
+
+    checkVerification();
+  }, [publicKey]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -283,6 +305,44 @@ const Index = () => {
       duration: 2000,
     });
   };
+
+  if (!publicKey) {
+    return (
+      <div className="min-h-screen overflow-hidden bat-grid">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
+        >
+          <AppHeader />
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
+            <p className="text-emerald-400">Connect your Solana wallet to access the chat and CODEC features</p>
+            <WalletAuthButton />
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!isVerified) {
+    return (
+      <div className="min-h-screen overflow-hidden bat-grid">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
+        >
+          <AppHeader />
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl text-white font-bold">NFT Verification Required</h1>
+            <p className="text-emerald-400">You need to own an NFT from the required collection to access this feature</p>
+            <WalletAuthButton />
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
