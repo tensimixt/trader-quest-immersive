@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export const WalletAuthButton = () => {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, connecting } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -25,11 +25,16 @@ export const WalletAuthButton = () => {
     setIsLoading(true);
     try {
       // First check if we have a recent verification
-      const { data: walletData } = await supabase
+      const { data: walletData, error: fetchError } = await supabase
         .from('wallet_auth')
         .select('nft_verified, last_verification')
         .eq('wallet_address', publicKey.toString())
         .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching wallet data:', fetchError);
+        throw new Error('Failed to fetch wallet verification status');
+      }
 
       const lastVerification = walletData?.last_verification ? new Date(walletData.last_verification) : null;
       const needsVerification = !lastVerification || 
@@ -42,10 +47,19 @@ export const WalletAuthButton = () => {
 
       // Verify NFT ownership
       const { data, error } = await supabase.functions.invoke('verify-nft', {
-        body: { walletAddress: publicKey.toString() }
+        body: { 
+          walletAddress: publicKey.toString() 
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Verification function error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('No data received from verification function');
+      }
 
       setIsVerified(data.verified);
       
@@ -62,7 +76,9 @@ export const WalletAuthButton = () => {
         title: "Verification Error",
         description: "There was an error verifying your NFT ownership. Please try again.",
         duration: 5000,
+        variant: "destructive"
       });
+      setIsVerified(false);
     } finally {
       setIsLoading(false);
     }
@@ -70,8 +86,10 @@ export const WalletAuthButton = () => {
 
   return (
     <div className="relative">
-      <WalletMultiButton className="!bg-emerald-500 hover:!bg-emerald-600" />
-      {isLoading && (
+      <WalletMultiButton 
+        className="!bg-emerald-500 hover:!bg-emerald-600" 
+      />
+      {(isLoading || connecting) && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-400"></div>
         </div>
