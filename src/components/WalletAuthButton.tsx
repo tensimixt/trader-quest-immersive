@@ -7,10 +7,35 @@ import { useToast } from "@/hooks/use-toast";
 import bs58 from 'bs58';
 
 export const WalletAuthButton = () => {
-  const { publicKey, connected, connecting, signMessage } = useWallet();
+  const { publicKey, connected, connecting, signMessage, disconnect } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  const resetVerification = async () => {
+    if (publicKey) {
+      // Clear the verification in the database
+      await supabase
+        .from('wallet_auth')
+        .update({
+          nft_verified: false,
+          last_verification: null
+        })
+        .eq('wallet_address', publicKey.toString());
+      
+      // Reset local state
+      setIsVerified(false);
+      
+      // Disconnect wallet
+      await disconnect();
+      
+      toast({
+        title: "Verification Reset",
+        description: "Please reconnect your wallet to verify again",
+        duration: 3000,
+      });
+    }
+  };
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -106,9 +131,19 @@ export const WalletAuthButton = () => {
 
   return (
     <div className="relative">
-      <WalletMultiButton 
-        className="!bg-emerald-500 hover:!bg-emerald-600" 
-      />
+      <div className="flex items-center gap-2">
+        <WalletMultiButton 
+          className="!bg-emerald-500 hover:!bg-emerald-600" 
+        />
+        {connected && (
+          <button
+            onClick={resetVerification}
+            className="px-3 py-2 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm transition-colors"
+          >
+            Reset
+          </button>
+        )}
+      </div>
       {(isLoading || connecting) && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-400"></div>
