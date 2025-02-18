@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Clock } from 'lucide-react';
@@ -125,23 +124,16 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               )}
             </div>
             
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className={cn(
-                "flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-mono px-2.5 py-1 rounded-full",
-                getRankChangeColor(actualRankChange)
-              )}
+            <motion.span 
+              whileHover={{ scale: 1.02 }}
+              className="text-lg font-mono text-emerald-400/90 font-bold tracking-wider"
             >
-              {getRankChangeIcon(actualRankChange)}
-              <span className="font-medium whitespace-nowrap">
-                {getRankChangeLabel(actualRankChange)}
-              </span>
-            </motion.div>
+              {score.toLocaleString()}
+            </motion.span>
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-x-3 gap-y-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <div className={cn(
                 "p-1.5 rounded-full",
                 isPositive ? "bg-emerald-400/5" : "bg-red-400/5"
@@ -152,36 +144,41 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                   <TrendingDown className="w-3.5 h-3.5 text-red-400/90" />
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-xs uppercase tracking-wide font-mono",
-                  isPositive ? "text-emerald-400/90" : "text-red-400/90"
-                )}>
-                  {status.action} {status.pair}
-                </span>
-                
-                <span className={cn(
-                  "text-xs uppercase tracking-wide font-mono",
-                  demoROI >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
-                )}>
-                  {formatROI(demoROI)}
-                </span>
-                
-                <div className="w-[1px] h-3 bg-white/10 mx-1" />
-                
-                <span className="text-[10px] uppercase tracking-wide font-mono text-white/40 flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-white/40" />
-                  {formatDistanceToNow(status.timestamp, { addSuffix: true })}
-                </span>
-              </div>
+              <span className={cn(
+                "text-xs uppercase tracking-wide font-mono",
+                isPositive ? "text-emerald-400/90" : "text-red-400/90"
+              )}>
+                {status.action} {status.pair}
+              </span>
+              
+              <span className={cn(
+                "text-xs uppercase tracking-wide font-mono",
+                demoROI >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
+              )}>
+                {formatROI(demoROI)}
+              </span>
             </div>
             
-            <motion.span 
-              whileHover={{ scale: 1.02 }}
-              className="text-lg font-mono text-emerald-400/90 font-bold tracking-wider"
-            >
-              {score.toLocaleString()}
-            </motion.span>
+            <div className="flex items-center gap-2 ml-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className={cn(
+                  "flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-mono px-2.5 py-1 rounded-full",
+                  getRankChangeColor(actualRankChange)
+                )}
+              >
+                {getRankChangeIcon(actualRankChange)}
+                <span className="font-medium whitespace-nowrap">
+                  {getRankChangeLabel(actualRankChange)}
+                </span>
+              </motion.div>
+              
+              <span className="text-[10px] uppercase tracking-wide font-mono text-white/40">
+                <Clock className="w-3 h-3 inline-block mr-1.5 text-white/40" />
+                {formatDistanceToNow(status.timestamp, { addSuffix: true })}
+              </span>
+            </div>
           </div>
         </div>
       </div>
