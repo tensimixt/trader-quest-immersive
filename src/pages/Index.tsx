@@ -29,31 +29,46 @@ const Index = () => {
   const { toast } = useToast();
   const { publicKey } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(true);
 
   useEffect(() => {
     const checkVerification = async () => {
+      setIsCheckingVerification(true);
       if (!publicKey) {
         setIsVerified(false);
+        setIsCheckingVerification(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified')
-        .eq('wallet_address', publicKey.toString())
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from('wallet_auth')
+          .select('nft_verified')
+          .eq('wallet_address', publicKey.toString())
+          .maybeSingle();
 
-      if (error) {
-        console.error('Error checking verification:', error);
+        if (error) {
+          console.error('Error checking verification:', error);
+          setIsVerified(false);
+          toast({
+            title: "Verification Check Failed",
+            description: "There was an error checking your verification status.",
+            variant: "destructive",
+            duration: 3000,
+          });
+        } else {
+          setIsVerified(data?.nft_verified || false);
+        }
+      } catch (err) {
+        console.error('Error in verification check:', err);
         setIsVerified(false);
-        return;
+      } finally {
+        setIsCheckingVerification(false);
       }
-
-      setIsVerified(data?.nft_verified || false);
     };
 
     checkVerification();
-  }, [publicKey]);
+  }, [publicKey, toast]);
 
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -309,6 +324,24 @@ const Index = () => {
       duration: 2000,
     });
   };
+
+  if (isCheckingVerification) {
+    return (
+      <div className="min-h-screen overflow-hidden bat-grid">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
+        >
+          <AppHeader />
+          <div className="text-center space-y-4">
+            <div className="w-8 h-8 border-4 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mx-auto" />
+            <p className="text-emerald-400">Checking verification status...</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!publicKey) {
     return (
