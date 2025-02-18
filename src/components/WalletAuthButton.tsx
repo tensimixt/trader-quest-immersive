@@ -16,6 +16,12 @@ export const WalletAuthButton = () => {
   const resetVerification = async () => {
     if (publicKey) {
       try {
+        // Configure Supabase client with the wallet address as the user
+        supabase.auth.setSession({
+          access_token: publicKey.toString(),
+          refresh_token: '',
+        });
+
         const { error } = await supabase
           .from('wallet_auth')
           .delete()
@@ -86,6 +92,12 @@ export const WalletAuthButton = () => {
         return;
       }
 
+      // Set the wallet address as the user for RLS
+      supabase.auth.setSession({
+        access_token: publicKey.toString(),
+        refresh_token: '',
+      });
+
       // Verify NFT ownership
       const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-nft', {
         body: { 
@@ -105,14 +117,8 @@ export const WalletAuthButton = () => {
       console.log('Verification result:', verificationData);
 
       if (verificationData.verified) {
-        // First delete any existing entries
-        await supabase
-          .from('wallet_auth')
-          .delete()
-          .eq('wallet_address', publicKey.toString());
-
-        // Then insert new verification
-        const { error: upsertError } = await supabase
+        // Insert new verification
+        const { error: insertError } = await supabase
           .from('wallet_auth')
           .insert({
             wallet_address: publicKey.toString(),
@@ -120,9 +126,9 @@ export const WalletAuthButton = () => {
             last_verification: new Date().toISOString()
           });
 
-        if (upsertError) {
-          console.error('Error updating verification status:', upsertError);
-          throw upsertError;
+        if (insertError) {
+          console.error('Error updating verification status:', insertError);
+          throw insertError;
         }
 
         setIsVerified(true);
