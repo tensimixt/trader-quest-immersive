@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Terminal, Send, History, ArrowLeft,
@@ -570,6 +570,12 @@ const Index = () => {
   const [isHistoryView, setIsHistoryView] = useState(false);
   const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
   const [performanceData, setPerformanceData] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState<{
+    key: 'rank' | 'roi' | 'time' | null,
+    direction: 'asc' | 'desc'
+  }>({ key: null, direction: 'asc' });
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -700,6 +706,48 @@ const Index = () => {
     }
     setUserInput("");
   };
+
+  const handleSort = (key: 'rank' | 'roi' | 'time') => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const sortedAndFilteredLeaderboard = useMemo(() => {
+    let sortedData = [...leaderboardData];
+
+    if (searchQuery) {
+      sortedData = sortedData.filter(trader =>
+        trader.trader.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        trader.status.pair.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (sortConfig.key) {
+      sortedData.sort((a, b) => {
+        let comparison = 0;
+        
+        switch (sortConfig.key) {
+          case 'rank':
+            comparison = b.score - a.score;
+            break;
+          case 'roi':
+            comparison = b.score - a.score;
+            break;
+          case 'time':
+            comparison = b.status.timestamp.getTime() - a.status.timestamp.getTime();
+            break;
+          default:
+            comparison = 0;
+        }
+
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return sortedData;
+  }, [leaderboardData, searchQuery, sortConfig]);
 
   useEffect(() => {
     const handleChatClick = (e: MouseEvent) => {
@@ -928,37 +976,12 @@ const Index = () => {
                 </TabsContent>
 
                 <TabsContent value="leaderboard" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0">
-                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4 pb-4">
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-4"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <Activity className="w-4 h-4 text-emerald-400" />
-                          <h2 className="text-lg font-bold text-white">Top Traders</h2>
-                        </div>
-                        <div className="h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-                      </motion.div>
-                      
-                      {leaderboardData.map((trader, index) => (
-                        <motion.div
-                          key={trader.trader}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <TraderCard
-                            trader={trader.trader}
-                            score={trader.score}
-                            status={trader.status}
-                            position={index + 1}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                  <Leaderboard
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    handleSort={handleSort}
+                    sortedAndFilteredLeaderboard={sortedAndFilteredLeaderboard}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
