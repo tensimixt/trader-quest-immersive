@@ -64,18 +64,31 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Generate nonce message
-      const nonce = `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`;
-      const message = new TextEncoder().encode(nonce);
+      // Show verification toast
+      toast({
+        title: "Wallet Verification Required",
+        description: "Please sign the message in your wallet to verify ownership",
+        duration: 5000,
+      });
+
+      // Generate verification message
+      const message = new TextEncoder().encode(
+        `Welcome to the platform!\n\n` +
+        `Please sign this message to verify that you own this wallet:\n` +
+        `${publicKey.toString()}\n\n` +
+        `This signature will be used to verify your NFT ownership.\n` +
+        `Timestamp: ${Date.now()}`
+      );
       
-      // Get signature
+      // Request signature
       let signature;
       try {
         signature = await signMessage(message);
       } catch (error) {
+        console.error('Signature error:', error);
         toast({
-          title: "Signature Required",
-          description: "Please sign the message to verify wallet ownership",
+          title: "Verification Failed",
+          description: "You need to sign the message to verify wallet ownership",
           variant: "destructive",
           duration: 5000,
         });
