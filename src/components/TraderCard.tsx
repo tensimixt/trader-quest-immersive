@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
@@ -52,7 +51,7 @@ const getRankChangeColor = (change: number) => {
 const getRankChangeLabel = (change: number) => {
   if (change > 0) return `Moved up ${change} position${change > 1 ? 's' : ''}`;
   if (change < 0) return `Moved down ${Math.abs(change)} position${Math.abs(change) > 1 ? 's' : ''}`;
-  return "Position unchanged";
+  return "Rank unchanged";
 };
 
 const getRankChangeIcon = (change: number) => {
@@ -64,9 +63,16 @@ const getRankChangeIcon = (change: number) => {
 const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderCardProps) => {
   const isPositive = status.action === 'BUY';
   
+  const demoRankChanges = [
+    2, -1, 3, 0, -2, 1, 4, -3, 0, 2,
+    -4, 1, -2, 3, 0, 2, -1, 5, -2, 1,
+    0, 3, -2, 1, -3
+  ];
+  
+  const actualRankChange = demoRankChanges[position % demoRankChanges.length];
+  
   return (
     <div className="glass-card p-4 rounded-xl mb-3 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
-      {/* Ranking Column */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b",
         getRankColor(position)
@@ -123,18 +129,17 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               </span>
             </div>
             
-            {/* Enhanced Rank Change Indicator */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className={cn(
                 "ml-auto flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded-full backdrop-blur-sm border border-white/5",
-                getRankChangeColor(rankChange)
+                getRankChangeColor(actualRankChange)
               )}
             >
-              {getRankChangeIcon(rankChange)}
+              {getRankChangeIcon(actualRankChange)}
               <span className="font-medium whitespace-nowrap">
-                {getRankChangeLabel(rankChange)}
+                {getRankChangeLabel(actualRankChange)}
               </span>
             </motion.div>
           </div>
