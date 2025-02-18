@@ -8,7 +8,7 @@ import { LogOut, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
 
 export const WalletAuthButton = () => {
-  const { publicKey, connected, connecting, signMessage, disconnect } = useWallet();
+  const { publicKey, connected, connecting, signMessage, disconnect, select, wallet } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -160,6 +160,16 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
     }
   };
+
+  // Update wallet provider config to auto-connect
+  useEffect(() => {
+    if (wallet && !connected && !connecting) {
+      console.log('Auto-connecting to selected wallet:', wallet.adapter.name);
+      wallet.adapter.connect().catch((error) => {
+        console.error('Auto-connect error:', error);
+      });
+    }
+  }, [wallet, connected, connecting]);
 
   useEffect(() => {
     const checkVerification = async () => {
