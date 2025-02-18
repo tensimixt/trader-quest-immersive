@@ -15,10 +15,16 @@ export const WalletAuthButton = () => {
   const [shouldVerify, setShouldVerify] = useState(false);
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
+  const isResetting = useRef(false);
 
   const handleReset = async () => {
     try {
+      isResetting.current = true;
       setIsLoading(true);
+      
+      // First disconnect the wallet
+      await disconnect();
+      
       if (publicKey) {
         const { error } = await supabase
           .from('wallet_auth')
@@ -26,18 +32,18 @@ export const WalletAuthButton = () => {
           .eq('wallet_address', publicKey.toString());
         
         if (error) throw error;
-        
-        setIsVerified(false);
-        setUserRejected(false);
-        setShouldVerify(false);
-        await disconnect();
-        
-        toast({
-          title: "Reset Successful",
-          description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
-          duration: 3000,
-        });
       }
+      
+      // Reset all states
+      setIsVerified(false);
+      setUserRejected(false);
+      setShouldVerify(false);
+      
+      toast({
+        title: "Reset Successful",
+        description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
+        duration: 3000,
+      });
     } catch (error) {
       console.error('Reset verification error:', error);
       toast({
@@ -48,11 +54,14 @@ export const WalletAuthButton = () => {
       });
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        isResetting.current = false;
+      }, 1000); // Add a small delay to prevent immediate reconnection
     }
   };
 
   const verifyWallet = useCallback(async () => {
-    if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify) {
+    if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
       return;
     }
     
@@ -160,15 +169,15 @@ export const WalletAuthButton = () => {
   }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
 
   useEffect(() => {
-    // Only trigger verification when wallet is first connected
-    if (connected && publicKey && !isVerified && !userRejected && !shouldVerify) {
+    // Only trigger verification when wallet is first connected and not resetting
+    if (connected && publicKey && !isVerified && !userRejected && !shouldVerify && !isResetting.current) {
       setShouldVerify(true);
     }
   }, [connected, publicKey, isVerified, userRejected]);
 
   useEffect(() => {
     // Separate effect for running the verification
-    if (shouldVerify && !verificationInProgress.current) {
+    if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
       verifyWallet();
     }
   }, [shouldVerify, verifyWallet]);
