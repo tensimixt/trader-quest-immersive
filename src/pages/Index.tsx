@@ -1,4 +1,3 @@
-<lov-code>
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -866,4 +865,21 @@ const Index = () => {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-2
+        <TabsList className="flex justify-center">
+          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+          <Leaderboard
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleSort={handleSort}
+            sortedAndFilteredLeaderboard={sortedAndFilteredLeaderboard}
+          />
+        </TabsContent>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Index;
