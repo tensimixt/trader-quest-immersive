@@ -4,6 +4,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { LogOut, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
 
 export const WalletAuthButton = () => {
@@ -35,6 +36,16 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
     }
+  };
+
+  const handleLogout = async () => {
+    await disconnect();
+    setIsVerified(false);
+    toast({
+      title: "Disconnected",
+      description: "Your wallet has been disconnected",
+      duration: 3000,
+    });
   };
 
   useEffect(() => {
@@ -130,27 +141,29 @@ export const WalletAuthButton = () => {
   };
 
   return (
-    <div className="relative">
-      <div className="flex items-center gap-2">
+    <div className="fixed top-4 right-4 z-50">
+      <div className="flex items-center gap-3">
         <WalletMultiButton 
-          className="!bg-emerald-500 hover:!bg-emerald-600" 
+          className="!bg-[#1A1F2C] hover:!bg-[#403E43] !transition-all !duration-300 !border !border-[#9b87f5]/20 !shadow-lg hover:!shadow-[#9b87f5]/10 !rounded-xl !px-6 !py-3 !h-auto !font-medium tracking-wide backdrop-blur-sm" 
+          startIcon={<Wallet className="w-5 h-5 text-[#9b87f5]" />}
         />
         {connected && (
           <button
-            onClick={resetVerification}
-            className="px-3 py-2 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm transition-colors"
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm"
           >
-            Reset
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
           </button>
         )}
       </div>
       {(isLoading || connecting) && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-400"></div>
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#9b87f5]"></div>
         </div>
       )}
       {isVerified && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full" />
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#9b87f5] rounded-full shadow-[0_0_10px_rgba(155,135,245,0.5)]" />
       )}
     </div>
   );
