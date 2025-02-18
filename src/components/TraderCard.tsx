@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
@@ -11,6 +12,7 @@ interface TraderCardProps {
     action: 'BUY' | 'SELL';
     pair: string;
     timestamp: Date;
+    roi?: number; // Added ROI to status
   };
   position: number;
   rankChange?: number;
@@ -54,6 +56,11 @@ const getRankChangeLabel = (change: number) => {
   return "Rank unchanged";
 };
 
+const formatROI = (roi: number) => {
+  const formattedROI = roi.toFixed(2);
+  return roi > 0 ? `+${formattedROI}%` : `${formattedROI}%`;
+};
+
 const getRankChangeIcon = (change: number) => {
   if (change > 0) return <ArrowUp className="w-3 h-3" />;
   if (change < 0) return <ArrowDown className="w-3 h-3" />;
@@ -70,6 +77,12 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
   ];
   
   const actualRankChange = demoRankChanges[position % demoRankChanges.length];
+  
+  // Demo ROI values for visualization
+  const demoROI = [
+    8.42, -3.21, 12.54, 5.67, -2.18, 15.32, 7.89, -4.56, 9.23, 3.45,
+    -1.98, 6.78, 11.23, -5.43, 4.56, 8.90, -2.34, 13.45, 6.78, -3.21
+  ][position % 20];
   
   return (
     <div className="glass-card p-4 rounded-xl mb-3 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
@@ -112,18 +125,26 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
           </div>
           
           <div className="flex items-center gap-2 mt-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {isPositive ? (
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
               ) : (
                 <TrendingDown className="w-4 h-4 text-red-400" />
               )}
-              <span className={cn(
-                "text-sm font-mono",
-                isPositive ? "text-emerald-400" : "text-red-400"
-              )}>
-                {status.action} {status.pair}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "text-sm font-mono",
+                  isPositive ? "text-emerald-400" : "text-red-400"
+                )}>
+                  {status.action} {status.pair}
+                </span>
+                <span className={cn(
+                  "text-sm font-mono px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/5",
+                  demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
+                )}>
+                  {formatROI(demoROI)}
+                </span>
+              </div>
               <span className="text-xs text-white/50">
                 {formatDistanceToNow(status.timestamp, { addSuffix: true })}
               </span>
