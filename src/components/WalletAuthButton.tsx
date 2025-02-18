@@ -80,7 +80,7 @@ export const WalletAuthButton = () => {
 
         if (!data || !data.nft_verified) {
           setIsVerified(false);
-          verifyWallet();
+          await verifyWallet();
         } else {
           setIsVerified(true);
         }
@@ -135,14 +135,18 @@ export const WalletAuthButton = () => {
 
       // Update verification status in database
       if (data.verified) {
-        await supabase
+        const { error: upsertError } = await supabase
           .from('wallet_auth')
           .upsert({
             wallet_address: publicKey.toString(),
             nft_verified: true,
             last_verification: new Date().toISOString()
-          })
-          .select();
+          });
+
+        if (upsertError) {
+          console.error('Error updating verification status:', upsertError);
+          throw upsertError;
+        }
       }
 
       setIsVerified(data.verified);
