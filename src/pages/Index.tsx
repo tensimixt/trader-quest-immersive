@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Terminal, Send, History, ArrowLeft, Activity, Radio, Eye, Network, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Eye, Network, Terminal, Send, History, ArrowLeft,
+  MessageCircle, Activity, Radio
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -328,8 +331,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T12:00:00')
-    },
-    rankChange: 0
+    }
   },
   {
     trader: "CryptoKage",
@@ -338,8 +340,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T11:30:00')
-    },
-    rankChange: 2
+    }
   },
   {
     trader: "DefiWhale",
@@ -348,8 +349,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T10:45:00')
-    },
-    rankChange: -1
+    }
   },
   {
     trader: "AlphaHunter",
@@ -358,8 +358,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T09:15:00')
-    },
-    rankChange: -2
+    }
   },
   {
     trader: "SatsStack",
@@ -368,8 +367,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T08:30:00')
-    },
-    rankChange: 1
+    }
   },
   {
     trader: "CryptoNinja",
@@ -378,8 +376,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T08:15:00')
-    },
-    rankChange: 3
+    }
   },
   {
     trader: "BlockWizard",
@@ -388,8 +385,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T08:00:00')
-    },
-    rankChange: -1
+    }
   },
   {
     trader: "TradeQueen",
@@ -398,8 +394,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T07:45:00')
-    },
-    rankChange: 0
+    }
   },
   {
     trader: "CoinMaster",
@@ -408,8 +403,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T07:30:00')
-    },
-    rankChange: 2
+    }
   },
   {
     trader: "BitLord",
@@ -418,8 +412,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T07:15:00')
-    },
-    rankChange: -3
+    }
   },
   {
     trader: "CryptoSamurai",
@@ -428,8 +421,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T07:00:00')
-    },
-    rankChange: 1
+    }
   },
   {
     trader: "ChainMaster",
@@ -438,8 +430,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T06:45:00')
-    },
-    rankChange: -2
+    }
   },
   {
     trader: "TradingPro",
@@ -448,8 +439,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T06:30:00')
-    },
-    rankChange: 0
+    }
   },
   {
     trader: "WhaleMaster",
@@ -458,8 +448,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T06:15:00')
-    },
-    rankChange: 3
+    }
   },
   {
     trader: "CryptoKing",
@@ -468,8 +457,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T06:00:00')
-    },
-    rankChange: -1
+    }
   },
   {
     trader: "TokenMage",
@@ -478,8 +466,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T05:45:00')
-    },
-    rankChange: 2
+    }
   },
   {
     trader: "ChartWizard",
@@ -488,8 +475,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T05:30:00')
-    },
-    rankChange: -3
+    }
   },
   {
     trader: "CryptoShark",
@@ -498,8 +484,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T05:15:00')
-    },
-    rankChange: 1
+    }
   },
   {
     trader: "BlockSmith",
@@ -508,8 +493,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T05:00:00')
-    },
-    rankChange: -2
+    }
   },
   {
     trader: "CoinSage",
@@ -518,8 +502,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T04:45:00')
-    },
-    rankChange: 0
+    }
   },
   {
     trader: "TradeOracle",
@@ -528,8 +511,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T04:30:00')
-    },
-    rankChange: 3
+    }
   },
   {
     trader: "BitWizard",
@@ -538,8 +520,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T04:15:00')
-    },
-    rankChange: -1
+    }
   },
   {
     trader: "CryptoMystic",
@@ -548,8 +529,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "ETH/USD",
       timestamp: new Date('2024-02-17T04:00:00')
-    },
-    rankChange: 2
+    }
   },
   {
     trader: "ChainSage",
@@ -558,8 +538,7 @@ const leaderboardData = [
       action: "BUY" as const,
       pair: "SOL/USD",
       timestamp: new Date('2024-02-17T03:45:00')
-    },
-    rankChange: -3
+    }
   },
   {
     trader: "TokenKnight",
@@ -568,8 +547,7 @@ const leaderboardData = [
       action: "SELL" as const,
       pair: "BTC/USD",
       timestamp: new Date('2024-02-17T03:30:00')
-    },
-    rankChange: 1
+    }
   }
 ];
 
@@ -787,7 +765,11 @@ const Index = () => {
         animate={{ opacity: 1 }}
         className="container mx-auto p-4 h-screen flex flex-col"
       >
-        <div className="text-center relative h-[10vh] flex items-center justify-center">
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-center relative h-[10vh] flex items-center justify-center"
+        >
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
           <div className="relative">
             <div className="flex items-center justify-center gap-2 mb-1">
@@ -832,7 +814,7 @@ const Index = () => {
               <Network className="w-4 h-4 text-emerald-400/70" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
           <motion.div
@@ -846,93 +828,134 @@ const Index = () => {
               <Tabs defaultValue="chat" className="flex-1 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
                   <TabsList className="bg-black/20 border border-emerald-500/20">
-                    <TabsTrigger value="chat" className="data-[state=active]:bg-emerald-500/20">
+                    <TabsTrigger 
+                      value="chat"
+                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                    >
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Chat
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="data-[state=active]:bg-emerald-500/20">
-                      <History className="w-4 h-4 mr-2" />
-                      History
+                    <TabsTrigger 
+                      value="codec"
+                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                    >
+                      <Radio className="w-4 h-4 mr-2" />
+                      CODEC
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="leaderboard"
+                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                    >
+                      <Activity className="w-4 h-4 mr-2" />
+                      Leaderboard
                     </TabsTrigger>
                   </TabsList>
                 </div>
 
-                <TabsContent value="chat" className="flex-1 flex flex-col">
-                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 mb-4">
-                    {chatHistory.map((item, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className={`mb-2 ${item.isUser ? 'text-right' : 'text-left'}`}
-                      >
-                        <div className={`inline-block rounded-xl px-4 py-2 ${item.isUser ? 'bg-emerald-500/20 text-white' : 'bg-black/20 text-emerald-400'} relative`}>
-                          {item.type === 'intel' && (
-                            <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
-                              <Activity className="w-4 h-4 text-emerald-400/70" />
-                            </div>
-                          )}
-                          {item.type === 'history' && (
-                            <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
-                              <Radio className="w-4 h-4 text-emerald-400/70" />
-                            </div>
-                          )}
-                          <span dangerouslySetInnerHTML={{ __html: item.message }} />
-                          <div className="absolute right-2 bottom-1 text-xs text-white/50">
-                            {item.timestamp}
+                <TabsContent value="chat" className="flex-1 relative mt-0">
+                  <div className="absolute inset-0 flex flex-col">
+                    <div 
+                      ref={chatContainerRef}
+                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
+                    >
+                      {chatHistory.filter(msg => msg.type !== 'intel').map((msg, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+                            msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
+                            msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+                          }`}>
+                            {msg.type === 'history' && (
+                              <div className="flex items-center gap-2 mb-1">
+                                <History className="w-3 h-3 text-blue-400" />
+                                <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+                              </div>
+                            )}
+                            <p 
+                              className="text-sm text-white font-mono whitespace-pre-line"
+                              dangerouslySetInnerHTML={{ __html: msg.message }}
+                            />
+                            <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      ))}
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+                      <form onSubmit={handleUserMessage} className="relative">
+                        <Input
+                          type="text"
+                          placeholder="Enter command, Master Wayne..."
+                          value={userInput}
+                          onChange={(e) => setUserInput(e.target.value)}
+                          className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
+                        />
+                        <button
+                          type="submit"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </form>
+                    </div>
                   </div>
-                  <form onSubmit={handleUserMessage} className="flex items-center gap-2 p-4 border-t border-emerald-500/20">
-                    <Terminal className="w-5 h-5 text-emerald-400" />
-                    <Input
-                      type="text"
-                      placeholder="Enter your message..."
-                      className="flex-1 bg-black/20 border-emerald-500/20 text-white focus-visible:ring-emerald-500"
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                    />
-                    <Button type="submit" className="bg-emerald-500 hover:bg-emerald-400">
-                      <Send className="w-4 h-4 mr-2" />
-                      Send
-                    </Button>
-                  </form>
                 </TabsContent>
 
-                <TabsContent value="history" className="flex-1 overflow-hidden">
-                  <div className="flex flex-col h-full">
-                    {isHistoryView ? (
-                      <Button variant="ghost" onClick={() => setIsHistoryView(false)} className="self-start m-4">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Chat
-                      </Button>
-                    ) : null}
-                    {performanceData && (
-                      <div ref={chartRef} className="p-4">
-                        <h3 className="text-lg font-bold text-white mb-4">Monthly Win Rate</h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={performanceData.monthlyData}>
-                            <XAxis dataKey="month" stroke="#888888" />
-                            <YAxis stroke="#888888" />
-                            <Tooltip 
-                              wrapperStyle={{ 
-                                backgroundColor: '#111', 
-                                color: '#fff', 
-                                padding: '10px', 
-                                borderRadius: '5px' 
-                              }} 
-                            />
-                            <Bar dataKey="winRate" fill="#82ca9d" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 gap-4 p-4">
-                      {filteredHistory.map((prediction, index) => (
-                        <PredictionCard key={index} {...prediction} />
+                <TabsContent value="codec" className="flex-1 relative mt-0">
+                  <div className="absolute inset-0">
+                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4">
+                      {chatHistory.filter(msg => msg.type === 'intel').map((msg, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className="glass-card p-3 rounded-xl bg-purple-500/20 border-purple-500/30"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Network className="w-3 h-3 text-purple-400" />
+                            <span className="text-[10px] text-purple-400 uppercase tracking-wider">Market Intel</span>
+                          </div>
+                          <p className="text-sm text-white font-mono">{msg.message}</p>
+                          <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="leaderboard" className="flex-1 relative mt-0">
+                  <div className="absolute inset-0">
+                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4 pb-4">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Activity className="w-4 h-4 text-emerald-400" />
+                          <h2 className="text-lg font-bold text-white">Top Traders</h2>
+                        </div>
+                        <div className="h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+                      </motion.div>
+                      
+                      {leaderboardData.map((trader, index) => (
+                        <motion.div
+                          key={trader.trader}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <TraderCard
+                            trader={trader.trader}
+                            score={trader.score}
+                            status={trader.status}
+                            position={index + 1}
+                          />
+                        </motion.div>
                       ))}
                     </div>
                   </div>
@@ -944,20 +967,180 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex flex-col gap-4"
+            className="glass-card rounded-2xl relative overflow-hidden p-6"
           >
-            <div className="glass-card rounded-2xl p-6 flex-1 overflow-y-auto">
-              <h2 className="text-xl font-bold text-white mb-4">Live Trader Activity</h2>
-              {leaderboardData.map((trader, index) => (
-                <TraderCard
-                  key={trader.trader}
-                  trader={trader.trader}
-                  score={trader.score}
-                  status={trader.status}
-                  position={index + 1}
-                  rankChange={trader.rankChange}
-                />
-              ))}
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
+            <div className="h-full flex flex-col">
+              <AnimatePresence mode="sync">
+                <motion.div 
+                  key={isHistoryView ? 'history' : 'intel'}
+                  initial={{ 
+                    opacity: 0,
+                    scale: 0.9,
+                    y: 20
+                  }}
+                  animate={{ 
+                    opacity: 1,
+                    scale: 1,
+                    y: 0,
+                    transition: {
+                      duration: 0.5,
+                      ease: "easeInOut"
+                    }
+                  }}
+                  exit={{ 
+                    opacity: 0,
+                    scale: 1.1,
+                    y: -20,
+                    transition: {
+                      duration: 0.3
+                    }
+                  }}
+                  className="relative"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <motion.div
+                        animate={{
+                          rotate: isHistoryView ? [0, 180, 360] : 0,
+                        }}
+                        transition={{
+                          duration: 0.5,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        {isHistoryView ? (
+                          <History className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Eye className="w-5 h-5 text-emerald-400" />
+                        )}
+                      </motion.div>
+                      <motion.div
+                        layout
+                        className="relative"
+                      >
+                        <motion.h2 
+                          className="text-xl font-bold text-white flex items-center gap-2"
+                        >
+                          {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
+                          />
+                        </motion.h2>
+                        <motion.div 
+                          className="absolute -bottom-1 left-0 right-0 h-[2px]"
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.1 }}
+                          style={{
+                            background: isHistoryView 
+                              ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
+                              : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
+                          }}
+                        />
+                      </motion.div>
+                    </div>
+                    {isHistoryView && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsHistoryView(false)}
+                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Intel
+                      </Button>
+                    )}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                <AnimatePresence mode="wait">
+                  {filteredHistory.length > 0 && (
+                    <div>
+                      {filteredHistory.map((prediction, index) => (
+                        <motion.div
+                          key={`history-${index}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <PredictionCard
+                            symbol={prediction.market}
+                            prediction={prediction.direction === "LONG" ? "up" : "down"}
+                            confidence={prediction.confidence}
+                            timestamp={prediction.timestamp}
+                            traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                  {!isHistoryView && predictions.map((prediction, index) => (
+                    <motion.div
+                      key={`intel-${index}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <PredictionCard
+                        symbol={prediction.market}
+                        prediction={prediction.direction === "LONG" ? "up" : "down"}
+                        confidence={prediction.confidence}
+                        timestamp={prediction.timestamp}
+                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                      />
+                    </motion.div>
+                  ))}
+                  {performanceData && (
+                    <motion.div
+                      ref={chartRef}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                    >
+                      <div className="h-[300px] mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={performanceData.monthlyData}>
+                            <XAxis 
+                              dataKey="month" 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                            />
+                            <YAxis 
+                              stroke="#10B981"
+                              tick={{ fill: '#10B981', fontSize: 12 }}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(0,0,0,0.8)', 
+                                border: '1px solid rgba(16,185,129,0.2)',
+                                borderRadius: '8px'
+                              }}
+                            />
+                            <Bar
+                              dataKey="winRate"
+                              fill="#10B981"
+                              opacity={0.8}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="text-center text-emerald-400 font-mono">
+                        Monthly Win Rate Analysis
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </motion.div>
         </div>
