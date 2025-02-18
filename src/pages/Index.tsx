@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -316,8 +317,8 @@ const Index = () => {
           <div className="text-center space-y-4">
             <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
             <p className="text-emerald-400">Connect your Solana wallet to access the chat and CODEC features</p>
-            <WalletAuthButton />
           </div>
+          <WalletAuthButton />
         </motion.div>
       </div>
     );
@@ -335,8 +336,8 @@ const Index = () => {
           <div className="text-center space-y-4">
             <h1 className="text-2xl text-white font-bold">NFT Verification Required</h1>
             <p className="text-emerald-400">You need to own an NFT from the required collection to access this feature</p>
-            <WalletAuthButton />
           </div>
+          <WalletAuthButton />
         </motion.div>
       </div>
     );
@@ -347,8 +348,9 @@ const Index = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto p-4 h-screen flex flex-col"
+        className="container mx-auto p-4 h-screen flex flex-col relative"
       >
+        <WalletAuthButton />
         <AppHeader />
         
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
