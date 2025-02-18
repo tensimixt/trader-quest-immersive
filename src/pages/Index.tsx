@@ -532,6 +532,18 @@ const leaderboardData = [
   }
 ];
 
+const generatePerformanceData = (calls: any[], year: string) => {
+  const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+    month: format(new Date(year, i), 'MMM'),
+    winRate: Math.floor(Math.random() * 30) + 70 // Random win rate between 70-100%
+  }));
+  
+  return {
+    monthlyData,
+    overall: Math.floor(monthlyData.reduce((acc, month) => acc + month.winRate, 0) / 12)
+  };
+};
+
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
@@ -554,7 +566,6 @@ const Index = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Add new state for search and sort
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{
     key: 'rank' | 'roi' | 'score' | null,
@@ -571,11 +582,14 @@ const Index = () => {
         if (sortConfig.key === 'rank') {
           const aChange = demoRankChanges[leaderboardData.indexOf(a) % demoRankChanges.length];
           const bChange = demoRankChanges[leaderboardData.indexOf(b) % demoRankChanges.length];
-          return sortConfig.direction === 'asc' ? aChange - bChange : bChange - aChange;
+          
+          return sortConfig.direction === 'asc' 
+            ? bChange - aChange 
+            : aChange - bChange;
         }
         if (sortConfig.key === 'roi') {
-          const aROI = demoROI[leaderboardData.indexOf(a) % 20];
-          const bROI = demoROI[leaderboardData.indexOf(b) % 20];
+          const aROI = demoROI[leaderboardData.indexOf(a) % demoROI.length];
+          const bROI = demoROI[leaderboardData.indexOf(b) % demoROI.length];
           return sortConfig.direction === 'asc' ? aROI - bROI : bROI - aROI;
         }
         if (sortConfig.key === 'score') {
@@ -601,7 +615,7 @@ const Index = () => {
 
     toast({
       title: `Sorted by ${key}`,
-      description: `Order: ${sortConfig.direction === 'asc' ? 'ascending' : 'descending'}`,
+      description: `Order: ${sortConfig.direction === 'asc' ? 'highest first' : 'lowest first'}`,
       duration: 2000,
     });
   };
