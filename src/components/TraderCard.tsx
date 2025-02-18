@@ -85,100 +85,138 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
   ][position % 20];
   
   return (
-    <div className="glass-card p-8 rounded-xl mb-6 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card p-10 rounded-2xl mb-8 hover:bg-white/5 transition-all duration-500 group relative overflow-hidden"
+    >
       {/* Enhanced side indicator with gradient */}
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b",
+        "absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b",
         getRankColor(position)
       )} />
       
-      <div className="flex items-start gap-8">
+      {/* Ambient glow effect */}
+      <div className={cn(
+        "absolute -inset-2 opacity-30 blur-3xl transition-opacity duration-500 group-hover:opacity-50",
+        getRankColor(position)
+      )} />
+      
+      <div className="flex items-start gap-10 relative">
         {/* Avatar section with enhanced visual effects */}
         <div className="relative pt-1">
           <div className={cn(
-            "absolute -inset-3 rounded-full bg-gradient-to-r blur-md group-hover:blur-lg transition-all duration-300",
+            "absolute -inset-4 rounded-full bg-gradient-to-r blur-xl group-hover:blur-2xl transition-all duration-500",
             getRankColor(position)
           )} />
-          <div className="relative">
-            <CircleUserRound className="w-16 h-16 text-white/90" />
+          <motion.div 
+            className="relative"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <CircleUserRound className="w-20 h-20 text-white/90" />
             <div className={cn(
-              "absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-sm font-mono font-bold",
+              "absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-sm font-mono font-bold border border-white/10",
               getRankText(position)
             )}>
               {position}
             </div>
-          </div>
+          </motion.div>
         </div>
         
-        <div className="flex-1 space-y-5">
+        <div className="flex-1 space-y-6">
           {/* Header section with trader info */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h3 className="text-2xl font-bold text-white tracking-tight">{trader}</h3>
               {position <= 3 && (
-                <span className={cn(
-                  "text-xs font-mono px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-sm font-medium",
-                  getRankText(position)
-                )}>
+                <motion.span 
+                  whileHover={{ scale: 1.05 }}
+                  className={cn(
+                    "text-xs font-mono px-5 py-2 rounded-full bg-black/40 backdrop-blur-md font-medium border border-white/10",
+                    getRankText(position)
+                  )}
+                >
                   #{position} Ranked
-                </span>
+                </motion.span>
               )}
             </div>
-            <span className="text-3xl font-mono text-emerald-400 font-bold tracking-tight">
+            <motion.span 
+              whileHover={{ scale: 1.05 }}
+              className="text-3xl font-mono text-emerald-400 font-bold tracking-tight px-5 py-2 rounded-full bg-emerald-400/5 backdrop-blur-md border border-emerald-400/20"
+            >
               {score.toLocaleString()}
-            </span>
+            </motion.span>
           </div>
           
           {/* Trading activity section with enhanced spacing */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-5">
                 {isPositive ? (
-                  <div className="p-2 rounded-full bg-emerald-400/10">
+                  <motion.div 
+                    whileHover={{ scale: 1.1 }}
+                    className="p-3 rounded-full bg-emerald-400/10 border border-emerald-400/20 backdrop-blur-md"
+                  >
                     <TrendingUp className="w-6 h-6 text-emerald-400" />
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="p-2 rounded-full bg-red-400/10">
+                  <motion.div 
+                    whileHover={{ scale: 1.1 }}
+                    className="p-3 rounded-full bg-red-400/10 border border-red-400/20 backdrop-blur-md"
+                  >
                     <TrendingDown className="w-6 h-6 text-red-400" />
-                  </div>
+                  </motion.div>
                 )}
-                <span className={cn(
-                  "text-base font-mono font-medium px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
-                  isPositive ? "text-emerald-400 bg-emerald-400/5" : "text-red-400 bg-red-400/5"
-                )}>
+                <motion.span
+                  whileHover={{ scale: 1.02 }}
+                  className={cn(
+                    "text-base font-mono font-medium px-5 py-2.5 rounded-full backdrop-blur-md border",
+                    isPositive 
+                      ? "text-emerald-400 bg-emerald-400/5 border-emerald-400/20" 
+                      : "text-red-400 bg-red-400/5 border-red-400/20"
+                  )}
+                >
                   {status.action} {status.pair}
-                </span>
+                </motion.span>
               </div>
               
               {/* ROI indicator with enhanced visual treatment */}
               <motion.span
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
+                whileHover={{ scale: 1.05 }}
                 className={cn(
-                  "text-base font-mono font-medium px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
-                  demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
+                  "text-base font-mono font-medium px-5 py-2.5 rounded-full backdrop-blur-md border",
+                  demoROI >= 0 
+                    ? "text-emerald-400 bg-emerald-400/5 border-emerald-400/20" 
+                    : "text-rose-400 bg-rose-400/5 border-rose-400/20"
                 )}
               >
                 {formatROI(demoROI)}
               </motion.span>
             </div>
             
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between mt-3">
               {/* Enhanced timestamp with better spacing */}
-              <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm">
-                <Clock className="w-4 h-4 text-white/60" />
-                <span className="text-sm font-medium text-white/60">
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10"
+              >
+                <Clock className="w-4 h-4 text-white/70" />
+                <span className="text-sm font-medium text-white/70">
                   {formatDistanceToNow(status.timestamp, { addSuffix: true })}
                 </span>
-              </div>
+              </motion.div>
               
               {/* Rank change indicator with enhanced animation and spacing */}
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 100 }}
                 className={cn(
-                  "flex items-center gap-2.5 text-sm font-mono px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
+                  "flex items-center gap-3 text-sm font-mono px-5 py-2.5 rounded-full backdrop-blur-md border border-white/10",
                   getRankChangeColor(actualRankChange)
                 )}
               >
@@ -191,7 +229,7 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
