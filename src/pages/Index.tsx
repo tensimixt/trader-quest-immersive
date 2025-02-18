@@ -12,6 +12,7 @@ import {
   marketIntelligence, marketCalls, demoRankChanges, 
   demoROI, leaderboardData, formatJapanTime 
 } from '@/constants/marketData';
+import { format } from 'date-fns-tz';
 
 const generatePerformanceData = (calls: any[], year: string) => {
   const monthlyData = Array.from({ length: 12 }, (_, i) => ({
