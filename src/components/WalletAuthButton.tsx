@@ -24,29 +24,33 @@ export const WalletAuthButton = () => {
       
       // Store the wallet address before disconnecting
       const currentWalletAddress = publicKey?.toString();
+      console.log('Current wallet address:', currentWalletAddress);
       
       if (!currentWalletAddress) {
-        throw new Error("No wallet address found to reset");
+        console.error('No wallet address found for reset');
+        toast({
+          title: "Reset Error",
+          description: "No wallet address found. Please make sure your wallet is connected.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
       }
 
       // First clear the database record
-      const { error: deleteError } = await supabase
+      console.log('Attempting to delete record for wallet:', currentWalletAddress);
+      const { error: deleteError, data: deleteData } = await supabase
         .from('wallet_auth')
         .delete()
-        .eq('wallet_address', currentWalletAddress);
-      
-      if (deleteError) throw deleteError;
-      
-      // Verify the record was deleted
-      const { data: checkData } = await supabase
-        .from('wallet_auth')
-        .select('*')
         .eq('wallet_address', currentWalletAddress)
-        .maybeSingle();
-        
-      if (checkData) {
-        throw new Error("Failed to delete wallet authentication record");
+        .select();
+      
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
       }
+      
+      console.log('Delete response:', deleteData);
       
       // Then disconnect the wallet
       await disconnect();
@@ -61,19 +65,19 @@ export const WalletAuthButton = () => {
         description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
         duration: 3000,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Reset verification error:', error);
       toast({
         title: "Reset Error",
-        description: "There was an error resetting your wallet data. Please try again.",
+        description: error?.message || "There was an error resetting your wallet data. Please try again.",
         variant: "destructive",
-        duration: 3000,
+        duration: 5000,
       });
     } finally {
       setIsLoading(false);
       setTimeout(() => {
         isResetting.current = false;
-      }, 1000); // Add a small delay to prevent immediate reconnection
+      }, 1000);
     }
   };
 
