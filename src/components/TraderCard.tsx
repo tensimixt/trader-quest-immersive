@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { demoRankChanges } from '@/data/demoData';
 
 interface TraderCardProps {
   trader: string;
