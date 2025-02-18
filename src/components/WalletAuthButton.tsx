@@ -11,15 +11,29 @@ export const WalletAuthButton = () => {
   const { publicKey, connected, connecting, signMessage, disconnect } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [attemptingConnection, setAttemptingConnection] = useState(false);
   const { toast } = useToast();
 
-  // Reset verification when wallet disconnects
+  // Reset states when wallet disconnects
   useEffect(() => {
     if (!connected) {
       setIsVerified(false);
       setIsLoading(false);
+      setAttemptingConnection(false);
     }
   }, [connected]);
+
+  // Handle initial connection attempt
+  useEffect(() => {
+    if (connecting && !attemptingConnection) {
+      setAttemptingConnection(true);
+      toast({
+        title: "Connecting Wallet",
+        description: "Please select your wallet to connect...",
+        duration: 3000,
+      });
+    }
+  }, [connecting, attemptingConnection, toast]);
 
   const handleReset = async () => {
     try {
@@ -38,6 +52,7 @@ export const WalletAuthButton = () => {
         
         // Reset states and disconnect
         setIsVerified(false);
+        setAttemptingConnection(false);
         await disconnect();
         
         toast({
@@ -64,6 +79,7 @@ export const WalletAuthButton = () => {
     
     try {
       setIsLoading(true);
+      console.log('Starting verification process');
       
       // First check if already verified
       const { data: existingVerification } = await supabase
@@ -148,12 +164,14 @@ export const WalletAuthButton = () => {
       await disconnect();
     } finally {
       setIsLoading(false);
+      setAttemptingConnection(false);
     }
   }, [publicKey, signMessage, isLoading, disconnect, toast]);
 
   // Trigger verification when wallet connects
   useEffect(() => {
     if (connected && publicKey && !isVerified && !isLoading) {
+      console.log('Wallet connected, starting verification');
       verifyWallet();
     }
   }, [connected, publicKey, isVerified, isLoading, verifyWallet]);
@@ -176,7 +194,7 @@ export const WalletAuthButton = () => {
           </button>
         )}
       </div>
-      {(isLoading || connecting) && (
+      {(isLoading || connecting || attemptingConnection) && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#9b87f5]"></div>
         </div>
