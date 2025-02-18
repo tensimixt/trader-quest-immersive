@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -22,7 +21,6 @@ export const WalletAuthButton = () => {
       isResetting.current = true;
       setIsLoading(true);
       
-      // Store the wallet address before disconnecting
       const currentWalletAddress = publicKey?.toString();
       console.log('Current wallet address:', currentWalletAddress);
       
@@ -37,7 +35,6 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // First verify if the record exists
       const { data: existingRecord, error: checkError } = await supabase
         .from('wallet_auth')
         .select('*')
@@ -50,7 +47,6 @@ export const WalletAuthButton = () => {
       }
 
       if (existingRecord) {
-        // Clear the database record
         console.log('Attempting to delete record for wallet:', currentWalletAddress);
         const { error: deleteError, data: deleteData } = await supabase
           .from('wallet_auth')
@@ -68,10 +64,8 @@ export const WalletAuthButton = () => {
         console.log('No record found to delete for wallet:', currentWalletAddress);
       }
       
-      // Then disconnect the wallet
       await disconnect();
       
-      // Reset all states
       setIsVerified(false);
       setUserRejected(false);
       setShouldVerify(false);
@@ -87,7 +81,7 @@ export const WalletAuthButton = () => {
         title: "Reset Error",
         description: error?.message || "There was an error resetting your wallet data. Please try again.",
         variant: "destructive",
-        duration: 5000,
+        duration: 3000,
       });
     } finally {
       setIsLoading(false);
@@ -106,7 +100,6 @@ export const WalletAuthButton = () => {
       verificationInProgress.current = true;
       setIsLoading(true);
       
-      // Check if already verified
       const { data: existingVerification, error: verificationError } = await supabase
         .from('wallet_auth')
         .select('nft_verified')
@@ -136,7 +129,6 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Generate verification message
       const message = new TextEncoder().encode(
         `Welcome to the platform!\n\n` +
         `Please sign this message to verify that you own this wallet:\n` +
@@ -145,7 +137,6 @@ export const WalletAuthButton = () => {
         `Timestamp: ${Date.now()}`
       );
       
-      // Request signature
       let signature;
       try {
         signature = await signMessage(message);
@@ -165,7 +156,6 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Only proceed with verification if we got a valid signature
       if (signature) {
         console.log('Calling verify-nft function with signature');
         const { data: verificationData, error: verificationFnError } = await supabase.functions.invoke('verify-nft', {
@@ -190,23 +180,26 @@ export const WalletAuthButton = () => {
         console.log('Verification response:', verificationData);
 
         if (verificationData?.verified) {
-          const { error: insertError } = await supabase
+          const { error: upsertError } = await supabase
             .from('wallet_auth')
-            .insert({
+            .upsert({
               wallet_address: publicKey.toString(),
               nft_verified: true,
               last_verification: new Date().toISOString()
+            }, {
+              onConflict: 'wallet_address',
+              ignoreDuplicates: false
             });
 
-          if (insertError) {
-            console.error('Insert error:', insertError);
+          if (upsertError) {
+            console.error('Upsert error:', upsertError);
             toast({
               title: "Database Error",
               description: "Error saving verification status. Please try again.",
               variant: "destructive",
               duration: 3000,
             });
-            throw insertError;
+            throw upsertError;
           }
 
           setIsVerified(true);
@@ -244,17 +237,13 @@ export const WalletAuthButton = () => {
   }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
 
   useEffect(() => {
-    // Only trigger verification when wallet is first connected and not resetting
     if (connected && publicKey && !isVerified && !userRejected && !shouldVerify && !isResetting.current) {
-      console.log('Setting shouldVerify to true');
       setShouldVerify(true);
     }
   }, [connected, publicKey, isVerified, userRejected]);
 
   useEffect(() => {
-    // Separate effect for running the verification
     if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
-      console.log('Running verification');
       verifyWallet();
     }
   }, [shouldVerify, verifyWallet]);
