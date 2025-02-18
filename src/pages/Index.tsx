@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { supabase } from '@/utils/supabase';
+import { supabase } from '@/integrations/supabase/client'; // Fixed import path
+import { WalletAuthButton } from '@/components/WalletAuthButton'; // Added import
 
 // Import components
 import { AppHeader } from '@/components/AppHeader';

@@ -82,3 +82,5 @@ export const WalletAuthButton = () => {
     </div>
   );
 };
+
+export default WalletAuthButton;
