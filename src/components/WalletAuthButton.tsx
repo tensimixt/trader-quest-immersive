@@ -13,24 +13,13 @@ export const WalletAuthButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const clearWalletStates = useCallback(async () => {
-    // Clear any stored wallet states
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('walletAdapter');
-      localStorage.removeItem('wallet');
-      sessionStorage.clear();
-    }
-    setIsVerified(false);
-    setIsLoading(false);
-    await disconnect();
-  }, [disconnect]);
-
   // Reset verification when wallet disconnects
   useEffect(() => {
     if (!connected) {
-      clearWalletStates();
+      setIsVerified(false);
+      setIsLoading(false);
     }
-  }, [connected, clearWalletStates]);
+  }, [connected]);
 
   const handleReset = async () => {
     try {
@@ -50,17 +39,17 @@ export const WalletAuthButton = () => {
         
         console.log('Successfully deleted wallet authentication data');
         
-        // Clear all wallet states and disconnect
-        await clearWalletStates();
+        // Reset states
+        setIsVerified(false);
+        
+        // Disconnect wallet
+        await disconnect();
         
         toast({
           title: "Reset Successful",
           description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
           duration: 3000,
         });
-
-        // Force a clean reload
-        window.location.reload();
       }
     } catch (error) {
       console.error('Reset verification error:', error);
@@ -82,6 +71,28 @@ export const WalletAuthButton = () => {
     try {
       console.log('Starting verification process...', publicKey.toString());
       
+      // Request message signing first
+      console.log('Requesting message signing...');
+      const message = new TextEncoder().encode(
+        `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
+      );
+      
+      let signedMessage;
+      try {
+        signedMessage = await signMessage(message);
+        console.log('Message signed successfully:', bs58.encode(signedMessage));
+      } catch (error) {
+        console.error('Error signing message:', error);
+        toast({
+          title: "Signature Required",
+          description: "Please sign the message to verify wallet ownership",
+          variant: "destructive",
+          duration: 5000,
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Check database verification status
       const { data: existingVerification, error: checkError } = await supabase
         .from('wallet_auth')
@@ -96,31 +107,7 @@ export const WalletAuthButton = () => {
 
       console.log('Existing verification:', existingVerification);
 
-      // Always proceed with verification if no existing record or not verified
-      if (!existingVerification || !existingVerification.nft_verified) {
-        // Request message signing
-        console.log('Requesting message signing...');
-        const message = new TextEncoder().encode(
-          `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
-        );
-        
-        let signedMessage;
-        try {
-          signedMessage = await signMessage(message);
-          console.log('Message signed successfully:', bs58.encode(signedMessage));
-        } catch (error) {
-          console.error('Error signing message:', error);
-          toast({
-            title: "Signature Required",
-            description: "Please sign the message to verify wallet ownership",
-            variant: "destructive",
-            duration: 5000,
-          });
-          setIsLoading(false);
-          await disconnect();
-          return;
-        }
-
+      if (!existingVerification?.nft_verified) {
         // Verify NFT ownership
         console.log('Calling verify-nft function...');
         const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-nft', {
@@ -201,18 +188,7 @@ export const WalletAuthButton = () => {
           isLoading
         });
         
-        // Check if there's an existing verification
-        const { data: existingVerification } = await supabase
-          .from('wallet_auth')
-          .select('nft_verified')
-          .eq('wallet_address', publicKey.toString())
-          .maybeSingle();
-
-        if (!existingVerification?.nft_verified) {
-          await verifyWallet();
-        } else {
-          setIsVerified(true);
-        }
+        await verifyWallet();
       }
     };
 
