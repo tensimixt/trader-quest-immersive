@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { CircleUserRound, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -85,24 +85,24 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
   ][position % 20];
   
   return (
-    <div className="glass-card p-6 rounded-xl mb-4 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
+    <div className="glass-card p-8 rounded-xl mb-6 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
       {/* Enhanced side indicator with gradient */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b",
         getRankColor(position)
       )} />
       
-      <div className="flex items-start gap-6">
+      <div className="flex items-start gap-8">
         {/* Avatar section with enhanced visual effects */}
         <div className="relative pt-1">
           <div className={cn(
-            "absolute -inset-2 rounded-full bg-gradient-to-r blur-md group-hover:blur-lg transition-all duration-300",
+            "absolute -inset-3 rounded-full bg-gradient-to-r blur-md group-hover:blur-lg transition-all duration-300",
             getRankColor(position)
           )} />
           <div className="relative">
-            <CircleUserRound className="w-14 h-14 text-white/90" />
+            <CircleUserRound className="w-16 h-16 text-white/90" />
             <div className={cn(
-              "absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-xs font-mono font-bold",
+              "absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-sm font-mono font-bold",
               getRankText(position)
             )}>
               {position}
@@ -110,37 +110,37 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
           </div>
         </div>
         
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 space-y-5">
           {/* Header section with trader info */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-white tracking-tight">{trader}</h3>
+            <div className="flex items-center gap-4">
+              <h3 className="text-2xl font-bold text-white tracking-tight">{trader}</h3>
               {position <= 3 && (
                 <span className={cn(
-                  "text-xs font-mono px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm font-medium",
+                  "text-xs font-mono px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-sm font-medium",
                   getRankText(position)
                 )}>
                   #{position} Ranked
                 </span>
               )}
             </div>
-            <span className="text-2xl font-mono text-emerald-400 font-bold tracking-tight">
+            <span className="text-3xl font-mono text-emerald-400 font-bold tracking-tight">
               {score.toLocaleString()}
             </span>
           </div>
           
           {/* Trading activity section with enhanced spacing */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2.5">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
                 {isPositive ? (
-                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  <TrendingUp className="w-6 h-6 text-emerald-400" />
                 ) : (
-                  <TrendingDown className="w-5 h-5 text-red-400" />
+                  <TrendingDown className="w-6 h-6 text-red-400" />
                 )}
                 <span className={cn(
-                  "text-sm font-mono font-medium",
-                  isPositive ? "text-emerald-400" : "text-red-400"
+                  "text-base font-mono font-medium px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/10",
+                  isPositive ? "text-emerald-400 bg-emerald-400/5" : "text-red-400 bg-red-400/5"
                 )}>
                   {status.action} {status.pair}
                 </span>
@@ -148,32 +148,37 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
               
               {/* ROI indicator with enhanced visual treatment */}
               <span className={cn(
-                "text-sm font-mono px-3 py-1 rounded-full backdrop-blur-sm border border-white/10",
+                "text-base font-mono px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/10",
                 demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
               )}>
                 {formatROI(demoROI)}
               </span>
             </div>
             
-            {/* Enhanced timestamp with better spacing */}
-            <span className="text-xs text-white/60 font-medium">
-              {formatDistanceToNow(status.timestamp, { addSuffix: true })}
-            </span>
-            
-            {/* Rank change indicator with enhanced animation and spacing */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={cn(
-                "ml-auto flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/10",
-                getRankChangeColor(actualRankChange)
-              )}
-            >
-              {getRankChangeIcon(actualRankChange)}
-              <span className="font-medium whitespace-nowrap tracking-tight">
-                {getRankChangeLabel(actualRankChange)}
-              </span>
-            </motion.div>
+            <div className="flex items-center justify-between">
+              {/* Enhanced timestamp with better spacing */}
+              <div className="flex items-center gap-2 text-white/60">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {formatDistanceToNow(status.timestamp, { addSuffix: true })}
+                </span>
+              </div>
+              
+              {/* Rank change indicator with enhanced animation and spacing */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={cn(
+                  "flex items-center gap-2 text-sm font-mono px-4 py-2 rounded-full backdrop-blur-sm border border-white/10",
+                  getRankChangeColor(actualRankChange)
+                )}
+              >
+                {getRankChangeIcon(actualRankChange)}
+                <span className="font-medium whitespace-nowrap tracking-tight">
+                  {getRankChangeLabel(actualRankChange)}
+                </span>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>
