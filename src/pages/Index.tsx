@@ -1,4 +1,3 @@
-<lov-code>
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Network, Terminal, Send, History, ArrowLeft, MessageCircle, Activity, Radio, Search } from 'lucide-react';
@@ -868,4 +867,4 @@ const Index = () => {
                     userInput={userInput}
                     onInputChange={(value) => setUserInput(value)}
                     onSubmit={handleUserMessage}
-                    
+                    containerRef={
