@@ -11,19 +11,18 @@ export const WalletAuthButton = () => {
   const { publicKey, connected, connecting, signMessage, disconnect, select, wallet } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
   const { toast } = useToast();
 
   const handleReset = async () => {
     try {
       setIsLoading(true);
       if (publicKey) {
-        // Configure Supabase client with the wallet address as the user
         supabase.auth.setSession({
           access_token: publicKey.toString(),
           refresh_token: '',
         });
 
-        // Delete all records for this wallet address
         const { error } = await supabase
           .from('wallet_auth')
           .delete()
@@ -36,6 +35,7 @@ export const WalletAuthButton = () => {
         
         console.log('Successfully deleted wallet authentication data');
         setIsVerified(false);
+        setHasAttemptedVerification(false);
         
         toast({
           title: "Reset Successful",
@@ -43,9 +43,8 @@ export const WalletAuthButton = () => {
           duration: 3000,
         });
 
-        // Disconnect after showing the toast
         await disconnect();
-        window.location.reload(); // Ensure clean state
+        window.location.reload();
       }
     } catch (error) {
       console.error('Reset verification error:', error);
@@ -65,7 +64,22 @@ export const WalletAuthButton = () => {
     
     setIsLoading(true);
     try {
-      // Request message signing first
+      // Check if already verified first
+      const { data: existingVerification } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (existingVerification?.nft_verified) {
+        setIsVerified(true);
+        setHasAttemptedVerification(true);
+        console.log('Already verified, skipping verification process');
+        setIsLoading(false);
+        return;
+      }
+
+      // Request message signing
       const message = new TextEncoder().encode(
         `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
       );
@@ -86,20 +100,6 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // After successful signing, check if already verified
-      const { data: existingVerification } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified')
-        .eq('wallet_address', publicKey.toString())
-        .maybeSingle();
-
-      if (existingVerification?.nft_verified) {
-        setIsVerified(true);
-        console.log('Already verified, skipping verification process');
-        setIsLoading(false);
-        return;
-      }
-
       // Set the wallet address as the user for RLS
       supabase.auth.setSession({
         access_token: publicKey.toString(),
@@ -115,21 +115,20 @@ export const WalletAuthButton = () => {
       });
 
       console.log('Verification response:', verificationData, verificationError);
+      setHasAttemptedVerification(true);
 
       if (verificationError) {
         console.error('Verification function error:', verificationError);
         throw verificationError;
       }
 
-      // Check if verificationData exists and has the verified property
       if (!verificationData || typeof verificationData.verified === 'undefined') {
         console.error('Invalid verification response:', verificationData);
         throw new Error('Invalid verification response from server');
       }
 
-      if (verificationData.verified === true) {  // Explicitly check for true
+      if (verificationData.verified === true) {
         console.log('NFT verification successful, updating database...');
-        // Insert new verification
         const { error: insertError } = await supabase
           .from('wallet_auth')
           .insert({
@@ -184,11 +183,11 @@ export const WalletAuthButton = () => {
   }, [wallet, connected, connecting]);
 
   useEffect(() => {
-    if (connected && publicKey && !isVerified && !isLoading) {
+    if (connected && publicKey && !isVerified && !hasAttemptedVerification && !isLoading) {
       console.log('Triggering verification check...');
       verifyWallet();
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, isVerified, hasAttemptedVerification, isLoading]);
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
