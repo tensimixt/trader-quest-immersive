@@ -105,24 +105,28 @@ export const WalletAuthButton = () => {
       });
 
       // Verify NFT ownership
+      console.log('Calling verify-nft function...');
       const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-nft', {
         body: { 
           walletAddress: publicKey.toString()
         }
       });
 
+      console.log('Verification response:', verificationData, verificationError);
+
       if (verificationError) {
         console.error('Verification function error:', verificationError);
         throw verificationError;
       }
 
-      if (!verificationData) {
-        throw new Error('No data received from verification function');
+      // Check if verificationData exists and has the verified property
+      if (!verificationData || typeof verificationData.verified === 'undefined') {
+        console.error('Invalid verification response:', verificationData);
+        throw new Error('Invalid verification response from server');
       }
 
-      console.log('Verification result:', verificationData);
-
-      if (verificationData.verified) {
+      if (verificationData.verified === true) {  // Explicitly check for true
+        console.log('NFT verification successful, updating database...');
         // Insert new verification
         const { error: insertError } = await supabase
           .from('wallet_auth')
@@ -144,6 +148,7 @@ export const WalletAuthButton = () => {
           duration: 3000,
         });
       } else {
+        console.log('NFT verification failed:', verificationData);
         setIsVerified(false);
         toast({
           title: "NFT Verification Failed",
