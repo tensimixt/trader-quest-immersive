@@ -21,6 +21,7 @@ interface ChatSectionProps {
   onSubmit: (e: React.FormEvent) => void;
   containerRef: React.RefObject<HTMLDivElement>;
   showIntel?: boolean;
+  isThinking?: boolean;
 }
 
 const ChatSection = ({ 
@@ -29,7 +30,8 @@ const ChatSection = ({
   onUserInput, 
   onSubmit, 
   containerRef,
-  showIntel = false 
+  showIntel = false,
+  isThinking = false
 }: ChatSectionProps) => {
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -57,6 +59,7 @@ const ChatSection = ({
               type={msg.type}
             />
           ))}
+        {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
       {!showIntel && (
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">

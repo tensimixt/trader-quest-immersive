@@ -29,7 +29,7 @@ import { generatePerformanceData } from '@/utils/performanceUtils';
 const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ 
     message: string, 
     timestamp: string, 
@@ -111,11 +111,15 @@ const Index = () => {
       type: 'chat' 
     }]);
 
+    setIsThinking(true);
     const query = userInput.toLowerCase();
     const isWinRateQuery = query.includes('win rate');
     const isCallsQuery = query.includes('calls') || query.includes('trades');
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
+
+    // Simulate some processing time
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (isHsakaQuery) {
       setIsHistoryView(true);
@@ -173,6 +177,8 @@ const Index = () => {
         });
       }
     }
+
+    setIsThinking(false);
     setUserInput("");
   };
 
@@ -330,6 +336,7 @@ const Index = () => {
                     onUserInput={setUserInput}
                     onSubmit={handleUserMessage}
                     containerRef={chatContainerRef}
+                    isThinking={isThinking}
                   />
                 </TabsContent>
 
@@ -341,6 +348,7 @@ const Index = () => {
                     onSubmit={handleUserMessage}
                     containerRef={chatContainerRef}
                     showIntel={true}
+                    isThinking={isThinking}
                   />
                 </TabsContent>
 
