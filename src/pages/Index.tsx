@@ -1,3 +1,4 @@
+<lov-code>
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -593,12 +594,6 @@ const Index = () => {
     });
   };
 
-  const scrollToChart = () => {
-    if (chartRef.current) {
-      chartRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   useEffect(() => {
     const interval = setInterval(() => {
       const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
@@ -841,4 +836,7 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="
+            className="flex flex-col"
+          >
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-white mb-2">
