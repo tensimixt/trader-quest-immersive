@@ -4,6 +4,7 @@ import {
   Eye, Network, Send, History, ArrowLeft,
   MessageCircle, Activity, Radio, Search
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 
