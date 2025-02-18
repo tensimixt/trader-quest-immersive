@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Eye, Network, Terminal, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Search
-} from 'lucide-react';
+import { Eye, Network, Terminal, Send, History, ArrowLeft, MessageCircle, Activity, Radio, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +10,8 @@ import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import TraderCard from '@/components/TraderCard';
 import { cn } from '@/lib/utils';
+import CopenetHeader from '@/components/CopenetHeader';
+import ChatInterface from '@/components/ChatInterface';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -554,7 +553,6 @@ const Index = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Add new state for search and sort
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{
     key: 'rank' | 'roi' | 'score' | null,
@@ -798,56 +796,7 @@ const Index = () => {
         animate={{ opacity: 1 }}
         className="container mx-auto p-4 h-screen flex flex-col"
       >
-        <motion.div 
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-center relative h-[10vh] flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 blur-xl" />
-          <div className="relative">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="relative w-8 h-8">
-                <motion.div
-                  className="absolute inset-0 border-2 border-emerald-400 rounded-full"
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <motion.div
-                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
-                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                />
-                <div className="absolute inset-[8px] flex items-center justify-center">
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  />
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                  />
-                  <motion.div
-                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 1 }}
-                  />
-                </div>
-              </div>
-              <h1 className="text-4xl font-bold text-white tracking-wider">
-                COPE<span className="text-emerald-400">NET</span>
-              </h1>
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-400/70" />
-              <p className="text-sm text-emerald-400/70 font-mono tracking-[0.2em]">
-                MARKET_INTELLIGENCE_MATRIX
-              </p>
-              <Network className="w-4 h-4 text-emerald-400/70" />
-            </div>
-          </div>
-        </motion.div>
+        <CopenetHeader />
 
         <div className="grid grid-cols-2 gap-4 h-[90vh]">
           <motion.div
@@ -886,55 +835,13 @@ const Index = () => {
                 </div>
 
                 <TabsContent value="chat" className="flex-1 relative mt-0">
-                  <div className="absolute inset-0 flex flex-col">
-                    <div 
-                      ref={chatContainerRef}
-                      className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
-                    >
-                      {chatHistory.filter(msg => msg.type !== 'intel').map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: msg.isUser ? 20 : -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-                            msg.type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-                            msg.isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-                          }`}>
-                            {msg.type === 'history' && (
-                              <div className="flex items-center gap-2 mb-1">
-                                <History className="w-3 h-3 text-blue-400" />
-                                <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-                              </div>
-                            )}
-                            <p 
-                              className="text-sm text-white font-mono whitespace-pre-line"
-                              dangerouslySetInnerHTML={{ __html: msg.message }}
-                            />
-                            <p className="text-[10px] text-emerald-400/50 mt-1">{msg.timestamp}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-                      <form onSubmit={handleUserMessage} className="relative">
-                        <Input
-                          type="text"
-                          placeholder="Enter command, Master Wayne..."
-                          value={userInput}
-                          onChange={(e) => setUserInput(e.target.value)}
-                          className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </form>
-                    </div>
-                  </div>
+                  <ChatInterface
+                    messages={chatHistory}
+                    userInput={userInput}
+                    onInputChange={(value) => setUserInput(value)}
+                    onSubmit={handleUserMessage}
+                    containerRef={chatContainerRef}
+                  />
                 </TabsContent>
 
                 <TabsContent value="codec" className="flex-1 relative mt-0">
