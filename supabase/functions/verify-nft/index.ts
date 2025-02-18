@@ -23,20 +23,54 @@ serve(async (req) => {
       throw new Error('Wallet address is required')
     }
 
+    console.log(`Verifying NFTs for wallet: ${walletAddress}`);
+
     // Fetch NFTs owned by the wallet using Helius API
     const response = await fetch(
-      `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`
-    )
+      `https://api.helius.xyz/v1/nft-events?api-key=${HELIUS_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: {
+            ownerAddress: walletAddress,
+            types: ["NFT_MINT"],
+          },
+          options: {
+            limit: 100,
+          },
+        }),
+      }
+    );
     
-    const nfts = await response.json()
+    const { result: nfts } = await response.json();
     
-    // Replace this with your actual NFT collection address
-    const TARGET_COLLECTION = "YOUR_NFT_COLLECTION_ADDRESS"
+    // Replace with your actual collection address and verification details
+    const VALID_CREATOR_ADDRESS = "YOUR_CREATOR_ADDRESS";
+    const VALID_COLLECTION_ADDRESS = "YOUR_COLLECTION_ADDRESS";
     
-    // Check if the wallet owns an NFT from the target collection
-    const hasRequiredNFT = nfts.some((nft: any) => 
-      nft.collection?.address === TARGET_COLLECTION
-    )
+    console.log(`Checking NFTs against creator: ${VALID_CREATOR_ADDRESS} and collection: ${VALID_COLLECTION_ADDRESS}`);
+
+    // Check if any NFT matches our criteria
+    const hasRequiredNFT = nfts.some((nftEvent: any) => {
+      const nft = nftEvent.nft;
+      
+      // Check for creator address
+      const hasValidCreator = nft.creators?.some((creator: any) => 
+        creator.address === VALID_CREATOR_ADDRESS && creator.verified
+      );
+
+      // Check for collection address
+      const hasValidCollection = nft.collection?.address === VALID_COLLECTION_ADDRESS;
+
+      console.log(`NFT ${nft.name}: Creator valid: ${hasValidCreator}, Collection valid: ${hasValidCollection}`);
+      
+      return hasValidCreator && hasValidCollection;
+    });
+
+    console.log(`NFT verification result: ${hasRequiredNFT}`);
 
     // Update the wallet_auth table
     const supabaseAdmin = createClient(
@@ -55,11 +89,17 @@ serve(async (req) => {
     if (updateError) throw updateError
 
     return new Response(
-      JSON.stringify({ verified: hasRequiredNFT }),
+      JSON.stringify({ 
+        verified: hasRequiredNFT,
+        message: hasRequiredNFT ? 
+          "NFT verification successful" : 
+          "No matching NFTs found in the required collection"
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
+    console.error('Verification error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
