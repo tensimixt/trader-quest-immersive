@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,6 +12,9 @@ import PredictionCard from '@/components/PredictionCard';
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import TraderCard from '@/components/TraderCard';
+import { formatJapanTime } from '@/utils/date';
+import { generatePerformanceData } from '@/utils/performance';
+import type { MarketCall, ChatMessage, SortConfig } from '@/types/market';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -21,10 +23,6 @@ const marketIntelligence = [
   "JP Morgan updates crypto trading desk infrastructure",
   "Major DeFi protocol reports record-breaking TVL"
 ];
-
-const formatJapanTime = (date: Date) => {
-  return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
-};
 
 const marketCalls = [
   {
@@ -536,16 +534,16 @@ const Index = () => {
   const { toast } = useToast();
   const [currentInsight, setCurrentInsight] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [predictions, setPredictions] = useState([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [predictions, setPredictions] = useState<MarketCall[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isHistoryView, setIsHistoryView] = useState(false);
-  const [filteredHistory, setFilteredHistory] = useState(marketCalls.slice(0, 6));
-  const [performanceData, setPerformanceData] = useState(null);
-  const chatContainerRef = useRef(null);
-  const chartRef = useRef(null);
+  const [filteredHistory, setFilteredHistory] = useState<MarketCall[]>(marketCalls.slice(0, 6));
+  const [performanceData, setPerformanceData] = useState<any>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState({ 
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
     key: null, 
     direction: 'asc' 
   });
@@ -579,7 +577,7 @@ const Index = () => {
     return filtered;
   }, [searchQuery, sortConfig]);
 
-  const handleSort = (key) => {
+  const handleSort = (key: 'rank' | 'roi' | 'score') => {
     setSortConfig(current => ({
       key,
       direction: 
@@ -594,6 +592,191 @@ const Index = () => {
       duration: 2000,
     });
   };
+
+  const scrollToChart = () => {
+    if (chartRef.current) {
+      chartRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
+      const newCall = {
+        ...randomCall,
+        timestamp: formatJapanTime(new Date())
+      };
+      setPredictions(prev => [newCall, ...prev].slice(0, 100));
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
+      const timestamp = formatJapanTime(new Date());
+      setChatHistory(prev => [...prev, { 
+        message: randomIntel, 
+        timestamp, 
+        type: 'intel'
+      }]);
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: 'smooth',
+        block: 'end',
+      };
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
+  useEffect(() => {
+    if (!isHistoryView) {
+      setPerformanceData(null);
+      setFilteredHistory(marketCalls.slice(0, 6));
+    }
+  }, [isHistoryView]);
+
+  const handleUserMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim()) return;
+
+    const timestamp = formatJapanTime(new Date());
+    
+    setChatHistory(prev => [...prev, { 
+      message: userInput, 
+      timestamp, 
+      isUser: true, 
+      type: 'chat' 
+    }]);
+
+    const query = userInput.toLowerCase();
+    const isWinRateQuery = query.includes('win rate');
+    const isCallsQuery = query.includes('calls') || query.includes('trades');
+    const isHsakaQuery = query.includes('hsaka');
+    const year = '2024';
+
+    if (isHsakaQuery) {
+      setIsHistoryView(true);
+      
+      if (isWinRateQuery) {
+        const performance = generatePerformanceData(marketCalls, year);
+        setPerformanceData(performance);
+        setFilteredHistory([]); // Clear the calls when showing win rate
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: true,
+            showCalls: false
+          }
+        }]);
+
+        toast({
+          title: "Performance Data Found",
+          description: `Win rate for ${year}: ${performance.overall}%`,
+          duration: 3000,
+        });
+      }
+      else if (isCallsQuery) {
+        const filteredCalls = marketCalls.filter(call => 
+          call.traderProfile.toLowerCase() === 'hsaka'
+        ).map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
+        }));
+
+        setFilteredHistory(filteredCalls);
+        setPerformanceData(null);
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: false,
+            showCalls: true
+          }
+        }]);
+
+        toast({
+          title: "Trading Calls Found",
+          description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
+          duration: 3000,
+        });
+      }
+    }
+    setUserInput("");
+  };
+
+  useEffect(() => {
+    const handleChatClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.dataset.messageId) {
+        const messageId = target.dataset.messageId;
+        const clickedMessage = chatHistory.find(msg => 
+          msg.message.includes(messageId)
+        );
+
+        if (clickedMessage?.contextData) {
+          setIsHistoryView(true);
+          if (clickedMessage.contextData.showChart) {
+            const year = '2024';
+            const performance = generatePerformanceData(marketCalls, year);
+            setPerformanceData(performance);
+            setFilteredHistory([]); // Clear the calls when showing chart
+            setTimeout(() => {
+              if (chartRef.current) {
+                chartRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          } else if (clickedMessage.contextData.showCalls) {
+            const filteredCalls = marketCalls.filter(call => 
+              call.traderProfile.toLowerCase() === 'hsaka'
+            ).map(call => ({
+              market: call.market,
+              direction: call.direction,
+              confidence: call.confidence,
+              roi: call.roi,
+              trader: call.traderProfile,
+              timestamp: call.timestamp
+            }));
+            setPerformanceData(null);
+            setFilteredHistory(filteredCalls);
+            setTimeout(() => {
+              const firstCard = document.querySelector('.prediction-card');
+              if (firstCard) {
+                firstCard.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
+        }
+      }
+    };
+
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer) {
+      chatContainer.addEventListener('click', handleChatClick);
+    }
+
+    return () => {
+      if (chatContainer) {
+        chatContainer.removeEventListener('click', handleChatClick);
+      }
+    };
+  }, [chatHistory]);
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
@@ -616,61 +799,46 @@ const Index = () => {
                   animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                 />
+                <motion.div
+                  className="absolute inset-[4px] border-2 border-emerald-400/80 rounded-full"
+                  animate={{ scale: [1.1, 1, 1.1], opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                />
+                <div className="absolute inset-[8px] flex items-center justify-center">
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  />
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                  />
+                  <motion.div
+                    className="w-1 h-1 bg-emerald-400 rounded-full ml-1"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 1 }}
+                  />
+                </div>
               </div>
               <h1 className="text-4xl font-bold text-white tracking-wider">
                 COPE<span className="text-emerald-400">NET</span>
               </h1>
             </div>
+            <div className="flex items-center justify-center gap-2">
+              <Eye className="w-4 h-4 text-emerald-400/70" />
+              <p className="text-sm text-emerald-400/70 font-mono tracking-[0.2em]">
+                MARKET_INTELLIGENCE_MATRIX
+              </p>
+              <Network className="w-4 h-4 text-emerald-400/70" />
+            </div>
           </div>
         </motion.div>
 
-        <Tabs defaultValue="leaderboard" className="flex-1 flex flex-col">
-          <TabsList className="flex justify-center mb-4">
-            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="leaderboard" className="flex-1 relative mt-0">
-            <div className="mb-4 flex gap-2">
-              <Input
-                type="search"
-                placeholder="Search traders..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-xs"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleSort('rank')}
-              >
-                <Activity className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleSort('roi')}
-              >
-                <Radio className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedAndFilteredLeaderboard.map((trader, index) => (
-                <TraderCard
-                  key={`${trader.trader}-${index}`}
-                  trader={trader.trader}
-                  score={trader.score}
-                  status={trader.status}
-                  position={index + 1}
-                  rankChange={demoRankChanges[index % demoRankChanges.length]}
-                />
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </motion.div>
-    </div>
-  );
-};
-
-export default Index;
+        <div className="grid grid-cols-2 gap-4 h-[90vh]">
+          {/* Left Column */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="
