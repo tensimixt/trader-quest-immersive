@@ -64,11 +64,32 @@ export const WalletAuthButton = () => {
   };
 
   useEffect(() => {
-    if (connected && publicKey) {
-      verifyWallet();
-    } else {
-      setIsVerified(false);
-    }
+    const checkVerification = async () => {
+      if (connected && publicKey) {
+        const { data, error } = await supabase
+          .from('wallet_auth')
+          .select('nft_verified')
+          .eq('wallet_address', publicKey.toString())
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking verification:', error);
+          setIsVerified(false);
+          return;
+        }
+
+        if (!data || !data.nft_verified) {
+          setIsVerified(false);
+          verifyWallet();
+        } else {
+          setIsVerified(true);
+        }
+      } else {
+        setIsVerified(false);
+      }
+    };
+
+    checkVerification();
   }, [connected, publicKey]);
 
   const verifyWallet = async () => {
@@ -81,8 +102,9 @@ export const WalletAuthButton = () => {
         `Verify wallet ownership for ${publicKey.toString()}\nTimestamp: ${Date.now()}`
       );
       
+      let signedMessage;
       try {
-        const signedMessage = await signMessage(message);
+        signedMessage = await signMessage(message);
         console.log('Message signed successfully:', bs58.encode(signedMessage));
       } catch (error) {
         console.error('Error signing message:', error);
@@ -92,27 +114,6 @@ export const WalletAuthButton = () => {
           variant: "destructive"
         });
         setIsLoading(false);
-        return;
-      }
-
-      // Check if we have a recent verification
-      const { data: walletData, error: fetchError } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified, last_verification')
-        .eq('wallet_address', publicKey.toString())
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error fetching wallet data:', fetchError);
-        throw new Error('Failed to fetch wallet verification status');
-      }
-
-      const lastVerification = walletData?.last_verification ? new Date(walletData.last_verification) : null;
-      const needsVerification = !lastVerification || 
-        (new Date().getTime() - lastVerification.getTime()) > 1000 * 60 * 60; // 1 hour
-
-      if (!needsVerification && walletData?.nft_verified) {
-        setIsVerified(true);
         return;
       }
 
@@ -130,6 +131,18 @@ export const WalletAuthButton = () => {
 
       if (!data) {
         throw new Error('No data received from verification function');
+      }
+
+      // Update verification status in database
+      if (data.verified) {
+        await supabase
+          .from('wallet_auth')
+          .upsert({
+            wallet_address: publicKey.toString(),
+            nft_verified: true,
+            last_verification: new Date().toISOString()
+          })
+          .select();
       }
 
       setIsVerified(data.verified);

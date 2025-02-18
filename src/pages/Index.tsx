@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -31,6 +30,31 @@ const Index = () => {
   const { publicKey } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
 
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (!publicKey) {
+        setIsVerified(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking verification:', error);
+        setIsVerified(false);
+        return;
+      }
+
+      setIsVerified(data?.nft_verified || false);
+    };
+
+    checkVerification();
+  }, [publicKey]);
+
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ 
@@ -56,25 +80,6 @@ const Index = () => {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const checkVerification = async () => {
-      if (!publicKey) {
-        setIsVerified(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified')
-        .eq('wallet_address', publicKey.toString())
-        .single();
-
-      setIsVerified(data?.nft_verified || false);
-    };
-
-    checkVerification();
-  }, [publicKey]);
 
   useEffect(() => {
     const interval = setInterval(() => {
