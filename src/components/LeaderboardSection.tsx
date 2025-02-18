@@ -36,22 +36,10 @@ const LeaderboardSection = ({
         const rankChangeA = demoRankChanges[indexA] || 0;
         const rankChangeB = demoRankChanges[indexB] || 0;
         
-        // For descending order (default), highest positive changes first
-        if (sortConfig.direction === 'desc') {
-          // First, compare the absolute values to group positive and negative
-          if (rankChangeA >= 0 && rankChangeB < 0) return -1;
-          if (rankChangeA < 0 && rankChangeB >= 0) return 1;
-          // Then sort by the actual values within each group
-          return rankChangeB - rankChangeA;
-        }
-        // For ascending order, lowest negative changes first
-        else {
-          // First, compare the absolute values to group positive and negative
-          if (rankChangeA >= 0 && rankChangeB < 0) return 1;
-          if (rankChangeA < 0 && rankChangeB >= 0) return -1;
-          // Then sort by the actual values within each group
-          return rankChangeA - rankChangeB;
-        }
+        // For descending order (default), positive changes first, then negative
+        return sortConfig.direction === 'desc' ? 
+          (rankChangeB - rankChangeA) : // Higher numbers first
+          (rankChangeA - rankChangeB);  // Lower numbers first
       });
     }
     return traders;
