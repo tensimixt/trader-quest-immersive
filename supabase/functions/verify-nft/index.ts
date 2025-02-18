@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
+import { Connection, PublicKey } from 'https://esm.sh/@solana/web3.js@1.87.6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,33 +26,26 @@ serve(async (req) => {
 
     console.log(`Verifying NFTs for wallet: ${walletAddress}`);
 
-    // Use the getAssetsByOwner endpoint instead of nft-events
-    const response = await fetch(
-      `https://api.helius.xyz/v0/addresses/${walletAddress}/nfts?api-key=${HELIUS_API_KEY}`,
+    // Connect to Helius RPC
+    const connection = new Connection(`https://rpc-devnet.helius.xyz/?api-key=${HELIUS_API_KEY}`);
+    
+    // Get all token accounts for the wallet
+    const accounts = await connection.getParsedTokenAccountsByOwner(
+      new PublicKey(walletAddress),
       {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        }
+        programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), // Token Program ID
       }
     );
-    
-    if (!response.ok) {
-      console.error('Helius API error:', await response.text());
-      throw new Error('Failed to fetch NFTs from Helius');
-    }
 
-    const nfts = await response.json();
+    console.log(`Found ${accounts.value.length} token accounts`);
     
     const VALID_COLLECTION_ADDRESS = "EE35ugdX9PvMgsSs9Zck6y5HmsiYxgnLM76AhSXN3kkY";
     
-    console.log(`Checking ${nfts.length} NFTs against collection: ${VALID_COLLECTION_ADDRESS}`);
-
-    // Check if any NFT matches our criteria
-    const hasRequiredNFT = nfts.some((nft: any) => {
-      const collectionAddress = nft.collection?.address;
-      console.log(`Checking NFT: ${nft.name}, Collection: ${collectionAddress}`);
-      return collectionAddress === VALID_COLLECTION_ADDRESS;
+    // Check if any token account belongs to our collection
+    const hasRequiredNFT = accounts.value.some(account => {
+      const mint = account.account.data.parsed.info.mint;
+      console.log(`Checking mint: ${mint}`);
+      return mint === VALID_COLLECTION_ADDRESS;
     });
 
     console.log(`NFT verification result: ${hasRequiredNFT}`);
