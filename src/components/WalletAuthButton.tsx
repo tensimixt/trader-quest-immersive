@@ -24,28 +24,41 @@ export const WalletAuthButton = () => {
         })
         .eq('wallet_address', publicKey.toString());
       
-      // Reset local state
       setIsVerified(false);
-      
-      // Disconnect wallet
-      await disconnect();
-      
-      toast({
-        title: "Verification Reset",
-        description: "Please reconnect your wallet to verify again",
-        duration: 3000,
-      });
     }
   };
 
   const handleLogout = async () => {
-    await disconnect();
-    setIsVerified(false);
-    toast({
-      title: "Disconnected",
-      description: "Your wallet has been disconnected",
-      duration: 3000,
-    });
+    try {
+      setIsLoading(true);
+      // First reset the verification status
+      await resetVerification();
+      
+      // Then disconnect the wallet
+      await disconnect();
+      
+      // Clear all local state
+      setIsVerified(false);
+      
+      toast({
+        title: "Logged Out Successfully",
+        description: "Your wallet has been disconnected and verification reset",
+        duration: 3000,
+      });
+      
+      // Force reload the page to ensure clean state
+      window.location.reload();
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout Error",
+        description: "There was an error during logout. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
