@@ -33,6 +33,15 @@ const ChatSection = ({
 }: ChatSectionProps) => {
   return (
     <div className="absolute inset-0 flex flex-col">
+      {showIntel && (
+        <div className="flex items-center gap-2 mb-4">
+          <Network className="w-5 h-5 text-[#9b87f5]" />
+          <span className="text-[#9b87f5] font-medium tracking-wider text-sm">
+            MARKET INTEL
+          </span>
+          <div className="w-2 h-2 rounded-full bg-[#9b87f5] animate-pulse" />
+        </div>
+      )}
       <div 
         ref={containerRef}
         className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
