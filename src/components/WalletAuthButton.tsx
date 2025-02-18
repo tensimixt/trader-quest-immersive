@@ -37,20 +37,42 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // First clear the database record
-      console.log('Attempting to delete record for wallet:', currentWalletAddress);
-      const { error: deleteError, data: deleteData } = await supabase
+      // First verify if the record exists
+      const { data: existingRecord, error: checkError } = await supabase
         .from('wallet_auth')
-        .delete()
+        .select('*')
         .eq('wallet_address', currentWalletAddress)
-        .select();
-      
-      if (deleteError) {
-        console.error('Delete error:', deleteError);
-        throw deleteError;
+        .single();
+
+      if (checkError) {
+        console.error('Check error:', checkError);
+        if (checkError.code === 'PGRST116') {
+          console.log('No record found to delete');
+        } else {
+          throw checkError;
+        }
       }
-      
-      console.log('Delete response:', deleteData);
+
+      if (existingRecord) {
+        // Clear the database record
+        console.log('Attempting to delete record for wallet:', currentWalletAddress);
+        const { error: deleteError, data: deleteData } = await supabase
+          .from('wallet_auth')
+          .delete()
+          .eq('wallet_address', currentWalletAddress)
+          .select();
+        
+        if (deleteError) {
+          console.error('Delete error:', deleteError);
+          throw deleteError;
+        }
+        
+        console.log('Delete response:', deleteData);
+        
+        if (!deleteData || deleteData.length === 0) {
+          throw new Error('Failed to delete wallet authentication record');
+        }
+      }
       
       // Then disconnect the wallet
       await disconnect();
