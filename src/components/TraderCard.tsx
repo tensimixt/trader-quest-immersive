@@ -49,6 +49,12 @@ const getRankChangeColor = (change: number) => {
   return "text-blue-400 bg-blue-400/10";
 };
 
+const getRankChangeLabel = (change: number) => {
+  if (change > 0) return `Moved up ${change} position${change > 1 ? 's' : ''}`;
+  if (change < 0) return `Moved down ${Math.abs(change)} position${Math.abs(change) > 1 ? 's' : ''}`;
+  return "Position unchanged";
+};
+
 const getRankChangeIcon = (change: number) => {
   if (change > 0) return <ArrowUp className="w-3 h-3" />;
   if (change < 0) return <ArrowDown className="w-3 h-3" />;
@@ -95,38 +101,42 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
                   #{position} Ranked
                 </span>
               )}
-              
-              {/* Rank Change Indicator */}
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={cn(
-                  "flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/5",
-                  getRankChangeColor(rankChange)
-                )}
-              >
-                {getRankChangeIcon(rankChange)}
-                <span className="font-bold">{Math.abs(rankChange)}</span>
-              </motion.div>
             </div>
             <span className="text-2xl font-mono text-emerald-400">{score.toLocaleString()}</span>
           </div>
           
-          <div className="flex items-center gap-2 mt-1">
-            {isPositive ? (
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <TrendingDown className="w-4 h-4 text-red-400" />
-            )}
-            <span className={cn(
-              "text-sm font-mono",
-              isPositive ? "text-emerald-400" : "text-red-400"
-            )}>
-              {status.action} {status.pair}
-            </span>
-            <span className="text-xs text-white/50">
-              {formatDistanceToNow(status.timestamp, { addSuffix: true })}
-            </span>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2">
+              {isPositive ? (
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-400" />
+              )}
+              <span className={cn(
+                "text-sm font-mono",
+                isPositive ? "text-emerald-400" : "text-red-400"
+              )}>
+                {status.action} {status.pair}
+              </span>
+              <span className="text-xs text-white/50">
+                {formatDistanceToNow(status.timestamp, { addSuffix: true })}
+              </span>
+            </div>
+            
+            {/* Enhanced Rank Change Indicator */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={cn(
+                "ml-auto flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded-full backdrop-blur-sm border border-white/5",
+                getRankChangeColor(rankChange)
+              )}
+            >
+              {getRankChangeIcon(rankChange)}
+              <span className="font-medium whitespace-nowrap">
+                {getRankChangeLabel(rankChange)}
+              </span>
+            </motion.div>
           </div>
         </div>
       </div>
