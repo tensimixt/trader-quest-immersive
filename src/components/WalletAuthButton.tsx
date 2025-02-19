@@ -12,7 +12,6 @@ export const WalletAuthButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
   const [shouldVerify, setShouldVerify] = useState(false);
-  const [showCheckButton, setShowCheckButton] = useState(false);
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
@@ -56,10 +55,9 @@ export const WalletAuthButton = () => {
         console.log('Manual check: Wallet is verified:', data);
         setIsVerified(true);
         setShouldVerify(false);
-        setShowCheckButton(false);
         toast({
           title: "Verification Status",
-          description: "Your wallet is verified! Transitioning to chat view...",
+          description: "Your wallet is verified! You should now see the chat view.",
           duration: 3000,
         });
       } else {
@@ -85,19 +83,8 @@ export const WalletAuthButton = () => {
     }
   };
 
-  const clearAllStates = () => {
-    setIsVerified(false);
-    setUserRejected(false);
-    setShouldVerify(false);
-    hasInitialVerificationCheck.current = false;
-    verificationInProgress.current = false;
-    justReset.current = true;
-    isResetting.current = false;
-  };
-
   const handleReset = async () => {
     try {
-      clearAllStates();
       isResetting.current = true;
       setIsLoading(true);
       
@@ -115,12 +102,15 @@ export const WalletAuthButton = () => {
         return;
       }
 
+      // Clear any existing timeout
       if (resetTimeout.current) {
         clearTimeout(resetTimeout.current);
       }
 
+      // First, disconnect the wallet
       await disconnect();
-      
+
+      // Then delete the record
       console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
       const { error: deleteError } = await supabase
         .from('wallet_auth')
@@ -134,7 +124,16 @@ export const WalletAuthButton = () => {
       
       console.log('Reset: Successfully deleted wallet record');
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Reset all states
+      setIsVerified(false);
+      setUserRejected(false);
+      setShouldVerify(false);
+      hasInitialVerificationCheck.current = false;
+      verificationInProgress.current = false;
+      justReset.current = true;
+      
+      // Add a delay before allowing new connections
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       toast({
         title: "Reset Successful",
@@ -142,10 +141,9 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
 
-      isResetting.current = false;
-
+      // Set a timeout to clear the reset state
       resetTimeout.current = setTimeout(() => {
-        console.log('Clearing reset state');
+        isResetting.current = false;
         justReset.current = false;
         resetTimeout.current = null;
       }, 2000);
@@ -158,7 +156,6 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
-      isResetting.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -277,28 +274,13 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
-          
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
             duration: 3000,
           });
-
-          const { data: verificationCheck } = await supabase
-            .from('wallet_auth')
-            .select('nft_verified')
-            .eq('wallet_address', publicKey.toString())
-            .maybeSingle();
-
-          if (verificationCheck?.nft_verified) {
-            console.log('Verification confirmed in database');
-            setIsVerified(true);
-          }
         } else {
           setShouldVerify(false);
-          setShowCheckButton(true);
           toast({
             title: "NFT Verification Failed",
             description: "You need to own an NFT from the required collection to access this feature.",
@@ -311,7 +293,6 @@ export const WalletAuthButton = () => {
     } catch (error: any) {
       console.error('Verification error:', error);
       setShouldVerify(false);
-      setShowCheckButton(true);
       toast({
         title: "Verification Error",
         description: error?.message || "There was an error verifying your NFT ownership. Please try again.",
@@ -327,15 +308,18 @@ export const WalletAuthButton = () => {
 
   useEffect(() => {
     const checkInitialVerification = async () => {
-      if (!publicKey || !connected || isResetting.current) {
+      if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
         return;
       }
 
+      // Clear verification check if we just reset
       if (justReset.current) {
         console.log('Skipping verification check due to recent reset');
         return;
       }
 
+      hasInitialVerificationCheck.current = true;
+      
       try {
         console.log('Checking verification status for wallet:', publicKey.toString());
         const { data, error } = await supabase
@@ -353,8 +337,8 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else {
-          console.log('Setting shouldVerify to true - wallet not verified');
+        } else if (!userRejected && !justReset.current) {
+          console.log('Setting shouldVerify to true');
           setShouldVerify(true);
         }
       } catch (error) {
@@ -362,18 +346,16 @@ export const WalletAuthButton = () => {
       }
     };
 
-    const timeoutId = setTimeout(() => {
-      checkInitialVerification();
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [connected, publicKey]);
+    checkInitialVerification();
+  }, [connected, publicKey, userRejected]);
 
   useEffect(() => {
     if (!connected) {
       console.log('Wallet disconnected, resetting verification states');
-      clearAllStates();
-      isResetting.current = false;
+      verificationInProgress.current = false;
+      hasInitialVerificationCheck.current = false;
+      setShouldVerify(false);
+      setIsVerified(false);
     }
   }, [connected]);
 
@@ -384,57 +366,45 @@ export const WalletAuthButton = () => {
     }
   }, [shouldVerify, verifyWallet]);
 
-  useEffect(() => {
-    return () => {
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-    };
-  }, []);
-
   return (
-    <>
-      <div className="fixed top-4 right-4 z-[100]">
-        <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
-          <WalletMultiButton 
-            startIcon={<Wallet className="w-5 h-5 text-white/70" />}
-            disabled={isResetting.current || isLoading}
-          />
-          {(connected || userRejected) && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading || isResetting.current}
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Reset</span>
-            </button>
-          )}
-        </div>
-        {isLoading && (
-          <div className="absolute -top-1 -right-1 w-3 h-3">
-            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-          </div>
-        )}
-        {isVerified && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]">
-            <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-soft"></div>
-          </div>
-        )}
-      </div>
-      {showCheckButton && connected && !isVerified && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 mt-32">
+    <div className="fixed top-4 right-4 z-[100]">
+      <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
+        <WalletMultiButton 
+          startIcon={<Wallet className="w-5 h-5 text-white/70" />}
+          disabled={isResetting.current || isLoading}
+        />
+        {connected && (
           <button
             onClick={checkVerificationStatus}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm transition-all duration-300 border border-emerald-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm transition-all duration-300 border border-emerald-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading}
           >
             <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Check Verification Status</span>
+            <span>Check Status</span>
           </button>
+        )}
+        {(connected || userRejected) && (
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || isResetting.current}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
+        )}
+      </div>
+      {isLoading && (
+        <div className="absolute -top-1 -right-1 w-3 h-3">
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
         </div>
       )}
-    </>
+      {isVerified && (
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]">
+          <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-soft"></div>
+        </div>
+      )}
+    </div>
   );
 };
 
