@@ -1,98 +1,129 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User2, MessageSquare, Activity, DollarSign, ArrowUp, Clock } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield } from 'lucide-react';
+import { format } from 'date-fns-tz';
 
 interface PredictionCardProps {
   symbol: string;
   prediction: 'up' | 'down';
   confidence: number;
   timestamp: string;
-  traderText: string;
+  traderText?: string;
 }
 
-const PredictionCard = ({
-  symbol,
-  prediction,
-  confidence,
-  timestamp,
-  traderText
-}: PredictionCardProps) => {
+const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
+  // Convert timestamp string back to Date and format in Japan time
+  const formattedTimestamp = format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="prediction-card relative p-8 rounded-2xl border border-emerald-500/10 mb-4 bg-[#0D1117]/95"
+      transition={{ duration: 0.5 }}
+      className="prediction-card relative overflow-hidden"
     >
-      <div className="flex items-start justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <User2 className="w-6 h-6 text-emerald-400" />
+      {/* Animated background line */}
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 animate-pulse" />
+      
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="relative">
+            <User className="w-8 h-8 text-emerald-400" />
+            <div className="absolute -bottom-1 -right-1">
+              <Shield className="w-4 h-4 text-emerald-500" />
+            </div>
+          </div>
           <div>
-            <div className="text-emerald-400 font-mono text-lg tracking-wide">TRADER.SYS</div>
-            <div className="text-emerald-400/40 text-sm font-mono tracking-wide">[AUTHORIZED]</div>
+            <h4 className="text-sm font-medium text-emerald-400">TRADER.SYS</h4>
+            <p className="text-xs text-emerald-400/50 font-mono">[AUTHORIZED]</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-emerald-400/60 font-mono text-sm tracking-wider">
-          <Clock className="w-4 h-4" />
-          {timestamp}
+        <div className="flex items-center space-x-2">
+          <Clock className="w-4 h-4 text-emerald-400/70" />
+          <span className="text-sm font-mono text-emerald-400/70">{formattedTimestamp}</span>
         </div>
       </div>
-
-      <div className="mb-3">
-        <h3 className="text-4xl font-bold text-white font-mono tracking-tight mb-3">{symbol}</h3>
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-emerald-400" />
-          <span className="text-emerald-400 font-mono text-sm tracking-wide">SIGNAL_ACTIVE</span>
-        </div>
-      </div>
-
-      <div className="bg-black/40 rounded-xl p-6 mb-8">
-        <div className="flex items-center gap-2 mb-3">
-          <MessageSquare className="w-5 h-5 text-emerald-400" />
-          <span className="text-emerald-400 font-mono text-lg tracking-wide">ANALYSIS.LOG</span>
-        </div>
-        <p className="text-emerald-400/80 font-mono text-base leading-relaxed tracking-wide">{traderText}</p>
-      </div>
-
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full border-2 border-emerald-400" />
-            <span className="text-emerald-400 font-mono text-lg tracking-wide">CONFIDENCE_RATING</span>
+      
+      {/* Market Info Section */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white font-mono tracking-wider">{symbol}</h3>
+          <div className="flex items-center mt-1 space-x-2">
+            <BarChart2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400 font-mono">SIGNAL_ACTIVE</span>
           </div>
-          <span className="text-emerald-400 font-mono text-2xl">{confidence}%</span>
         </div>
-        <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+        {prediction === 'up' ? (
+          <div className="flex flex-col items-end">
+            <ArrowUpCircle className="w-10 h-10 text-emerald-500 animate-pulse" />
+            <span className="text-xs text-emerald-400 font-mono mt-1">LONG_POSITION</span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-end">
+            <ArrowDownCircle className="w-10 h-10 text-red-500 animate-pulse" />
+            <span className="text-xs text-red-400 font-mono mt-1">SHORT_POSITION</span>
+          </div>
+        )}
+      </div>
+
+      {/* Analysis Section */}
+      <div className="mb-6 p-4 rounded-lg bg-black/40 border border-emerald-500/20">
+        <div className="flex items-center space-x-2 mb-2">
+          <MessageSquare className="w-4 h-4 text-emerald-400" />
+          <span className="text-sm font-medium text-emerald-400 font-mono">ANALYSIS.LOG</span>
+        </div>
+        <p className="text-sm text-emerald-400/70 font-mono leading-relaxed">
+          {traderText}
+        </p>
+      </div>
+      
+      {/* Metrics Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Target className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400/70 font-mono">CONFIDENCE_RATING</span>
+          </div>
+          <span className="text-lg font-bold text-emerald-400 font-mono">{confidence}%</span>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="w-full bg-black/40 rounded-full h-1.5 relative overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${confidence}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="h-full bg-emerald-400"
+            transition={{ duration: 1, ease: "easeOut" }}
+            className={`h-full rounded-full ${
+              prediction === 'up' ? 'bg-emerald-500' : 'bg-red-500'
+            }`}
           />
         </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 bg-black/60 px-6 py-3 rounded-xl">
-          <Activity className="w-5 h-5 text-emerald-400" />
-          <span className="text-emerald-400 font-mono text-base tracking-wide">SIGNAL</span>
-          <span className="text-emerald-400 font-mono text-base tracking-wide">STRONG</span>
+        
+        {/* Additional Metrics */}
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-emerald-500/10">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-400/70 font-mono">SIGNAL</span>
+            </div>
+            <span className="text-xs font-medium text-emerald-400 font-mono">
+              {confidence > 80 ? 'STRONG' : 'MODERATE'}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-emerald-500/10">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-400/70 font-mono">ROI</span>
+            </div>
+            <span className={`text-xs font-medium font-mono ${prediction === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
+              {prediction === 'up' ? '+' : '-'}${Math.floor(Math.random() * 1000)}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-3 bg-black/60 px-6 py-3 rounded-xl">
-          <DollarSign className="w-5 h-5 text-emerald-400" />
-          <span className="text-emerald-400 font-mono text-base tracking-wide">ROI</span>
-          <span className="text-emerald-400 font-mono text-base">+$173</span>
-        </div>
-      </div>
-
-      <div className="absolute top-8 right-8 flex flex-col items-end gap-2">
-        <div className="bg-emerald-500/10 p-3 rounded-full">
-          <ArrowUp className="w-8 h-8 text-emerald-400" />
-        </div>
-        <span className="text-emerald-400 font-mono text-sm tracking-wide">
-          {prediction === 'up' ? 'LONG_POSITION' : 'SHORT_POSITION'}
-        </span>
       </div>
     </motion.div>
   );
