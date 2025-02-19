@@ -9,7 +9,7 @@ import { useTab } from '@/context/TabContext';
 
 export const WalletAuthButton = () => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
-  const { setActiveTab } = useTab();
+  const { setActiveTab, isTransitioning } = useTab();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
@@ -34,7 +34,7 @@ export const WalletAuthButton = () => {
     };
 
     handleVerificationSuccess();
-  }, [isVerified, setActiveTab]);
+  }, [isVerified, setActiveTab, isTransitioning]);
 
   const handleTabTransition = async () => {
     try {
