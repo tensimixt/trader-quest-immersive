@@ -87,23 +87,26 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-5 rounded-xl mb-4 hover:bg-white/[0.02] transition-all duration-500 group relative overflow-hidden"
+      className="glass-card p-6 rounded-xl mb-4 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden"
     >
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b",
+        "absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b",
         getRankColor(position)
       )} />
       
-      <div className="flex items-start gap-5">
-        <div className="relative shrink-0">
+      <div className="flex items-center gap-6">
+        <div className="relative">
           <div className={cn(
-            "absolute -inset-1 rounded-full bg-gradient-to-r blur-md opacity-50",
+            "absolute -inset-2 rounded-full bg-gradient-to-r blur-lg group-hover:blur-xl transition-all duration-300 opacity-75",
             getRankColor(position)
           )} />
-          <motion.div whileHover={{ scale: 1.05 }} className="relative">
-            <CircleUserRound className="w-10 h-10 text-white/90" />
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            className="relative"
+          >
+            <CircleUserRound className="w-12 h-12 text-white/90" />
             <div className={cn(
-              "absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center text-xs font-mono font-bold border border-white/5",
+              "absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-xs font-mono font-bold border border-white/10",
               getRankText(position)
             )}>
               {position}
@@ -111,77 +114,95 @@ const TraderCard = ({ trader, score, status, position, rankChange = 0 }: TraderC
           </motion.div>
         </div>
         
-        <div className="flex-1 min-w-0 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <h3 className="text-base font-mono uppercase tracking-wide text-white/90 font-medium truncate">{trader}</h3>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <h3 className="text-lg font-mono uppercase tracking-widest text-white/90 font-bold truncate">{trader}</h3>
               {position <= 3 && (
-                <span className={cn(
-                  "text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/40",
-                  getRankText(position)
-                )}>
+                <motion.span 
+                  whileHover={{ scale: 1.05 }}
+                  className={cn(
+                    "text-[10px] font-mono uppercase tracking-[0.2em] px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm",
+                    getRankText(position)
+                  )}
+                >
                   FOX-{position}
-                </span>
+                </motion.span>
               )}
             </div>
-            
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className={cn(
-                "flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-mono px-2.5 py-1 rounded-full",
-                getRankChangeColor(actualRankChange)
-              )}
-            >
-              {getRankChangeIcon(actualRankChange)}
-              <span className="font-medium whitespace-nowrap">
-                {getRankChangeLabel(actualRankChange)}
-              </span>
-            </motion.div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "p-1.5 rounded-full",
-                isPositive ? "bg-emerald-400/5" : "bg-red-400/5"
-              )}>
-                {isPositive ? (
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400/90" />
-                ) : (
-                  <TrendingDown className="w-3.5 h-3.5 text-red-400/90" />
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-xs uppercase tracking-wide font-mono",
-                  isPositive ? "text-emerald-400/90" : "text-red-400/90"
-                )}>
-                  {status.action} {status.pair}
-                </span>
-                
-                <span className={cn(
-                  "text-xs uppercase tracking-wide font-mono",
-                  demoROI >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
-                )}>
-                  {formatROI(demoROI)}
-                </span>
-                
-                <div className="w-[1px] h-3 bg-white/10 mx-1" />
-                
-                <span className="text-[10px] uppercase tracking-wide font-mono text-white/40 flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-white/40" />
-                  {formatDistanceToNow(status.timestamp, { addSuffix: true })}
-                </span>
-              </div>
-            </div>
-            
             <motion.span 
-              whileHover={{ scale: 1.02 }}
-              className="text-lg font-mono text-emerald-400/90 font-bold tracking-wider"
+              whileHover={{ scale: 1.05 }}
+              className="text-xl font-mono text-emerald-400 font-bold tracking-[0.15em] px-3 py-1 rounded-full bg-emerald-400/5"
             >
               {score.toLocaleString()}
             </motion.span>
+          </div>
+          
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              {isPositive ? (
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  className="p-1.5 rounded-full bg-emerald-400/10"
+                >
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                </motion.div>
+              ) : (
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  className="p-1.5 rounded-full bg-red-400/10"
+                >
+                  <TrendingDown className="w-4 h-4 text-red-400" />
+                </motion.div>
+              )}
+              <motion.span
+                whileHover={{ scale: 1.02 }}
+                className={cn(
+                  "text-xs uppercase tracking-[0.15em] font-mono font-medium px-3 py-1 rounded-full backdrop-blur-sm",
+                  isPositive ? "text-emerald-400 bg-emerald-400/5" : "text-red-400 bg-red-400/5"
+                )}
+              >
+                {status.action} {status.pair}
+              </motion.span>
+              
+              <motion.span
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                className={cn(
+                  "text-xs uppercase tracking-[0.15em] font-mono font-medium px-3 py-1 rounded-full backdrop-blur-sm",
+                  demoROI >= 0 ? "text-emerald-400 bg-emerald-400/5" : "text-rose-400 bg-rose-400/5"
+                )}
+              >
+                {formatROI(demoROI)}
+              </motion.span>
+            </div>
+            
+            <div className="flex items-center gap-3 ml-auto">
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                className="group/time flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 rounded-full opacity-0 group-hover/time:opacity-100 transition-opacity duration-300" />
+                <Clock className="w-3.5 h-3.5 text-white/70 group-hover/time:text-emerald-400/70 transition-colors duration-300" />
+                <span className="text-[10px] uppercase tracking-[0.25em] font-mono bg-gradient-to-r from-white/70 to-white/70 group-hover/time:from-emerald-400/90 group-hover/time:to-emerald-300/90 bg-clip-text text-transparent transition-all duration-300">
+                  {formatDistanceToNow(status.timestamp, { addSuffix: true })}
+                </span>
+              </motion.div>
+              
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={cn(
+                  "flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-mono px-3 py-1.5 rounded-full backdrop-blur-md",
+                  getRankChangeColor(actualRankChange)
+                )}
+              >
+                {getRankChangeIcon(actualRankChange)}
+                <span className="font-medium whitespace-nowrap">
+                  {getRankChangeLabel(actualRankChange)}
+                </span>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>
