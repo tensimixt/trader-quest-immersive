@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Terminal, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Search
+  MessageCircle, Activity, Radio
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recha
 import { format } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import TraderCard from '@/components/TraderCard';
-import { cn } from '@/lib/utils';
 
 const marketIntelligence = [
   "Blackrock acquires 12,000 BTC in latest strategic move",
@@ -293,16 +292,36 @@ const marketCalls = [
   }
 ];
 
-const demoRankChanges = [
-  2, -1, 3, 0, -2, 1, 4, -3, 0, 2,
-  -4, 1, -2, 3, 0, 2, -1, 5, -2, 1,
-  0, 3, -2, 1, -3
-];
+const generatePerformanceData = (calls: any[], year: string) => {
+  const targetWinRates = {
+    '01': 75,
+    '02': 65,
+    '03': 45,
+    '04': 85,
+    '05': 55,
+    '06': 65,
+    '07': 85,
+    '08': 95,
+    '09': 55,
+    '10': 75,
+    '11': 85,
+    '12': 65
+  };
 
-const demoROI = [
-  8.42, -3.21, 12.54, 5.67, -2.18, 15.32, 7.89, -4.56, 9.23, 3.45,
-  -1.98, 6.78, 11.23, -5.43, 4.56, 8.90, -2.34, 13.45, 6.78, -3.21
-];
+  const monthlyData = Object.entries(targetWinRates).map(([month, winRate]) => ({
+    month: `${month}`,
+    winRate,
+    calls: Math.floor(Math.random() * 10) + 5
+  }));
+
+  const totalCalls = monthlyData.reduce((acc, curr) => acc + curr.calls, 0);
+  const weightedWinRate = monthlyData.reduce((acc, curr) => acc + (curr.winRate * curr.calls), 0) / totalCalls;
+
+  return {
+    overall: weightedWinRate.toFixed(2),
+    monthlyData
+  };
+};
 
 const leaderboardData = [
   {
@@ -553,58 +572,6 @@ const Index = () => {
   const [performanceData, setPerformanceData] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-
-  // Add new state for search and sort
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState<{
-    key: 'rank' | 'roi' | 'score' | null,
-    direction: 'asc' | 'desc'
-  }>({ key: null, direction: 'asc' });
-
-  const sortedAndFilteredLeaderboard = useMemo(() => {
-    let filtered = leaderboardData.filter(trader =>
-      trader.trader.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        if (sortConfig.key === 'rank') {
-          const aChange = demoRankChanges[leaderboardData.indexOf(a) % demoRankChanges.length];
-          const bChange = demoRankChanges[leaderboardData.indexOf(b) % demoRankChanges.length];
-          return sortConfig.direction === 'asc' ? aChange - bChange : bChange - aChange;
-        }
-        if (sortConfig.key === 'roi') {
-          const aROI = demoROI[leaderboardData.indexOf(a) % 20];
-          const bROI = demoROI[leaderboardData.indexOf(b) % 20];
-          return sortConfig.direction === 'asc' ? aROI - bROI : bROI - aROI;
-        }
-        if (sortConfig.key === 'score') {
-          return sortConfig.direction === 'asc' ? 
-            a.score - b.score : 
-            b.score - a.score;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [searchQuery, sortConfig]);
-
-  const handleSort = (key: 'rank' | 'roi' | 'score') => {
-    setSortConfig(current => ({
-      key,
-      direction: 
-        current.key === key && current.direction === 'asc' 
-          ? 'desc' 
-          : 'asc'
-    }));
-
-    toast({
-      title: `Sorted by ${key}`,
-      description: `Order: ${sortConfig.direction === 'asc' ? 'ascending' : 'descending'}`,
-      duration: 2000,
-    });
-  };
 
   const scrollToChart = () => {
     if (chartRef.current) {
@@ -966,69 +933,16 @@ const Index = () => {
                       <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mb-4 space-y-4"
+                        className="mb-4"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mb-2">
                           <Activity className="w-4 h-4 text-emerald-400" />
                           <h2 className="text-lg font-bold text-white">Top Traders</h2>
                         </div>
-
-                        <div className="flex flex-col gap-3">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
-                            <Input
-                              type="text"
-                              placeholder="Search traders..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="bg-black/20 border-emerald-500/20 text-white placeholder:text-emerald-500/50 pl-8"
-                            />
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400/50 text-xs font-mono">
-                              {sortedAndFilteredLeaderboard.length} traders
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('rank')}
-                              className={cn(
-                                "text-xs font-mono whitespace-nowrap",
-                                sortConfig.key === 'rank' && "bg-emerald-500/10 text-emerald-400"
-                              )}
-                            >
-                              Rank Change {sortConfig.key === 'rank' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('roi')}
-                              className={cn(
-                                "text-xs font-mono whitespace-nowrap",
-                                sortConfig.key === 'roi' && "bg-emerald-500/10 text-emerald-400"
-                              )}
-                            >
-                              ROI {sortConfig.key === 'roi' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('score')}
-                              className={cn(
-                                "text-xs font-mono whitespace-nowrap",
-                                sortConfig.key === 'score' && "bg-emerald-500/10 text-emerald-400"
-                              )}
-                            >
-                              Score {sortConfig.key === 'score' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </Button>
-                          </div>
-                        </div>
-
                         <div className="h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
                       </motion.div>
                       
-                      {sortedAndFilteredLeaderboard.map((trader, index) => (
+                      {leaderboardData.map((trader, index) => (
                         <motion.div
                           key={trader.trader}
                           initial={{ opacity: 0, x: -20 }}
