@@ -31,6 +31,31 @@ const Index = () => {
   const { activeTab, setActiveTab, isTransitioning } = useTab();
   const lastCheckTime = useRef(0);
   const checkInProgress = useRef(false);
+  const [currentInsight, setCurrentInsight] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [chatHistory, setChatHistory] = useState<Array<{ 
+    message: string, 
+    timestamp: string, 
+    isUser?: boolean, 
+    type?: 'chat' | 'intel' | 'history',
+    contextData?: {
+      showChart?: boolean,
+      showCalls?: boolean
+    }
+  }>>([]);
+  const [predictions, setPredictions] = useState<Array<any>>([]);
+  const [userInput, setUserInput] = useState("");
+  const [isHistoryView, setIsHistoryView] = useState(false);
+  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
+  const [performanceData, setPerformanceData] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState<{
+    key: 'rank' | 'roi' | 'score' | null,
+    direction: 'asc' | 'desc'
+  }>({ key: null, direction: 'asc' });
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const checkVerification = async () => {
     if (checkInProgress.current) return;
@@ -86,9 +111,7 @@ const Index = () => {
 
   useEffect(() => {
     checkVerification();
-
     const intervalId = setInterval(checkVerification, 2000);
-
     return () => clearInterval(intervalId);
   }, [publicKey, connected]);
 
@@ -139,278 +162,7 @@ const Index = () => {
     );
   }
 
-  const [currentInsight, setCurrentInsight] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ 
-    message: string, 
-    timestamp: string, 
-    isUser?: boolean, 
-    type?: 'chat' | 'intel' | 'history',
-    contextData?: {
-      showChart?: boolean,
-      showCalls?: boolean
-    }
-  }>>([]);
-  const [predictions, setPredictions] = useState<Array<any>>([]);
-  const [userInput, setUserInput] = useState("");
-  const [isHistoryView, setIsHistoryView] = useState(false);
-  const [filteredHistory, setFilteredHistory] = useState<Array<any>>(marketCalls.slice(0, 6));
-  const [performanceData, setPerformanceData] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState<{
-    key: 'rank' | 'roi' | 'score' | null,
-    direction: 'asc' | 'desc'
-  }>({ key: null, direction: 'asc' });
-
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
-      const newCall = {
-        ...randomCall,
-        timestamp: formatJapanTime(new Date())
-      };
-      setPredictions(prev => [newCall, ...prev].slice(0, 100));
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
-      const timestamp = formatJapanTime(new Date());
-      setChatHistory(prev => [...prev, { 
-        message: randomIntel, 
-        timestamp, 
-        type: 'intel'
-      }]);
-    }, 20000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      const scrollOptions: ScrollIntoViewOptions = {
-        behavior: 'smooth',
-        block: 'end',
-      };
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatHistory]);
-
-  useEffect(() => {
-    if (!isHistoryView) {
-      setPerformanceData(null);
-      setFilteredHistory(marketCalls.slice(0, 6));
-    }
-  }, [isHistoryView]);
-
-  const handleUserMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userInput.trim()) return;
-
-    const timestamp = formatJapanTime(new Date());
-    
-    setChatHistory(prev => [...prev, { 
-      message: userInput, 
-      timestamp, 
-      isUser: true, 
-      type: 'chat' 
-    }]);
-
-    setIsThinking(true);
-    const query = userInput.toLowerCase();
-    const isWinRateQuery = query.includes('win rate');
-    const isCallsQuery = query.includes('calls') || query.includes('trades');
-    const isHsakaQuery = query.includes('hsaka');
-    const year = '2024';
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    if (isHsakaQuery) {
-      setIsHistoryView(true);
-      
-      if (isWinRateQuery) {
-        const performance = generatePerformanceData(marketCalls, year);
-        setPerformanceData(performance);
-        setFilteredHistory([]); // Clear the calls when showing win rate
-
-        setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history',
-          contextData: {
-            showChart: true,
-            showCalls: false
-          }
-        }]);
-
-        toast({
-          title: "Performance Data Found",
-          description: `Win rate for ${year}: ${performance.overall}%`,
-          duration: 3000,
-        });
-      }
-      else if (isCallsQuery) {
-        const filteredCalls = marketCalls.filter(call => 
-          call.traderProfile.toLowerCase() === 'hsaka'
-        ).map(call => ({
-          market: call.market,
-          direction: call.direction,
-          confidence: call.confidence,
-          roi: call.roi,
-          trader: call.traderProfile,
-          timestamp: call.timestamp
-        }));
-
-        setFilteredHistory(filteredCalls);
-        setPerformanceData(null);
-
-        setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
-          timestamp: formatJapanTime(new Date()),
-          type: 'history',
-          contextData: {
-            showChart: false,
-            showCalls: true
-          }
-        }]);
-
-        toast({
-          title: "Trading Calls Found",
-          description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
-          duration: 3000,
-        });
-      }
-    }
-
-    setIsThinking(false);
-    setUserInput("");
-  };
-
-  useEffect(() => {
-    const handleChatClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.dataset.messageId) {
-        const messageId = target.dataset.messageId;
-        const clickedMessage = chatHistory.find(msg => 
-          msg.message.includes(messageId)
-        );
-
-        if (clickedMessage?.contextData) {
-          setIsHistoryView(true);
-          if (clickedMessage.contextData.showChart) {
-            const year = '2024';
-            const performance = generatePerformanceData(marketCalls, year);
-            setPerformanceData(performance);
-            setFilteredHistory([]); // Clear the calls when showing chart
-            setTimeout(() => {
-              if (chartRef.current) {
-                chartRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
-          } else if (clickedMessage.contextData.showCalls) {
-            const filteredCalls = marketCalls.filter(call => 
-              call.traderProfile.toLowerCase() === 'hsaka'
-            ).map(call => ({
-              market: call.market,
-              direction: call.direction,
-              confidence: call.confidence,
-              roi: call.roi,
-              trader: call.traderProfile,
-              timestamp: call.timestamp
-            }));
-            setPerformanceData(null);
-            setFilteredHistory(filteredCalls);
-            setTimeout(() => {
-              const firstCard = document.querySelector('.prediction-card');
-              if (firstCard) {
-                firstCard.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
-          }
-        }
-      }
-    };
-
-    const chatContainer = chatContainerRef.current;
-    if (chatContainer) {
-      chatContainer.addEventListener('click', handleChatClick);
-    }
-
-    return () => {
-      if (chatContainer) {
-        chatContainer.removeEventListener('click', handleChatClick);
-      }
-    };
-  }, [chatHistory]);
-
-  const sortedAndFilteredLeaderboard = useMemo(() => {
-    let filtered = leaderboardData.filter(trader =>
-      trader.trader.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        if (sortConfig.key === 'rank') {
-          const aChange = demoRankChanges[leaderboardData.indexOf(a) % demoRankChanges.length];
-          const bChange = demoRankChanges[leaderboardData.indexOf(b) % demoRankChanges.length];
-          return sortConfig.direction === 'asc' ? aChange - bChange : bChange - aChange;
-        }
-        if (sortConfig.key === 'roi') {
-          const aROI = demoROI[leaderboardData.indexOf(a) % 20];
-          const bROI = demoROI[leaderboardData.indexOf(b) % 20];
-          return sortConfig.direction === 'asc' ? aROI - bROI : bROI - aROI;
-        }
-        if (sortConfig.key === 'score') {
-          return sortConfig.direction === 'asc' ? 
-            a.score - b.score : 
-            b.score - a.score;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [searchQuery, sortConfig]);
-
-  const handleSort = (key: 'rank' | 'roi' | 'score') => {
-    setSortConfig(current => ({
-      key,
-      direction: 
-        current.key === key && current.direction === 'asc' 
-          ? 'desc' 
-          : 'asc'
-    }));
-
-    toast({
-      title: `Sorted by ${key}`,
-      description: `Order: ${sortConfig.direction === 'asc' ? 'ascending' : 'descending'}`,
-      duration: 2000,
-    });
-  };
-
-  if (isCheckingVerification) {
-    return (
-      <div className="min-h-screen overflow-hidden bat-grid">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
-        >
-          <AppHeader />
-          <div className="text-center space-y-4">
-            <div className="w-8 h-8 border-4 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mx-auto" />
-            <p className="text-emerald-400">Checking verification status...</p>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
