@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -31,6 +32,7 @@ const Index = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [forceCheck, setForceCheck] = useState(0);
+  const [activeTab, setActiveTab] = useState("chat");
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -59,7 +61,22 @@ const Index = () => {
           });
         } else {
           console.log('Index verification check result:', data);
-          setIsVerified(data?.nft_verified || false);
+          const wasVerifiedBefore = isVerified;
+          const isNowVerified = data?.nft_verified || false;
+          
+          // Set verified state
+          setIsVerified(isNowVerified);
+          
+          // If newly verified, switch to chat tab and show welcome message
+          if (!wasVerifiedBefore && isNowVerified) {
+            console.log('Transitioning to chat view...');
+            setActiveTab("chat");
+            toast({
+              title: "Welcome to CODEC",
+              description: "You now have access to the chat and CODEC features",
+              duration: 3000,
+            });
+          }
         }
       } catch (err) {
         console.error('Error in verification check:', err);
@@ -70,10 +87,12 @@ const Index = () => {
     };
 
     checkVerification();
-  }, [publicKey, toast, forceCheck]);
+  }, [publicKey, connected, toast, forceCheck]);
 
+  // Force check verification when wallet connects
   useEffect(() => {
     if (connected) {
+      console.log('Wallet connected, forcing verification check...');
       setForceCheck(prev => prev + 1);
     }
   }, [connected]);
@@ -408,7 +427,7 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
                   <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl">
                     <TabsTrigger 
