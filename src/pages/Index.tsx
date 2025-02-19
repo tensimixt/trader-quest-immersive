@@ -58,6 +58,8 @@ const Index = () => {
     direction: 'asc' | 'desc'
   }>({ key: null, direction: 'asc' });
 
+  const [visibleCards, setVisibleCards] = useState<Array<any>>([]);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -102,12 +104,30 @@ const Index = () => {
       checkVerification();
     }
 
-    const intervalId = setInterval(checkVerification, 5000);
+    const interval = setInterval(checkVerification, 5000);
     return () => {
-      clearInterval(intervalId);
+      clearInterval(interval);
       checkInProgress.current = false;
     };
   }, [publicKey, connected]);
+
+  useEffect(() => {
+    // Initialize with first 2 cards
+    setVisibleCards(marketCalls.slice(0, 2));
+
+    // Add new cards periodically
+    const interval = setInterval(() => {
+      setVisibleCards(current => {
+        const nextIndex = current.length;
+        if (nextIndex >= marketCalls.length) return current;
+        
+        // Add next card from marketCalls
+        return [...current, marketCalls[nextIndex]];
+      });
+    }, 15000); // Add new card every 15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -397,21 +417,24 @@ const Index = () => {
                       </motion.div>
                     )}
                     {!isHistoryView && (
-                      <AnimatePresence>
-                        {marketCalls.slice(0, 3).map((prediction, index) => (
+                      <AnimatePresence mode="popLayout">
+                        {visibleCards.map((prediction, index) => (
                           <motion.div
-                            key={`prediction-${index}`}
+                            key={`prediction-${index}-${prediction.market}`}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            transition={{ delay: index * 0.1 }}
+                            transition={{ 
+                              duration: 0.4,
+                              ease: [0.23, 1, 0.32, 1]
+                            }}
                           >
                             <PredictionCard
                               symbol={prediction.market}
                               prediction={prediction.direction === "LONG" ? "up" : "down"}
                               confidence={prediction.confidence}
                               timestamp={prediction.timestamp}
-                              traderText={prediction.analysis || "Double bottom pattern with volume."}
+                              traderText={prediction.analysis}
                             />
                           </motion.div>
                         ))}
