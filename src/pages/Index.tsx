@@ -33,10 +33,8 @@ const Index = () => {
   const checkInProgress = useRef(false);
 
   const checkVerification = async () => {
-    // Prevent multiple simultaneous checks
     if (checkInProgress.current) return;
     
-    // Only check every 2 seconds at most
     const now = Date.now();
     if (now - lastCheckTime.current < 2000) return;
     
@@ -87,13 +85,10 @@ const Index = () => {
   };
 
   useEffect(() => {
-    // Initial check
     checkVerification();
 
-    // Set up an interval to check verification status
     const intervalId = setInterval(checkVerification, 2000);
 
-    // Cleanup interval on unmount
     return () => clearInterval(intervalId);
   }, [publicKey, connected]);
 
@@ -104,7 +99,6 @@ const Index = () => {
     }
   }, [connected]);
 
-  // Loading state with motion animations to prevent jarring transitions
   if (!publicKey) {
     return (
       <motion.div 
