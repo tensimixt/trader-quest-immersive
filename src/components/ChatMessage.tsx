@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { History, Bot } from 'lucide-react';
+import { MessageCircle, Network, History, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ChatMessageProps {
   message: string;
@@ -12,71 +12,49 @@ interface ChatMessageProps {
   onViewChart?: () => void;
 }
 
-export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onViewChart }: ChatMessageProps) => {
+const ChatMessage = ({ 
+  message, 
+  timestamp, 
+  isUser = false,
+  type = 'chat',
+  isThinking = false,
+  onViewChart
+}: ChatMessageProps) => {
   if (isThinking) {
     return (
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex justify-start"
-      >
-        <div className="max-w-[80%] glass-card p-3 rounded-xl bg-white/5">
-          <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4 text-emerald-400" />
-            <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-400/50 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 rounded-full bg-emerald-400/50 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 rounded-full bg-emerald-400/50 animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-          </div>
+      <div className="flex items-start gap-3 text-white/70">
+        <div className="w-8 h-8 rounded-lg bg-black/20 border border-white/5 flex items-center justify-center">
+          <Loader2 className="w-4 h-4 animate-spin" />
         </div>
-      </motion.div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-1/3 bg-white/5 animate-pulse rounded" />
+          <div className="h-4 w-1/2 bg-white/5 animate-pulse rounded" />
+        </div>
+      </div>
     );
   }
 
-  const renderMessage = () => {
-    if (message.includes("Click here") && onViewChart) {
-      const [beforeClick, afterClick] = message.split("Click here");
-      return (
-        <>
-          {beforeClick}
-          <button 
-            onClick={onViewChart}
-            className="text-emerald-400 hover:text-emerald-300 transition-colors"
-          >
-            Click here
-          </button>
-          {afterClick}
-        </>
-      );
-    }
-    return message;
-  };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, x: isUser ? 20 : -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-    >
-      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-        type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-        isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-      }`}>
-        {type === 'history' && (
-          <div className="flex items-center gap-2 mb-1">
-            <History className="w-3 h-3 text-blue-400" />
-            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
-          </div>
-        )}
-        <p 
-          className="text-sm text-white font-mono whitespace-pre-line"
-        >
-          {renderMessage()}
-        </p>
-        <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
+    <div className={cn(
+      "flex items-start gap-3",
+      isUser ? "text-emerald-400" : "text-white/70"
+    )}>
+      <div className={cn(
+        "w-8 h-8 rounded-lg bg-black/20 border border-white/5 flex items-center justify-center",
+        isUser && "bg-emerald-500/10 border-emerald-500/20"
+      )}>
+        {type === 'intel' && <Network className="w-4 h-4" />}
+        {type === 'history' && <History className="w-4 h-4" />}
+        {type === 'chat' && <MessageCircle className="w-4 h-4" />}
       </div>
-    </motion.div>
+      <div className="flex-1 space-y-1">
+        <div 
+          className="prose prose-invert max-w-none"
+          dangerouslySetInnerHTML={{ __html: message }}
+        />
+        <span className="text-xs text-white/30">{timestamp}</span>
+      </div>
+    </div>
   );
 };
 
