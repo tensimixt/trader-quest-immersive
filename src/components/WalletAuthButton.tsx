@@ -10,7 +10,7 @@ import { useTab } from '@/context/TabContext';
 
 export const WalletAuthButton = () => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
-  const { setActiveTab, isTransitioning } = useTab();
+  const { setActiveTab } = useTab();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
@@ -19,6 +19,33 @@ export const WalletAuthButton = () => {
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
+
+  const checkAndTransition = async (walletAddress: string) => {
+    try {
+      // Add a small delay to ensure database update is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data, error } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', walletAddress)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Verification check error:', error);
+        return;
+      }
+
+      console.log('Verification check result:', data);
+
+      if (data?.nft_verified) {
+        console.log('NFT verified in database, transitioning to chat...');
+        await setActiveTab("chat");
+      }
+    } catch (err) {
+      console.error('Error in verification check:', err);
+    }
+  };
 
   const handleReset = async () => {
     try {
@@ -131,18 +158,10 @@ export const WalletAuthButton = () => {
       }
 
       console.log('Verification successful:', data);
-      
-      // First set the verified state
       setIsVerified(true);
       
-      // Immediately attempt to transition
-      console.log("Attempting tab transition after verification...");
-      try {
-        await setActiveTab("chat");
-        console.log("Tab transition successful");
-      } catch (error) {
-        console.error("Error during tab transition:", error);
-      }
+      // Check verification status and transition
+      await checkAndTransition(publicKey.toString());
       
       toast({
         title: "Verification Successful",
@@ -194,14 +213,8 @@ export const WalletAuthButton = () => {
         setIsVerified(true);
         setShouldVerify(false);
         
-        // Immediately attempt to transition for existing verification
-        console.log("Attempting tab transition for existing verification...");
-        try {
-          await setActiveTab("chat");
-          console.log("Tab transition successful");
-        } catch (error) {
-          console.error("Error during tab transition:", error);
-        }
+        // Check verification status and transition
+        await checkAndTransition(publicKey.toString());
         
         toast({
           title: "Already Verified",
@@ -287,14 +300,8 @@ export const WalletAuthButton = () => {
           setIsVerified(true);
           setShouldVerify(false);
           
-          // Immediately attempt to transition after successful verification
-          console.log("Attempting tab transition after successful verification...");
-          try {
-            await setActiveTab("chat");
-            console.log("Tab transition successful");
-          } catch (error) {
-            console.error("Error during tab transition:", error);
-          }
+          // Check verification status and transition
+          await checkAndTransition(publicKey.toString());
           
           toast({
             title: "Verification Successful",
