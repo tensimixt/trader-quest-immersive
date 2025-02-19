@@ -10,16 +10,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WalletAuthButton } from '@/components/WalletAuthButton';
-import { useTab } from '@/context/TabContext';
+
 import { AppHeader } from '@/components/AppHeader';
 import PredictionCard from '@/components/PredictionCard';
 import PerformanceChart from '@/components/PerformanceChart';
 import ChatSection from '@/components/ChatSection';
 import LeaderboardSection from '@/components/LeaderboardSection';
+
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
 import { demoRankChanges, demoROI } from '@/data/demoData';
 import { leaderboardData } from '@/data/leaderboardData';
+
 import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
@@ -27,10 +29,55 @@ const Index = () => {
   const { toast } = useToast();
   const { publicKey, connected } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [forceCheck, setForceCheck] = useState(0);
-  const { activeTab, setActiveTab, isTransitioning } = useTab();
-  const lastCheckTime = useRef(0);
-  const checkInProgress = useRef(false);
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      setIsCheckingVerification(true);
+      if (!publicKey) {
+        setIsVerified(false);
+        setIsCheckingVerification(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('wallet_auth')
+          .select('nft_verified')
+          .eq('wallet_address', publicKey.toString())
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking verification:', error);
+          setIsVerified(false);
+          toast({
+            title: "Verification Check Failed",
+            description: "There was an error checking your verification status.",
+            variant: "destructive",
+            duration: 3000,
+          });
+        } else {
+          console.log('Index verification check result:', data);
+          setIsVerified(data?.nft_verified || false);
+        }
+      } catch (err) {
+        console.error('Error in verification check:', err);
+        setIsVerified(false);
+      } finally {
+        setIsCheckingVerification(false);
+      }
+    };
+
+    checkVerification();
+  }, [publicKey, toast, forceCheck]);
+
+  useEffect(() => {
+    if (connected) {
+      setForceCheck(prev => prev + 1);
+    }
+  }, [connected]);
+
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ 
@@ -57,172 +104,290 @@ const Index = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  const handleUserMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomCall = marketCalls[Math.floor(Math.random() * marketCalls.length)];
+      const newCall = {
+        ...randomCall,
+        timestamp: formatJapanTime(new Date())
+      };
+      setPredictions(prev => [newCall, ...prev].slice(0, 100));
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomIntel = marketIntelligence[Math.floor(Math.random() * marketIntelligence.length)];
+      const timestamp = formatJapanTime(new Date());
+      setChatHistory(prev => [...prev, { 
+        message: randomIntel, 
+        timestamp, 
+        type: 'intel'
+      }]);
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: 'smooth',
+        block: 'end',
+      };
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
+  useEffect(() => {
+    if (!isHistoryView) {
+      setPerformanceData(null);
+      setFilteredHistory(marketCalls.slice(0, 6));
+    }
+  }, [isHistoryView]);
+
+  const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const newMessage = {
-      message: userInput,
-      timestamp: formatJapanTime(new Date()),
-      isUser: true,
-      type: activeTab === 'codec' ? 'intel' : 'chat'
+    const timestamp = formatJapanTime(new Date());
+    
+    setChatHistory(prev => [...prev, { 
+      message: userInput, 
+      timestamp, 
+      isUser: true, 
+      type: 'chat' 
+    }]);
+
+    setIsThinking(true);
+    const query = userInput.toLowerCase();
+    const isWinRateQuery = query.includes('win rate');
+    const isCallsQuery = query.includes('calls') || query.includes('trades');
+    const isHsakaQuery = query.includes('hsaka');
+    const year = '2024';
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    if (isHsakaQuery) {
+      setIsHistoryView(true);
+      
+      if (isWinRateQuery) {
+        const performance = generatePerformanceData(marketCalls, year);
+        setPerformanceData(performance);
+        setFilteredHistory([]); // Clear the calls when showing win rate
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: true,
+            showCalls: false
+          }
+        }]);
+
+        toast({
+          title: "Performance Data Found",
+          description: `Win rate for ${year}: ${performance.overall}%`,
+          duration: 3000,
+        });
+      }
+      else if (isCallsQuery) {
+        const filteredCalls = marketCalls.filter(call => 
+          call.traderProfile.toLowerCase() === 'hsaka'
+        ).map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
+        }));
+
+        setFilteredHistory(filteredCalls);
+        setPerformanceData(null);
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: false,
+            showCalls: true
+          }
+        }]);
+
+        toast({
+          title: "Trading Calls Found",
+          description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
+          duration: 3000,
+        });
+      }
+    }
+
+    setIsThinking(false);
+    setUserInput("");
+  };
+
+  useEffect(() => {
+    const handleChatClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.dataset.messageId) {
+        const messageId = target.dataset.messageId;
+        const clickedMessage = chatHistory.find(msg => 
+          msg.message.includes(messageId)
+        );
+
+        if (clickedMessage?.contextData) {
+          setIsHistoryView(true);
+          if (clickedMessage.contextData.showChart) {
+            const year = '2024';
+            const performance = generatePerformanceData(marketCalls, year);
+            setPerformanceData(performance);
+            setFilteredHistory([]); // Clear the calls when showing chart
+            setTimeout(() => {
+              if (chartRef.current) {
+                chartRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          } else if (clickedMessage.contextData.showCalls) {
+            const filteredCalls = marketCalls.filter(call => 
+              call.traderProfile.toLowerCase() === 'hsaka'
+            ).map(call => ({
+              market: call.market,
+              direction: call.direction,
+              confidence: call.confidence,
+              roi: call.roi,
+              trader: call.traderProfile,
+              timestamp: call.timestamp
+            }));
+            setPerformanceData(null);
+            setFilteredHistory(filteredCalls);
+            setTimeout(() => {
+              const firstCard = document.querySelector('.prediction-card');
+              if (firstCard) {
+                firstCard.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
+        }
+      }
     };
 
-    setChatHistory(prev => [...prev, newMessage]);
-    setUserInput('');
-    setIsThinking(true);
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer) {
+      chatContainer.addEventListener('click', handleChatClick);
+    }
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = {
-        message: `Received your message: "${userInput}"`,
-        timestamp: formatJapanTime(new Date()),
-        isUser: false,
-        type: activeTab === 'codec' ? 'intel' : 'chat'
-      };
-      setChatHistory(prev => [...prev, aiResponse]);
-      setIsThinking(false);
-    }, 1000);
-  };
-
-  const handleSort = (key: 'rank' | 'roi' | 'score') => {
-    setSortConfig(prevConfig => ({
-      key,
-      direction: 
-        prevConfig.key === key && prevConfig.direction === 'asc' 
-          ? 'desc' 
-          : 'asc'
-    }));
-  };
+    return () => {
+      if (chatContainer) {
+        chatContainer.removeEventListener('click', handleChatClick);
+      }
+    };
+  }, [chatHistory]);
 
   const sortedAndFilteredLeaderboard = useMemo(() => {
-    let filtered = leaderboardData.filter(trader => 
+    let filtered = leaderboardData.filter(trader =>
       trader.trader.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (sortConfig.key) {
-      filtered = [...filtered].sort((a, b) => {
-        if (sortConfig.key === 'score') {
-          return sortConfig.direction === 'asc' 
-            ? a.score - b.score 
-            : b.score - a.score;
+      filtered.sort((a, b) => {
+        if (sortConfig.key === 'rank') {
+          const aChange = demoRankChanges[leaderboardData.indexOf(a) % demoRankChanges.length];
+          const bChange = demoRankChanges[leaderboardData.indexOf(b) % demoRankChanges.length];
+          return sortConfig.direction === 'asc' ? aChange - bChange : bChange - aChange;
         }
-        // Default sort by score if key is not recognized
-        return sortConfig.direction === 'asc' 
-          ? a.score - b.score 
-          : b.score - a.score;
+        if (sortConfig.key === 'roi') {
+          const aROI = demoROI[leaderboardData.indexOf(a) % 20];
+          const bROI = demoROI[leaderboardData.indexOf(b) % 20];
+          return sortConfig.direction === 'asc' ? aROI - bROI : bROI - aROI;
+        }
+        if (sortConfig.key === 'score') {
+          return sortConfig.direction === 'asc' ? 
+            a.score - b.score : 
+            b.score - a.score;
+        }
+        return 0;
       });
     }
 
     return filtered;
-  }, [leaderboardData, searchQuery, sortConfig]);
+  }, [searchQuery, sortConfig]);
 
-  const checkVerification = async () => {
-    if (checkInProgress.current) return;
-    
-    const now = Date.now();
-    if (now - lastCheckTime.current < 2000) return;
-    
-    checkInProgress.current = true;
-    lastCheckTime.current = now;
+  const handleSort = (key: 'rank' | 'roi' | 'score') => {
+    setSortConfig(current => ({
+      key,
+      direction: 
+        current.key === key && current.direction === 'asc' 
+          ? 'desc' 
+          : 'asc'
+    }));
 
-    if (!publicKey) {
-      setIsVerified(false);
-      checkInProgress.current = false;
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('wallet_auth')
-        .select('nft_verified')
-        .eq('wallet_address', publicKey.toString())
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking verification:', error);
-        setIsVerified(false);
-        toast({
-          title: "Verification Check Failed",
-          description: "There was an error checking your verification status.",
-          variant: "destructive",
-          duration: 3000,
-        });
-      } else {
-        console.log('Index verification check result:', data);
-        const wasVerifiedBefore = isVerified;
-        const isNowVerified = data?.nft_verified || false;
-        
-        if (isNowVerified !== wasVerifiedBefore) {
-          setIsVerified(isNowVerified);
-          if (!wasVerifiedBefore && isNowVerified) {
-            console.log('Verification status changed, transitioning to chat...');
-            await setActiveTab("chat");
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error in verification check:', err);
-      setIsVerified(false);
-    } finally {
-      checkInProgress.current = false;
-    }
+    toast({
+      title: `Sorted by ${key}`,
+      description: `Order: ${sortConfig.direction === 'asc' ? 'ascending' : 'descending'}`,
+      duration: 2000,
+    });
   };
 
-  useEffect(() => {
-    checkVerification();
-    const intervalId = setInterval(checkVerification, 2000);
-    return () => clearInterval(intervalId);
-  }, [publicKey, connected]);
-
-  useEffect(() => {
-    if (connected) {
-      console.log('Wallet connected, forcing verification check...');
-      checkVerification();
-    }
-  }, [connected]);
+  if (isCheckingVerification) {
+    return (
+      <div className="min-h-screen overflow-hidden bat-grid">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
+        >
+          <AppHeader />
+          <div className="text-center space-y-4">
+            <div className="w-8 h-8 border-4 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mx-auto" />
+            <p className="text-emerald-400">Checking verification status...</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!publicKey) {
     return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="min-h-screen overflow-hidden bat-grid"
-      >
-        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
+      <div className="min-h-screen overflow-hidden bat-grid">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
+        >
           <AppHeader />
           <div className="text-center space-y-4">
             <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
             <p className="text-emerald-400">Connect your Solana wallet to access the chat and CODEC features</p>
           </div>
           <WalletAuthButton />
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     );
   }
 
   if (!isVerified) {
     return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="min-h-screen overflow-hidden bat-grid"
-      >
-        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
+      <div className="min-h-screen overflow-hidden bat-grid">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
+        >
           <AppHeader />
           <div className="text-center space-y-4">
             <h1 className="text-2xl text-white font-bold">NFT Verification Required</h1>
             <p className="text-emerald-400">You need to own an NFT from the required collection to access this feature</p>
           </div>
           <WalletAuthButton />
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     );
   }
-
-  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
 
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
@@ -243,11 +408,7 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs 
-                value={activeTab} 
-                onValueChange={async (value) => await setActiveTab(value)}
-                className="flex-1 flex flex-col"
-              >
+              <Tabs defaultValue="chat" className="flex-1 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
                   <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl">
                     <TabsTrigger 

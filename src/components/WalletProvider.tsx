@@ -1,6 +1,6 @@
 
 import { FC, ReactNode, useMemo } from 'react';
-import { ConnectionProvider, WalletProvider as SolanaWalletAdapter } from '@solana/wallet-adapter-react';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
@@ -10,7 +10,7 @@ interface Props {
   children: ReactNode;
 }
 
-export const WalletProvider: FC<Props> = ({ children }) => {
+export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = 'https://mainnet.helius-rpc.com/?api-key=1a474e37-e5d4-433f-9e36-18f37c7cb827';
 
@@ -24,11 +24,11 @@ export const WalletProvider: FC<Props> = ({ children }) => {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <SolanaWalletAdapter wallets={wallets} autoConnect={true}>
+      <WalletProvider wallets={wallets} autoConnect={true}>
         <WalletModalProvider>
           {children}
         </WalletModalProvider>
-      </SolanaWalletAdapter>
+      </WalletProvider>
     </ConnectionProvider>
   );
 };
