@@ -126,7 +126,7 @@ const Index = () => {
       clearInterval(intervalId);
       checkInProgress.current = false;
     };
-  }, [publicKey, connected, toast, isVerified]);
+  }, [publicKey, connected, toast]);
 
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
