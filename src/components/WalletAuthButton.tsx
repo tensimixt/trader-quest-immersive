@@ -219,11 +219,27 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
+          
+          // Force a small delay to ensure state updates are processed
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
             duration: 3000,
           });
+
+          // Trigger an immediate verification check
+          const { data: verificationCheck } = await supabase
+            .from('wallet_auth')
+            .select('nft_verified')
+            .eq('wallet_address', publicKey.toString())
+            .maybeSingle();
+
+          if (verificationCheck?.nft_verified) {
+            console.log('Verification confirmed in database');
+            setIsVerified(true);
+          }
         } else {
           setShouldVerify(false);
           toast({
