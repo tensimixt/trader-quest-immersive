@@ -14,7 +14,7 @@
     <div id="root"></div>
     <script>
       // Only load GPT Engineer script in development mode
-      if (import.meta.env.DEV) {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         const script = document.createElement('script');
         script.src = 'https://cdn.gpteng.co/gptengineer.js';
         script.type = 'module';
