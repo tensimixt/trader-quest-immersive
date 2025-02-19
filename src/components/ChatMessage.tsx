@@ -1,53 +1,51 @@
 
 import React from 'react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Eye, History } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { History, Bot } from 'lucide-react';
 
 interface ChatMessageProps {
   message: string;
   timestamp: string;
   isUser?: boolean;
-  isThinking?: boolean;
   type?: 'chat' | 'intel' | 'history';
+  isThinking?: boolean;
   onViewChart?: () => void;
 }
 
-const ChatMessage = ({
-  message,
-  timestamp,
-  isUser,
-  isThinking,
-  type,
-  onViewChart
-}: ChatMessageProps) => {
+export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onViewChart }: ChatMessageProps) => {
   if (isThinking) {
     return (
-      <div className="flex justify-start mb-4">
-        <div className="bg-black/40 p-3 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-.3s]" />
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-.5s]" />
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex justify-start"
+      >
+        <div className="max-w-[80%] glass-card p-3 rounded-xl bg-white/5">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4 text-emerald-400" />
+            <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-full bg-emerald-400/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 rounded-full bg-emerald-400/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 rounded-full bg-emerald-400/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   const renderMessage = () => {
-    if (message.includes("Click here")) {
+    if (message.includes("Click here") && onViewChart) {
       const [beforeClick, afterClick] = message.split("Click here");
       return (
         <>
           {beforeClick}
-          <Button 
-            variant="link" 
-            className="text-emerald-400 p-0 h-auto font-mono hover:text-emerald-300"
+          <button 
             onClick={onViewChart}
+            className="text-emerald-400 hover:text-emerald-300 transition-colors"
           >
             Click here
-          </Button>
+          </button>
           {afterClick}
         </>
       );
@@ -56,40 +54,29 @@ const ChatMessage = ({
   };
 
   return (
-    <div className={cn(
-      "flex mb-4",
-      isUser ? "justify-end" : "justify-start"
-    )}>
-      <div className={cn(
-        "rounded-lg max-w-[80%]",
-        isUser ? "bg-black/60" : "bg-black/40",
-        isUser ? "p-3" : "p-4"
-      )}>
-        {!isUser && type && (
-          <div className="flex items-center gap-2 mb-2">
-            {type === 'history' && <History className="w-4 h-4 text-blue-400" />}
-            {type === 'intel' && <Eye className="w-4 h-4 text-emerald-400" />}
-            {type === 'history' && (
-              <span className="text-xs text-blue-400 uppercase tracking-wider font-mono">
-                TRADING HISTORY
-              </span>
-            )}
+    <motion.div
+      initial={{ opacity: 0, x: isUser ? 20 : -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+    >
+      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
+        type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
+        isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+      }`}>
+        {type === 'history' && (
+          <div className="flex items-center gap-2 mb-1">
+            <History className="w-3 h-3 text-blue-400" />
+            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
           </div>
         )}
-        <p className={cn(
-          "font-mono text-sm leading-relaxed",
-          isUser ? "text-emerald-400" : "text-white"
-        )}>
+        <p 
+          className="text-sm text-white font-mono whitespace-pre-line"
+        >
           {renderMessage()}
         </p>
-        <p className={cn(
-          "text-[10px] mt-2 font-mono",
-          isUser ? "text-emerald-400/50" : "text-emerald-400/40"
-        )}>
-          {timestamp}
-        </p>
+        <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
