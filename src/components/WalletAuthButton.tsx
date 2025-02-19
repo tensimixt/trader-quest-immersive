@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -18,6 +17,7 @@ export const WalletAuthButton = () => {
   const isResetting = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
   const justReset = useRef(false);
+  const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleReset = async () => {
     try {
@@ -36,6 +36,11 @@ export const WalletAuthButton = () => {
           duration: 3000,
         });
         return;
+      }
+
+      // Clear any existing timeout
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
       }
 
       // First, disconnect the wallet
@@ -63,14 +68,22 @@ export const WalletAuthButton = () => {
       verificationInProgress.current = false;
       justReset.current = true;
       
-      // Add a small delay before allowing new connections
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add a delay before allowing new connections
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       toast({
         title: "Reset Successful",
         description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
         duration: 3000,
       });
+
+      // Set a timeout to clear the reset state
+      resetTimeout.current = setTimeout(() => {
+        isResetting.current = false;
+        justReset.current = false;
+        resetTimeout.current = null;
+      }, 2000);
+
     } catch (error: any) {
       console.error('Reset verification error:', error);
       toast({
@@ -81,11 +94,17 @@ export const WalletAuthButton = () => {
       });
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        isResetting.current = false;
-      }, 1000);
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
+      }
+    };
+  }, []);
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
@@ -238,15 +257,16 @@ export const WalletAuthButton = () => {
         return;
       }
 
+      // Clear verification check if we just reset
       if (justReset.current) {
-        justReset.current = false;
-        verificationInProgress.current = false;
-        return; // Exit early if we just reset
+        console.log('Skipping verification check due to recent reset');
+        return;
       }
 
       hasInitialVerificationCheck.current = true;
       
       try {
+        console.log('Checking verification status for wallet:', publicKey.toString());
         const { data, error } = await supabase
           .from('wallet_auth')
           .select('nft_verified')
@@ -259,12 +279,12 @@ export const WalletAuthButton = () => {
         }
 
         if (data?.nft_verified) {
+          console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else if (!userRejected) {
-          if (!justReset.current) {
-            setShouldVerify(true);
-          }
+        } else if (!userRejected && !justReset.current) {
+          console.log('Setting shouldVerify to true');
+          setShouldVerify(true);
         }
       } catch (error) {
         console.error('Error in initial verification check:', error);
@@ -276,14 +296,17 @@ export const WalletAuthButton = () => {
 
   useEffect(() => {
     if (!connected) {
+      console.log('Wallet disconnected, resetting verification states');
       verificationInProgress.current = false;
       hasInitialVerificationCheck.current = false;
       setShouldVerify(false);
+      setIsVerified(false);
     }
   }, [connected]);
 
   useEffect(() => {
-    if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
+    if (shouldVerify && !verificationInProgress.current && !isResetting.current && !justReset.current) {
+      console.log('Starting verification process');
       verifyWallet();
     }
   }, [shouldVerify, verifyWallet]);
