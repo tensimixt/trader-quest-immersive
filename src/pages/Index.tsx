@@ -11,18 +11,15 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WalletAuthButton } from '@/components/WalletAuthButton';
 import { useTab } from '@/context/TabContext';
-
 import { AppHeader } from '@/components/AppHeader';
 import PredictionCard from '@/components/PredictionCard';
 import PerformanceChart from '@/components/PerformanceChart';
 import ChatSection from '@/components/ChatSection';
 import LeaderboardSection from '@/components/LeaderboardSection';
-
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
 import { demoRankChanges, demoROI } from '@/data/demoData';
 import { leaderboardData } from '@/data/leaderboardData';
-
 import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
@@ -30,7 +27,6 @@ const Index = () => {
   const { toast } = useToast();
   const { publicKey, connected } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
-  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [forceCheck, setForceCheck] = useState(0);
   const { activeTab, setActiveTab, isTransitioning } = useTab();
   const lastCheckTime = useRef(0);
