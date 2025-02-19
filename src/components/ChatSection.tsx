@@ -1,9 +1,7 @@
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { MessageCircle, Network } from 'lucide-react';
-import { ChatMessage } from './ChatMessage';
-import { ChatInput } from './ChatInput';
+import React, { useEffect } from 'react';
+import { Send } from 'lucide-react';
+import ChatMessage from './ChatMessage';
 
 interface ChatSectionProps {
   chatHistory: Array<{
@@ -22,6 +20,7 @@ interface ChatSectionProps {
   containerRef: React.RefObject<HTMLDivElement>;
   showIntel?: boolean;
   isThinking?: boolean;
+  onViewChart?: () => void;
 }
 
 const ChatSection = ({ 
@@ -31,45 +30,56 @@ const ChatSection = ({
   onSubmit, 
   containerRef,
   showIntel = false,
-  isThinking = false
+  isThinking = false,
+  onViewChart
 }: ChatSectionProps) => {
+  const filteredMessages = chatHistory.filter(msg => 
+    showIntel ? msg.type === 'intel' : msg.type !== 'intel'
+  );
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [chatHistory, isThinking]); // Scroll when messages change or thinking state changes
+
   return (
     <div className="absolute inset-0 flex flex-col">
-      {showIntel && (
-        <div className="flex items-center gap-2 mb-4">
-          <Network className="w-5 h-5 text-[#9b87f5]" />
-          <span className="text-[#9b87f5] font-medium tracking-wider text-sm">
-            MARKET INTEL
-          </span>
-          <div className="w-2 h-2 rounded-full bg-[#9b87f5] animate-pulse" />
-        </div>
-      )}
       <div 
         ref={containerRef}
         className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
       >
-        {chatHistory
-          .filter(msg => showIntel ? msg.type === 'intel' : msg.type !== 'intel')
-          .map((msg, idx) => (
-            <ChatMessage
-              key={idx}
-              message={msg.message}
-              timestamp={msg.timestamp}
-              isUser={msg.isUser}
-              type={msg.type}
-            />
-          ))}
+        {filteredMessages.map((msg, idx) => (
+          <ChatMessage
+            key={idx}
+            message={msg.message}
+            timestamp={msg.timestamp}
+            isUser={msg.isUser}
+            type={msg.type}
+            onViewChart={onViewChart}
+            isThinking={false}
+          />
+        ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
-      {!showIntel && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-          <ChatInput
+      <form onSubmit={onSubmit} className="absolute bottom-0 inset-x-0 bg-black/40 p-4">
+        <div className="relative">
+          <input
+            type="text"
             value={userInput}
-            onChange={onUserInput}
-            onSubmit={onSubmit}
+            onChange={(e) => onUserInput(e.target.value)}
+            placeholder="Type your message..."
+            className="w-full rounded-full py-2 px-4 bg-black/60 border border-emerald-500/20 text-white placeholder-emerald-400 focus:border-emerald-500 focus:outline-none"
           />
+          <button
+            type="submit"
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full p-2"
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
-      )}
+      </form>
     </div>
   );
 };
