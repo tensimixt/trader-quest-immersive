@@ -57,6 +57,66 @@ const Index = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
+  const handleUserMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim()) return;
+
+    const newMessage = {
+      message: userInput,
+      timestamp: formatJapanTime(new Date()),
+      isUser: true,
+      type: activeTab === 'codec' ? 'intel' : 'chat'
+    };
+
+    setChatHistory(prev => [...prev, newMessage]);
+    setUserInput('');
+    setIsThinking(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = {
+        message: `Received your message: "${userInput}"`,
+        timestamp: formatJapanTime(new Date()),
+        isUser: false,
+        type: activeTab === 'codec' ? 'intel' : 'chat'
+      };
+      setChatHistory(prev => [...prev, aiResponse]);
+      setIsThinking(false);
+    }, 1000);
+  };
+
+  const handleSort = (key: 'rank' | 'roi' | 'score') => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: 
+        prevConfig.key === key && prevConfig.direction === 'asc' 
+          ? 'desc' 
+          : 'asc'
+    }));
+  };
+
+  const sortedAndFilteredLeaderboard = useMemo(() => {
+    let filtered = leaderboardData.filter(trader => 
+      trader.trader.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        if (sortConfig.key === 'score') {
+          return sortConfig.direction === 'asc' 
+            ? a.score - b.score 
+            : b.score - a.score;
+        }
+        // Default sort by score if key is not recognized
+        return sortConfig.direction === 'asc' 
+          ? a.score - b.score 
+          : b.score - a.score;
+      });
+    }
+
+    return filtered;
+  }, [leaderboardData, searchQuery, sortConfig]);
+
   const checkVerification = async () => {
     if (checkInProgress.current) return;
     
