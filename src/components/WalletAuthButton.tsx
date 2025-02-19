@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -15,6 +16,7 @@ export const WalletAuthButton = () => {
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
+  const hasInitialVerificationCheck = useRef(false);
 
   const handleReset = async () => {
     try {
@@ -69,6 +71,7 @@ export const WalletAuthButton = () => {
       setIsVerified(false);
       setUserRejected(false);
       setShouldVerify(false);
+      hasInitialVerificationCheck.current = false;
       
       toast({
         title: "Reset Successful",
@@ -237,10 +240,37 @@ export const WalletAuthButton = () => {
   }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
 
   useEffect(() => {
-    if (connected && publicKey && !isVerified && !userRejected && !shouldVerify && !isResetting.current) {
-      setShouldVerify(true);
-    }
-  }, [connected, publicKey, isVerified, userRejected]);
+    const checkInitialVerification = async () => {
+      if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
+        return;
+      }
+
+      hasInitialVerificationCheck.current = true;
+      
+      try {
+        const { data, error } = await supabase
+          .from('wallet_auth')
+          .select('nft_verified')
+          .eq('wallet_address', publicKey.toString())
+          .maybeSingle();
+
+        if (error) {
+          console.error('Initial verification check error:', error);
+          return;
+        }
+
+        if (data?.nft_verified) {
+          setIsVerified(true);
+        } else if (!userRejected) {
+          setShouldVerify(true);
+        }
+      } catch (error) {
+        console.error('Error in initial verification check:', error);
+      }
+    };
+
+    checkInitialVerification();
+  }, [connected, publicKey, userRejected]);
 
   useEffect(() => {
     if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
