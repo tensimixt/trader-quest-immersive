@@ -31,7 +31,6 @@ const Index = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
-  const [forceCheck, setForceCheck] = useState(0);
   const lastCheckTime = useRef(0);
   const checkInProgress = useRef(false);
 
@@ -70,7 +69,6 @@ const Index = () => {
       if (now - lastCheckTime.current < 5000) return;
       
       checkInProgress.current = true;
-      setIsCheckingVerification(true);
       lastCheckTime.current = now;
 
       try {
@@ -83,28 +81,12 @@ const Index = () => {
         if (error) {
           console.error('Error checking verification:', error);
           setIsVerified(false);
-          toast({
-            title: "Verification Check Failed",
-            description: "There was an error checking your verification status.",
-            variant: "destructive",
-            duration: 3000,
-          });
         } else {
-          console.log('Index verification check result:', data);
-          const wasVerifiedBefore = isVerified;
           const isNowVerified = data?.nft_verified || false;
-          
           if (isNowVerified !== isVerified) {
             setIsVerified(isNowVerified);
-            
-            if (!wasVerifiedBefore && isNowVerified) {
-              console.log('Transitioning to chat view...');
+            if (isNowVerified) {
               setActiveTab("chat");
-              toast({
-                title: "Welcome to CODEC",
-                description: "You now have access to the chat and CODEC features",
-                duration: 3000,
-              });
             }
           }
         }
@@ -112,7 +94,6 @@ const Index = () => {
         console.error('Error in verification check:', err);
         setIsVerified(false);
       } finally {
-        setIsCheckingVerification(false);
         checkInProgress.current = false;
       }
     };
@@ -126,7 +107,7 @@ const Index = () => {
       clearInterval(intervalId);
       checkInProgress.current = false;
     };
-  }, [publicKey, connected, toast]);
+  }, [publicKey, connected]);
 
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
