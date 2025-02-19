@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Send } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 
@@ -36,6 +36,13 @@ const ChatSection = ({
   const filteredMessages = chatHistory.filter(msg => 
     showIntel ? msg.type === 'intel' : msg.type !== 'intel'
   );
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [chatHistory, isThinking]); // Scroll when messages change or thinking state changes
 
   return (
     <div className="absolute inset-0 flex flex-col">
