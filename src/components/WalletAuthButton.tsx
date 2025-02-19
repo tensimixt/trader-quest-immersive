@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -181,6 +182,7 @@ export const WalletAuthButton = () => {
         console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
+        setActiveTab("chat");
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -264,6 +266,7 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
+          setActiveTab("chat");
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
