@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -252,8 +253,8 @@ export const WalletAuthButton = () => {
     <div className="fixed top-4 right-4 z-[100]">
       <div className="flex items-center gap-3">
         <WalletMultiButton 
-          className="!bg-[#1A1F2C] hover:!bg-[#403E43] !transition-all !duration-300 !border !border-[#9b87f5]/20 !shadow-lg hover:!shadow-[#9b87f5]/10 !rounded-xl !px-6 !py-3 !h-auto !font-medium tracking-wide backdrop-blur-sm !text-[#9b87f5]" 
-          startIcon={<Wallet className="w-5 h-5 text-[#9b87f5]" />}
+          className="!bg-white/5 hover:!bg-white/10 !transition-all !duration-300 !border !border-white/10 !shadow-lg hover:!shadow-white/5 !rounded-xl !px-6 !py-3 !h-auto !font-medium tracking-wide backdrop-blur-sm !text-white" 
+          startIcon={<Wallet className="w-5 h-5 text-white/70" />}
         />
         {(connected || userRejected) && (
           <button
@@ -268,12 +269,12 @@ export const WalletAuthButton = () => {
       </div>
       {isLoading && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#9b87f5]"></div>
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
         </div>
       )}
       {isVerified && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#9b87f5] rounded-full shadow-[0_0_10px_rgba(155,135,245,0.5)]">
-          <div className="absolute inset-0 bg-[#9b87f5] rounded-full animate-pulse-soft"></div>
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]">
+          <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-soft"></div>
         </div>
       )}
     </div>
