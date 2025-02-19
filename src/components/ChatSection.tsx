@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
-import { Send } from 'lucide-react';
 import ChatMessage from './ChatMessage';
+import ChatInput from './ChatInput';
 
 interface ChatSectionProps {
   chatHistory: Array<{
@@ -37,12 +37,11 @@ const ChatSection = ({
     showIntel ? msg.type === 'intel' : msg.type !== 'intel'
   );
 
-  // Auto-scroll effect
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [chatHistory, isThinking]); // Scroll when messages change or thinking state changes
+  }, [chatHistory, isThinking]);
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -63,23 +62,13 @@ const ChatSection = ({
         ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
-      <form onSubmit={onSubmit} className="absolute bottom-0 inset-x-0 bg-black/40 p-4">
-        <div className="relative">
-          <input
-            type="text"
-            value={userInput}
-            onChange={(e) => onUserInput(e.target.value)}
-            placeholder="Type your message..."
-            className="w-full rounded-full py-2 px-4 bg-black/60 border border-emerald-500/20 text-white placeholder-emerald-400 focus:border-emerald-500 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full p-2"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-      </form>
+      <div className="absolute bottom-0 inset-x-0 bg-black/40 p-4 backdrop-blur-sm border-t border-emerald-500/10">
+        <ChatInput
+          value={userInput}
+          onChange={onUserInput}
+          onSubmit={onSubmit}
+        />
+      </div>
     </div>
   );
 };
