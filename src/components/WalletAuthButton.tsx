@@ -17,6 +17,7 @@ export const WalletAuthButton = () => {
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
+  const justReset = useRef(false);
 
   const handleReset = async () => {
     try {
@@ -72,6 +73,8 @@ export const WalletAuthButton = () => {
       setUserRejected(false);
       setShouldVerify(false);
       hasInitialVerificationCheck.current = false;
+      verificationInProgress.current = false;
+      justReset.current = true;
       
       toast({
         title: "Reset Successful",
@@ -245,6 +248,12 @@ export const WalletAuthButton = () => {
         return;
       }
 
+      // Reset justReset flag when starting a new verification
+      if (justReset.current) {
+        justReset.current = false;
+        verificationInProgress.current = false;
+      }
+
       hasInitialVerificationCheck.current = true;
       
       try {
@@ -261,8 +270,12 @@ export const WalletAuthButton = () => {
 
         if (data?.nft_verified) {
           setIsVerified(true);
+          setShouldVerify(false);
         } else if (!userRejected) {
-          setShouldVerify(true);
+          // Only set shouldVerify if we haven't just reset
+          if (!justReset.current) {
+            setShouldVerify(true);
+          }
         }
       } catch (error) {
         console.error('Error in initial verification check:', error);
@@ -271,6 +284,15 @@ export const WalletAuthButton = () => {
 
     checkInitialVerification();
   }, [connected, publicKey, userRejected]);
+
+  // Reset verification flags when wallet disconnects
+  useEffect(() => {
+    if (!connected) {
+      verificationInProgress.current = false;
+      hasInitialVerificationCheck.current = false;
+      setShouldVerify(false);
+    }
+  }, [connected]);
 
   useEffect(() => {
     if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
