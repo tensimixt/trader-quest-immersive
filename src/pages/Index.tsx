@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -34,68 +33,121 @@ const Index = () => {
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [forceCheck, setForceCheck] = useState(0);
   const { activeTab, setActiveTab, isTransitioning } = useTab();
+  const lastCheckTime = useRef(0);
+  const checkInProgress = useRef(false);
 
-  useEffect(() => {
-    const checkVerification = async () => {
-      setIsCheckingVerification(true);
-      if (!publicKey) {
+  const checkVerification = async () => {
+    // Prevent multiple simultaneous checks
+    if (checkInProgress.current) return;
+    
+    // Only check every 2 seconds at most
+    const now = Date.now();
+    if (now - lastCheckTime.current < 2000) return;
+    
+    checkInProgress.current = true;
+    lastCheckTime.current = now;
+
+    if (!publicKey) {
+      setIsVerified(false);
+      checkInProgress.current = false;
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking verification:', error);
         setIsVerified(false);
-        setIsCheckingVerification(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('wallet_auth')
-          .select('nft_verified')
-          .eq('wallet_address', publicKey.toString())
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error checking verification:', error);
-          setIsVerified(false);
-          toast({
-            title: "Verification Check Failed",
-            description: "There was an error checking your verification status.",
-            variant: "destructive",
-            duration: 3000,
-          });
-        } else {
-          console.log('Index verification check result:', data);
-          const wasVerifiedBefore = isVerified;
-          const isNowVerified = data?.nft_verified || false;
+        toast({
+          title: "Verification Check Failed",
+          description: "There was an error checking your verification status.",
+          variant: "destructive",
+          duration: 3000,
+        });
+      } else {
+        console.log('Index verification check result:', data);
+        const wasVerifiedBefore = isVerified;
+        const isNowVerified = data?.nft_verified || false;
+        
+        if (isNowVerified !== wasVerifiedBefore) {
           setIsVerified(isNowVerified);
-
-          // If verification status changed from false to true, transition to chat
           if (!wasVerifiedBefore && isNowVerified) {
             console.log('Verification status changed, transitioning to chat...');
             await setActiveTab("chat");
           }
         }
-      } catch (err) {
-        console.error('Error in verification check:', err);
-        setIsVerified(false);
-      } finally {
-        setIsCheckingVerification(false);
       }
-    };
+    } catch (err) {
+      console.error('Error in verification check:', err);
+      setIsVerified(false);
+    } finally {
+      checkInProgress.current = false;
+    }
+  };
 
-    // Set up an interval to check verification status
-    const intervalId = setInterval(checkVerification, 1000);
-
+  useEffect(() => {
     // Initial check
     checkVerification();
 
+    // Set up an interval to check verification status
+    const intervalId = setInterval(checkVerification, 2000);
+
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [publicKey, connected, toast, setActiveTab]);
+  }, [publicKey, connected]);
 
   useEffect(() => {
     if (connected) {
       console.log('Wallet connected, forcing verification check...');
-      setForceCheck(prev => prev + 1);
+      checkVerification();
     }
   }, [connected]);
+
+  // Loading state with motion animations to prevent jarring transitions
+  if (!publicKey) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="min-h-screen overflow-hidden bat-grid"
+      >
+        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
+          <AppHeader />
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
+            <p className="text-emerald-400">Connect your Solana wallet to access the chat and CODEC features</p>
+          </div>
+          <WalletAuthButton />
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (!isVerified) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="min-h-screen overflow-hidden bat-grid"
+      >
+        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
+          <AppHeader />
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl text-white font-bold">NFT Verification Required</h1>
+            <p className="text-emerald-400">You need to own an NFT from the required collection to access this feature</p>
+          </div>
+          <WalletAuthButton />
+        </div>
+      </motion.div>
+    );
+  }
 
   const [currentInsight, setCurrentInsight] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -365,44 +417,6 @@ const Index = () => {
             <div className="w-8 h-8 border-4 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mx-auto" />
             <p className="text-emerald-400">Checking verification status...</p>
           </div>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!publicKey) {
-    return (
-      <div className="min-h-screen overflow-hidden bat-grid">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
-        >
-          <AppHeader />
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
-            <p className="text-emerald-400">Connect your Solana wallet to access the chat and CODEC features</p>
-          </div>
-          <WalletAuthButton />
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!isVerified) {
-    return (
-      <div className="min-h-screen overflow-hidden bat-grid">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
-        >
-          <AppHeader />
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl text-white font-bold">NFT Verification Required</h1>
-            <p className="text-emerald-400">You need to own an NFT from the required collection to access this feature</p>
-          </div>
-          <WalletAuthButton />
         </motion.div>
       </div>
     );
