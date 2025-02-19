@@ -1,24 +1,25 @@
+
 import React from 'react';
-import { Send } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 
 interface ChatSectionProps {
-  chatHistory: Array<{ 
-    message: string, 
-    timestamp: string, 
-    isUser?: boolean, 
-    type?: 'chat' | 'intel' | 'history',
+  chatHistory: Array<{
+    message: string;
+    timestamp: string;
+    isUser?: boolean;
+    type?: 'chat' | 'intel' | 'history';
     contextData?: {
-      showChart?: boolean,
-      showCalls?: boolean
-    }
+      showChart?: boolean;
+      showCalls?: boolean;
+    };
   }>;
   userInput: string;
-  onUserInput: (input: string) => void;
+  onUserInput: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   containerRef: React.RefObject<HTMLDivElement>;
   showIntel?: boolean;
   isThinking?: boolean;
+  onViewChart?: () => void;
 }
 
 const ChatSection = ({ 
@@ -28,16 +29,12 @@ const ChatSection = ({
   onSubmit, 
   containerRef,
   showIntel = false,
-  isThinking = false
+  isThinking = false,
+  onViewChart
 }: ChatSectionProps) => {
   const filteredMessages = chatHistory.filter(msg => 
     showIntel ? msg.type === 'intel' : msg.type !== 'intel'
   );
-
-  const handleViewChart = () => {
-    // This will be passed down to ChatMessage
-    // setIsHistoryView(true); // setIsHistoryView is not defined here
-  };
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -52,7 +49,7 @@ const ChatSection = ({
             timestamp={msg.timestamp}
             isUser={msg.isUser}
             type={msg.type}
-            onViewChart={handleViewChart}
+            onViewChart={onViewChart}
             isThinking={false}
           />
         ))}

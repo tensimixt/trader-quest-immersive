@@ -130,6 +130,7 @@ const Index = () => {
       const year = '2024';
       const performanceStats = generatePerformanceData(marketCalls, year);
       setPerformanceData(performanceStats);
+      setFilteredHistory([]);
 
       const response: typeof chatHistory[0] = {
         message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performanceStats.overall}%. Click here to view the monthly breakdown.`,
@@ -140,21 +141,8 @@ const Index = () => {
         }
       };
       setChatHistory(prev => [...prev, response]);
-      setFilteredHistory([]);
     } else if (command.includes('trading history') || command.includes('show history')) {
       setIsHistoryView(true);
-      const response: typeof chatHistory[0] = {
-        message: "I've pulled up the recent trading history for you. You can see the detailed trade entries on the right panel. Each entry includes the market, direction, confidence level, and timestamp.\n\nWould you like me to analyze any specific patterns or trends in these trades?",
-        timestamp: formatJapanTime(new Date()),
-        isUser: false,
-        type: 'history',
-        contextData: {
-          showCalls: true
-        }
-      };
-      setChatHistory(prev => [...prev, response]);
-      setFilteredHistory(marketCalls.slice(0, 6));
-      setPerformanceData(null);
     } else {
       const aiResponse: typeof chatHistory[0] = {
         message: "I understand you're interested in " + userInput + ". Could you please be more specific about what you'd like to know? I can help you with:\n\n• Trading history analysis\n• Win rate calculations\n• Market performance metrics\n• Specific trader insights",
@@ -166,6 +154,10 @@ const Index = () => {
     }
     
     setIsThinking(false);
+  };
+
+  const handleViewChart = () => {
+    setIsHistoryView(true);
   };
 
   const handleSort = (key: 'rank' | 'roi' | 'score') => {
@@ -303,6 +295,7 @@ const Index = () => {
                     onSubmit={handleUserMessage}
                     containerRef={chatContainerRef}
                     isThinking={isThinking}
+                    onViewChart={handleViewChart}
                   />
                 </TabsContent>
 
@@ -386,25 +379,27 @@ const Index = () => {
                             <PerformanceChart monthlyData={performanceData.monthlyData} />
                           </motion.div>
                         )}
-                        <AnimatePresence>
-                          {filteredHistory.map((prediction, index) => (
-                            <motion.div
-                              key={`history-${index}`}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -20 }}
-                              transition={{ delay: index * 0.1 }}
-                            >
-                              <PredictionCard
-                                symbol={prediction.market}
-                                prediction={prediction.direction === "LONG" ? "up" : "down"}
-                                confidence={prediction.confidence}
-                                timestamp={prediction.timestamp}
-                                traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                              />
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
+                        {filteredHistory.length > 0 && (
+                          <AnimatePresence>
+                            {filteredHistory.map((prediction, index) => (
+                              <motion.div
+                                key={`history-${index}`}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ delay: index * 0.1 }}
+                              >
+                                <PredictionCard
+                                  symbol={prediction.market}
+                                  prediction={prediction.direction === "LONG" ? "up" : "down"}
+                                  confidence={prediction.confidence}
+                                  timestamp={prediction.timestamp}
+                                  traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                                />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        )}
                       </>
                     )}
                     {!isHistoryView && (
