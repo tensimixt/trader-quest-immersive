@@ -17,7 +17,7 @@ export const ChatInput = ({ value, onChange, onSubmit }: ChatInputProps) => {
         placeholder="Enter command, Master Wayne..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-black/20 border-emerald-500/20 text-emerald-400 font-mono placeholder:text-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
+        className="w-full bg-white/5 border-emerald-500/20 text-white placeholder:text-emerald-500/50"
       />
       <button
         type="submit"
