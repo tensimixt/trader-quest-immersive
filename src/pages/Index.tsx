@@ -426,7 +426,7 @@ const Index = () => {
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 <AnimatePresence mode="wait">
-                  {filteredHistory.length > 0 && (
+                  {filteredHistory.length > 0 && isHistoryView && (
                     <div>
                       {filteredHistory.map((prediction, index) => (
                         <motion.div
