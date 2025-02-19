@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -251,9 +250,8 @@ export const WalletAuthButton = () => {
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white">
         <WalletMultiButton 
-          className="!bg-white/5 hover:!bg-white/10 !transition-all !duration-300 !border !border-white/10 !shadow-lg hover:!shadow-white/5 !rounded-xl !px-6 !py-3 !h-auto !font-medium tracking-wide backdrop-blur-sm !text-white" 
           startIcon={<Wallet className="w-5 h-5 text-white/70" />}
         />
         {(connected || userRejected) && (
