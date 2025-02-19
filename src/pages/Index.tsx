@@ -178,7 +178,7 @@ const Index = () => {
         setFilteredHistory([]); // Clear the calls when showing win rate
 
         setChatHistory(prev => [...prev, { 
-          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. Click here to view the monthly breakdown.`,
+          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history',
           contextData: {
@@ -202,14 +202,15 @@ const Index = () => {
           confidence: call.confidence,
           roi: call.roi,
           trader: call.traderProfile,
-          timestamp: call.timestamp
+          timestamp: call.timestamp,
+          analysis: call.analysis
         }));
 
         setFilteredHistory(filteredCalls);
         setPerformanceData(null);
 
         setChatHistory(prev => [...prev, { 
-          message: `Found ${filteredCalls.length} trading calls from Hsaka. Click here to view the trades.`,
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the trades.`,
           timestamp: formatJapanTime(new Date()),
           type: 'history',
           contextData: {
@@ -284,6 +285,20 @@ const Index = () => {
             if (chartRef.current) {
               chartRef.current.scrollIntoView({ behavior: 'smooth' });
             }
+          } else if (clickedMessage.contextData.showCalls) {
+            const filteredCalls = marketCalls.filter(call => 
+              call.traderProfile.toLowerCase() === 'hsaka'
+            ).map(call => ({
+              market: call.market,
+              direction: call.direction,
+              confidence: call.confidence,
+              roi: call.roi,
+              trader: call.traderProfile,
+              timestamp: call.timestamp,
+              analysis: call.analysis
+            }));
+            setPerformanceData(null);
+            setFilteredHistory(filteredCalls);
           }
         }
       }
