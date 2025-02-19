@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -27,13 +26,12 @@ export const WalletAuthButton = () => {
     hasInitialVerificationCheck.current = false;
     verificationInProgress.current = false;
     justReset.current = true;
-    // Don't set isResetting here, manage it separately
+    isResetting.current = true;
   };
 
   const handleReset = async () => {
     try {
       clearAllStates();
-      isResetting.current = true; // Set reset flag
       setIsLoading(true);
       
       const currentWalletAddress = publicKey?.toString();
@@ -73,7 +71,7 @@ export const WalletAuthButton = () => {
       console.log('Reset: Successfully deleted wallet record');
       
       // Add a delay before allowing new connections
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
         title: "Reset Successful",
@@ -81,15 +79,13 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
 
-      // Immediately clear isResetting to allow new connections
-      isResetting.current = false;
-
-      // Set a timeout to clear the justReset flag
+      // Set a timeout to clear the reset state
       resetTimeout.current = setTimeout(() => {
         console.log('Clearing reset state');
+        isResetting.current = false;
         justReset.current = false;
         resetTimeout.current = null;
-      }, 2000);
+      }, 3000);
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
@@ -99,8 +95,6 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
-      // Make sure to clear reset state even on error
-      isResetting.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -219,27 +213,11 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
-          
-          // Force a small delay to ensure state updates are processed
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
             duration: 3000,
           });
-
-          // Trigger an immediate verification check
-          const { data: verificationCheck } = await supabase
-            .from('wallet_auth')
-            .select('nft_verified')
-            .eq('wallet_address', publicKey.toString())
-            .maybeSingle();
-
-          if (verificationCheck?.nft_verified) {
-            console.log('Verification confirmed in database');
-            setIsVerified(true);
-          }
         } else {
           setShouldVerify(false);
           toast({
@@ -319,7 +297,6 @@ export const WalletAuthButton = () => {
     if (!connected) {
       console.log('Wallet disconnected, resetting verification states');
       clearAllStates();
-      isResetting.current = false; // Make sure to clear reset state on disconnect
     }
   }, [connected]);
 
