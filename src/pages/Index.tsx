@@ -124,8 +124,37 @@ const Index = () => {
     setUserInput('');
     setIsThinking(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    const command = userInput.toLowerCase();
+    
+    if (command.includes('win rate') && command.includes('2024')) {
+      const data = generatePerformanceData(marketCalls, '2024');
+      setPerformanceData(data);
+      
+      const response: typeof chatHistory[0] = {
+        message: `Here's the win rate analysis for 2024:\nOverall Win Rate: ${data.overall}%`,
+        timestamp: formatJapanTime(new Date()),
+        isUser: false,
+        type: activeTab === 'codec' ? 'intel' : 'chat',
+        contextData: {
+          showChart: true
+        }
+      };
+      
+      setChatHistory(prev => [...prev, response]);
+    } else if (command.includes('trading history') || command.includes('show history')) {
+      setIsHistoryView(true);
+      const response: typeof chatHistory[0] = {
+        message: "Displaying recent trading history...",
+        timestamp: formatJapanTime(new Date()),
+        isUser: false,
+        type: 'history',
+        contextData: {
+          showCalls: true
+        }
+      };
+      setChatHistory(prev => [...prev, response]);
+      setFilteredHistory(marketCalls.slice(0, 6));
+    } else {
       const aiResponse: typeof chatHistory[0] = {
         message: `Received your message: "${userInput}"`,
         timestamp: formatJapanTime(new Date()),
@@ -133,8 +162,9 @@ const Index = () => {
         type: activeTab === 'codec' ? 'intel' : 'chat'
       };
       setChatHistory(prev => [...prev, aiResponse]);
-      setIsThinking(false);
-    }, 1000);
+    }
+    
+    setIsThinking(false);
   };
 
   const handleSort = (key: 'rank' | 'roi' | 'score') => {
