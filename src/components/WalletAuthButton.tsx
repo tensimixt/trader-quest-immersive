@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -18,32 +19,6 @@ export const WalletAuthButton = () => {
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
-
-  // Effect to handle tab transition when verification succeeds
-  useEffect(() => {
-    const handleVerificationSuccess = async () => {
-      if (isVerified && !isTransitioning) {
-        console.log("Verification successful, transitioning to chat tab...");
-        try {
-          await setActiveTab("chat");
-          console.log("Tab transition completed after verification");
-        } catch (error) {
-          console.error("Error transitioning after verification:", error);
-        }
-      }
-    };
-
-    handleVerificationSuccess();
-  }, [isVerified, setActiveTab, isTransitioning]);
-
-  const handleTabTransition = async () => {
-    try {
-      await setActiveTab("chat");
-      console.log("Tab transition completed");
-    } catch (error) {
-      console.error("Error during tab transition:", error);
-    }
-  };
 
   const handleReset = async () => {
     try {
@@ -156,7 +131,18 @@ export const WalletAuthButton = () => {
       }
 
       console.log('Verification successful:', data);
+      
+      // First set the verified state
       setIsVerified(true);
+      
+      // Immediately attempt to transition
+      console.log("Attempting tab transition after verification...");
+      try {
+        await setActiveTab("chat");
+        console.log("Tab transition successful");
+      } catch (error) {
+        console.error("Error during tab transition:", error);
+      }
       
       toast({
         title: "Verification Successful",
@@ -207,6 +193,16 @@ export const WalletAuthButton = () => {
         console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
+        
+        // Immediately attempt to transition for existing verification
+        console.log("Attempting tab transition for existing verification...");
+        try {
+          await setActiveTab("chat");
+          console.log("Tab transition successful");
+        } catch (error) {
+          console.error("Error during tab transition:", error);
+        }
+        
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -291,6 +287,15 @@ export const WalletAuthButton = () => {
           setIsVerified(true);
           setShouldVerify(false);
           
+          // Immediately attempt to transition after successful verification
+          console.log("Attempting tab transition after successful verification...");
+          try {
+            await setActiveTab("chat");
+            console.log("Tab transition successful");
+          } catch (error) {
+            console.error("Error during tab transition:", error);
+          }
+          
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
@@ -321,7 +326,7 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
       verificationInProgress.current = false;
     }
-  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
+  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify, setActiveTab]);
 
   useEffect(() => {
     if (connected && publicKey && !isVerified && !userRejected && !shouldVerify && !isResetting.current) {
