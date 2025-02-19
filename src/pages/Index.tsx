@@ -121,8 +121,8 @@ const Index = () => {
         const nextIndex = current.length;
         if (nextIndex >= marketCalls.length) return current;
         
-        // Add next card from marketCalls
-        return [...current, marketCalls[nextIndex]];
+        // Add next card from marketCalls to the beginning of the array
+        return [marketCalls[nextIndex], ...current];
       });
     }, 15000); // Add new card every 15 seconds
 
@@ -369,7 +369,7 @@ const Index = () => {
                     stiffness: 200,
                     damping: 20
                   }}
-                  className="flex-1"
+                  className="flex-1 flex flex-col"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -404,7 +404,7 @@ const Index = () => {
                     )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                     {isHistoryView && performanceData && (
                       <motion.div
                         ref={chartRef}
