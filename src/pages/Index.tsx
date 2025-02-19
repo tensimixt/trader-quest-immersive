@@ -64,10 +64,10 @@ const Index = () => {
 
   useEffect(() => {
     const checkVerification = async () => {
-      if (checkInProgress.current || !publicKey) return;
+      if (checkInProgress.current || !publicKey || !connected) return;
       
       const now = Date.now();
-      if (now - lastCheckTime.current < 2000) return;
+      if (now - lastCheckTime.current < 5000) return;
       
       checkInProgress.current = true;
       setIsCheckingVerification(true);
@@ -94,16 +94,18 @@ const Index = () => {
           const wasVerifiedBefore = isVerified;
           const isNowVerified = data?.nft_verified || false;
           
-          setIsVerified(isNowVerified);
-          
-          if (!wasVerifiedBefore && isNowVerified) {
-            console.log('Transitioning to chat view...');
-            setActiveTab("chat");
-            toast({
-              title: "Welcome to CODEC",
-              description: "You now have access to the chat and CODEC features",
-              duration: 3000,
-            });
+          if (isNowVerified !== isVerified) {
+            setIsVerified(isNowVerified);
+            
+            if (!wasVerifiedBefore && isNowVerified) {
+              console.log('Transitioning to chat view...');
+              setActiveTab("chat");
+              toast({
+                title: "Welcome to CODEC",
+                description: "You now have access to the chat and CODEC features",
+                duration: 3000,
+              });
+            }
           }
         }
       } catch (err) {
@@ -115,10 +117,15 @@ const Index = () => {
       }
     };
 
-    const intervalId = setInterval(checkVerification, 2000);
-    checkVerification();
+    if (publicKey && connected && !checkInProgress.current) {
+      checkVerification();
+    }
 
-    return () => clearInterval(intervalId);
+    const intervalId = setInterval(checkVerification, 5000);
+    return () => {
+      clearInterval(intervalId);
+      checkInProgress.current = false;
+    };
   }, [publicKey, connected, toast, isVerified]);
 
   const handleUserMessage = async (e: React.FormEvent) => {
@@ -172,19 +179,21 @@ const Index = () => {
 
   if (isCheckingVerification) {
     return (
-      <div className="min-h-screen overflow-hidden bat-grid">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="container mx-auto p-4 h-screen flex flex-col items-center justify-center"
-        >
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="min-h-screen overflow-hidden bat-grid"
+      >
+        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
           <AppHeader />
           <div className="text-center space-y-4">
             <div className="w-8 h-8 border-4 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mx-auto" />
             <p className="text-emerald-400">Checking verification status...</p>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     );
   }
 
