@@ -501,6 +501,46 @@ const Index = () => {
                         <PerformanceChart monthlyData={performanceData.monthlyData} />
                       </motion.div>
                     )}
+                    {isHistoryView && filteredHistory.length > 0 && (
+                      <AnimatePresence mode="popLayout">
+                        {filteredHistory.map((prediction, index) => (
+                          <motion.div
+                            key={`prediction-${index}-${prediction.market}-${prediction.timestamp}`}
+                            initial={{ 
+                              opacity: 0, 
+                              y: 40,
+                              scale: 0.95,
+                              filter: "blur(10px)"
+                            }}
+                            animate={{ 
+                              opacity: 1, 
+                              y: 0,
+                              scale: 1,
+                              filter: "blur(0px)"
+                            }}
+                            exit={{ 
+                              opacity: 0, 
+                              y: -40,
+                              scale: 0.95,
+                              filter: "blur(10px)"
+                            }}
+                            transition={{ 
+                              duration: 0.7,
+                              ease: [0.20, 0.67, 0.22, 1.0],
+                              delay: index * 0.1
+                            }}
+                          >
+                            <PredictionCard
+                              symbol={prediction.market}
+                              prediction={prediction.direction.toLowerCase() as "up" | "down"}
+                              confidence={prediction.confidence}
+                              timestamp={prediction.timestamp}
+                              traderText={prediction.analysis || ""}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    )}
                     {!isHistoryView && (
                       <AnimatePresence mode="popLayout">
                         {visibleCards.map((prediction, index) => (
@@ -532,7 +572,7 @@ const Index = () => {
                           >
                             <PredictionCard
                               symbol={prediction.market}
-                              prediction={prediction.direction === "LONG" ? "up" : "down"}
+                              prediction={prediction.direction.toLowerCase() as "up" | "down"}
                               confidence={prediction.confidence}
                               timestamp={prediction.timestamp}
                               traderText={prediction.analysis}
