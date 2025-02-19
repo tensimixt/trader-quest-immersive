@@ -353,11 +353,23 @@ const Index = () => {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <History className="w-5 h-5 text-blue-400" />
-                      <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        MARKET_HISTORY
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                      </h2>
+                      {isHistoryView ? (
+                        <>
+                          <History className="w-5 h-5 text-blue-400" />
+                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            MARKET_HISTORY
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          </h2>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-5 h-5 text-emerald-400" />
+                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            MARKET_INTEL
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          </h2>
+                        </>
+                      )}
                     </div>
                     {isHistoryView && (
                       <Button
@@ -384,11 +396,11 @@ const Index = () => {
                         <PerformanceChart monthlyData={performanceData.monthlyData} />
                       </motion.div>
                     )}
-                    {isHistoryView && filteredHistory.length > 0 && (
+                    {!isHistoryView && (
                       <AnimatePresence>
-                        {filteredHistory.map((prediction, index) => (
+                        {marketCalls.slice(0, 3).map((prediction, index) => (
                           <motion.div
-                            key={`history-${index}`}
+                            key={`prediction-${index}`}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
@@ -399,37 +411,8 @@ const Index = () => {
                               prediction={prediction.direction === "LONG" ? "up" : "down"}
                               confidence={prediction.confidence}
                               timestamp={prediction.timestamp}
-                              traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                              traderText={prediction.analysis || "Double bottom pattern with volume."}
                             />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    )}
-                    {!isHistoryView && (
-                      <AnimatePresence>
-                        {marketIntelligence.map((intel, index) => (
-                          <motion.div
-                            key={`intel-${index}`}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ delay: index * 0.1 }}
-                          >
-                            <div className="glass-card p-4 rounded-xl border border-emerald-500/20 mb-4">
-                              <p className="text-white/90 mb-2">{intel.message}</p>
-                              <div className="flex items-center justify-between">
-                                <span className={`text-sm ${
-                                  intel.impact === 'BULLISH' ? 'text-green-400' : 
-                                  intel.impact === 'BEARISH' ? 'text-red-400' : 
-                                  'text-blue-400'
-                                }`}>
-                                  {intel.impact}
-                                </span>
-                                <span className="text-emerald-400/50 text-sm">
-                                  Confidence: {intel.confidence}%
-                                </span>
-                              </div>
-                            </div>
                           </motion.div>
                         ))}
                       </AnimatePresence>
