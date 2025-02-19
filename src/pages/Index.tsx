@@ -163,9 +163,6 @@ const Index = () => {
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
-        if (sortConfig.key === 'rank') {
-          return sortConfig.direction === 'asc' ? a.rank - b.rank : b.rank - a.rank;
-        }
         return sortConfig.direction === 'asc' ? a.score - b.score : b.score - a.score;
       });
     }
