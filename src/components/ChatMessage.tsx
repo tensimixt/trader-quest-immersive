@@ -9,9 +9,13 @@ interface ChatMessageProps {
   isUser?: boolean;
   type?: 'chat' | 'intel' | 'history';
   isThinking?: boolean;
+  contextData?: {
+    showChart?: boolean;
+    showCalls?: boolean;
+  };
 }
 
-export const ChatMessage = ({ message, timestamp, isUser, type, isThinking }: ChatMessageProps) => {
+export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, contextData }: ChatMessageProps) => {
   if (isThinking) {
     return (
       <motion.div
@@ -19,7 +23,7 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking }: Ch
         animate={{ opacity: 1, x: 0 }}
         className="flex justify-start"
       >
-        <div className="max-w-[80%] glass-card p-3 rounded-xl bg-white/5">
+        <div className="max-w-[80%] p-3 rounded-xl bg-black/20">
           <div className="flex items-center gap-2">
             <Bot className="w-4 h-4 text-emerald-400" />
             <div className="flex gap-1">
@@ -33,27 +37,31 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking }: Ch
     );
   }
 
+  const isHistory = type === 'history';
+  const historyColor = 'text-blue-400';
+  const normalColor = isUser ? 'text-emerald-400' : 'text-emerald-400';
+  const textColor = isHistory ? historyColor : normalColor;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: isUser ? 20 : -20 }}
       animate={{ opacity: 1, x: 0 }}
       className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
     >
-      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-        type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-        isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-      }`}>
+      <div className={`max-w-[80%] ${isUser ? '' : 'bg-black/20'} rounded-xl p-3`}>
         {type === 'history' && (
-          <div className="flex items-center gap-2 mb-1">
-            <History className="w-3 h-3 text-blue-400" />
-            <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
+          <div className="flex items-center gap-2 mb-2">
+            <History className="w-4 h-4 text-blue-400" />
+            <span className="text-xs text-blue-400 uppercase tracking-wider font-mono">TRADING HISTORY</span>
           </div>
         )}
-        <p 
-          className="text-sm text-white font-mono whitespace-pre-line"
-          dangerouslySetInnerHTML={{ __html: message }}
-        />
-        <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
+        <div className="space-y-1">
+          <p 
+            className={`text-sm font-mono ${textColor}`}
+            dangerouslySetInnerHTML={{ __html: message }}
+          />
+          <p className="text-[10px] text-emerald-400/50 font-mono">{timestamp}</p>
+        </div>
       </div>
     </motion.div>
   );
