@@ -354,10 +354,10 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card rounded-2xl relative overflow-hidden p-6"
+            className="glass-card rounded-2xl relative overflow-hidden p-6 h-full"
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col max-h-[calc(100vh-8rem)]">
               <AnimatePresence mode="wait">
                 <motion.div 
                   key={isHistoryView ? 'history' : 'intel'}
@@ -369,9 +369,9 @@ const Index = () => {
                     stiffness: 200,
                     damping: 20
                   }}
-                  className="flex-1 flex flex-col"
+                  className="flex-1 flex flex-col h-full overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <div className="flex items-center gap-2">
                       {isHistoryView ? (
                         <>
@@ -404,7 +404,7 @@ const Index = () => {
                     )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
                     {isHistoryView && performanceData && (
                       <motion.div
                         ref={chartRef}
@@ -421,12 +421,28 @@ const Index = () => {
                         {visibleCards.map((prediction, index) => (
                           <motion.div
                             key={`prediction-${index}-${prediction.market}`}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
+                            initial={{ 
+                              opacity: 0, 
+                              y: 40,
+                              scale: 0.95,
+                              filter: "blur(10px)"
+                            }}
+                            animate={{ 
+                              opacity: 1, 
+                              y: 0,
+                              scale: 1,
+                              filter: "blur(0px)"
+                            }}
+                            exit={{ 
+                              opacity: 0, 
+                              y: -40,
+                              scale: 0.95,
+                              filter: "blur(10px)"
+                            }}
                             transition={{ 
-                              duration: 0.4,
-                              ease: [0.23, 1, 0.32, 1]
+                              duration: 0.7,
+                              ease: [0.20, 0.67, 0.22, 1.0],
+                              delay: index * 0.1
                             }}
                           >
                             <PredictionCard
