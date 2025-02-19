@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -25,7 +24,7 @@ export const WalletAuthButton = () => {
       setIsLoading(true);
       
       const currentWalletAddress = publicKey?.toString();
-      console.log('Current wallet address:', currentWalletAddress);
+      console.log('Reset: Starting reset for wallet address:', currentWalletAddress);
       
       if (!currentWalletAddress) {
         console.error('No wallet address found for reset');
@@ -38,34 +37,18 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      const { data: existingRecord, error: checkError } = await supabase
+      console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
+      const { error: deleteError } = await supabase
         .from('wallet_auth')
-        .select('*')
-        .eq('wallet_address', currentWalletAddress)
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Check error:', checkError);
-        throw checkError;
+        .delete()
+        .eq('wallet_address', currentWalletAddress);
+      
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
       }
-
-      if (existingRecord) {
-        console.log('Attempting to delete record for wallet:', currentWalletAddress);
-        const { error: deleteError, data: deleteData } = await supabase
-          .from('wallet_auth')
-          .delete()
-          .eq('wallet_address', currentWalletAddress)
-          .select();
-        
-        if (deleteError) {
-          console.error('Delete error:', deleteError);
-          throw deleteError;
-        }
-        
-        console.log('Delete response:', deleteData);
-      } else {
-        console.log('No record found to delete for wallet:', currentWalletAddress);
-      }
+      
+      console.log('Reset: Successfully deleted wallet record');
       
       await disconnect();
       
@@ -248,7 +231,6 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Reset justReset flag when starting a new verification
       if (justReset.current) {
         justReset.current = false;
         verificationInProgress.current = false;
@@ -272,7 +254,6 @@ export const WalletAuthButton = () => {
           setIsVerified(true);
           setShouldVerify(false);
         } else if (!userRejected) {
-          // Only set shouldVerify if we haven't just reset
           if (!justReset.current) {
             setShouldVerify(true);
           }
@@ -285,7 +266,6 @@ export const WalletAuthButton = () => {
     checkInitialVerification();
   }, [connected, publicKey, userRejected]);
 
-  // Reset verification flags when wallet disconnects
   useEffect(() => {
     if (!connected) {
       verificationInProgress.current = false;
