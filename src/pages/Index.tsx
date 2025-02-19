@@ -129,54 +129,111 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: 'smooth',
+        block: 'end',
+      };
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
+  useEffect(() => {
+    if (!isHistoryView) {
+      setPerformanceData(null);
+      setFilteredHistory(marketCalls.slice(0, 6));
+    }
+  }, [isHistoryView]);
+
   const handleUserMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const userMessage: typeof chatHistory[0] = {
-      message: userInput,
-      timestamp: formatJapanTime(new Date()),
-      isUser: true,
-      type: activeTab === 'codec' ? 'intel' : 'chat'
-    };
+    const timestamp = formatJapanTime(new Date());
+    
+    setChatHistory(prev => [...prev, { 
+      message: userInput, 
+      timestamp, 
+      isUser: true, 
+      type: 'chat' 
+    }]);
 
-    setChatHistory(prev => [...prev, userMessage]);
-    setUserInput('');
     setIsThinking(true);
+    const query = userInput.toLowerCase();
+    const isWinRateQuery = query.includes('win rate');
+    const isCallsQuery = query.includes('calls') || query.includes('trades');
+    const isHsakaQuery = query.includes('hsaka');
+    const year = '2024';
 
-    const command = userInput.toLowerCase();
-    
-    if (command.includes('win rate')) {
-      const year = '2024';
-      const performanceStats = generatePerformanceData(marketCalls, year);
-      setPerformanceData(performanceStats);
-      setFilteredHistory([]);
-      setIsHistoryView(true);
+    // Simulate some processing time
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const response: typeof chatHistory[0] = {
-        message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performanceStats.overall}%. Click here to view the monthly breakdown.`,
-        timestamp: formatJapanTime(new Date()),
-        type: 'history',
-        contextData: {
-          showChart: true
-        }
-      };
-      setChatHistory(prev => [...prev, response]);
-    } else if (command.includes('trading history') || command.includes('show history')) {
+    if (isHsakaQuery) {
       setIsHistoryView(true);
-      setPerformanceData(null);
-      setFilteredHistory(marketCalls.slice(0, 6));
+      
+      if (isWinRateQuery) {
+        const performance = generatePerformanceData(marketCalls, year);
+        setPerformanceData(performance);
+        setFilteredHistory([]); // Clear the calls when showing win rate
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. Click here to view the monthly breakdown.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: true,
+            showCalls: false
+          }
+        }]);
+
+        toast({
+          title: "Performance Data Found",
+          description: `Win rate for ${year}: ${performance.overall}%`,
+          duration: 3000,
+        });
+      }
+      else if (isCallsQuery) {
+        const filteredCalls = marketCalls.filter(call => 
+          call.traderProfile.toLowerCase() === 'hsaka'
+        ).map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp
+        }));
+
+        setFilteredHistory(filteredCalls);
+        setPerformanceData(null);
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found ${filteredCalls.length} trading calls from Hsaka. Click here to view the trades.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: false,
+            showCalls: true
+          }
+        }]);
+
+        toast({
+          title: "Trading Calls Found",
+          description: `Found ${filteredCalls.length} trading calls from Hsaka in ${year}`,
+          duration: 3000,
+        });
+      }
     } else {
-      const aiResponse: typeof chatHistory[0] = {
-        message: "I understand you're interested in " + userInput + ". Could you please be more specific about what you'd like to know? I can help you with:\n\n• Trading history analysis\n• Win rate calculations\n• Market performance metrics\n• Specific trader insights",
+      setChatHistory(prev => [...prev, {
+        message: "I understand you're interested in trading data. You can ask me about:\n• Hsaka's win rate in 2024\n• Hsaka's trading calls\n• Trading performance metrics",
         timestamp: formatJapanTime(new Date()),
-        isUser: false,
-        type: activeTab === 'codec' ? 'intel' : 'chat'
-      };
-      setChatHistory(prev => [...prev, aiResponse]);
+        type: 'chat'
+      }]);
     }
-    
+
     setIsThinking(false);
+    setUserInput("");
   };
 
   const handleViewChart = () => {
@@ -207,6 +264,34 @@ const Index = () => {
 
     return filtered;
   }, [searchQuery, sortConfig]);
+
+  useEffect(() => {
+    const handleChatClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.dataset.messageId) {
+        const messageId = target.dataset.messageId;
+        const clickedMessage = chatHistory.find(msg => 
+          msg.message.includes(messageId)
+        );
+
+        if (clickedMessage?.contextData) {
+          setIsHistoryView(true);
+          if (clickedMessage.contextData.showChart) {
+            const year = '2024';
+            const performance = generatePerformanceData(marketCalls, year);
+            setPerformanceData(performance);
+            setFilteredHistory([]);
+            if (chartRef.current) {
+              chartRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener('click', handleChatClick);
+    return () => document.removeEventListener('click', handleChatClick);
+  }, [chatHistory]);
 
   if (isCheckingVerification) {
     return (
