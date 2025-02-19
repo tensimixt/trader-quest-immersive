@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -64,6 +65,12 @@ const Index = () => {
           const wasVerifiedBefore = isVerified;
           const isNowVerified = data?.nft_verified || false;
           setIsVerified(isNowVerified);
+
+          // If verification status changed from false to true, transition to chat
+          if (!wasVerifiedBefore && isNowVerified) {
+            console.log('Verification status changed, transitioning to chat...');
+            await setActiveTab("chat");
+          }
         }
       } catch (err) {
         console.error('Error in verification check:', err);
@@ -73,8 +80,15 @@ const Index = () => {
       }
     };
 
+    // Set up an interval to check verification status
+    const intervalId = setInterval(checkVerification, 1000);
+
+    // Initial check
     checkVerification();
-  }, [publicKey, connected, toast, forceCheck]);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [publicKey, connected, toast, setActiveTab]);
 
   useEffect(() => {
     if (connected) {
