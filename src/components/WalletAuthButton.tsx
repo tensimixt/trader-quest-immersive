@@ -26,13 +26,12 @@ export const WalletAuthButton = () => {
     hasInitialVerificationCheck.current = false;
     verificationInProgress.current = false;
     justReset.current = true;
-    // Don't set isResetting here, manage it separately
+    isResetting.current = true;
   };
 
   const handleReset = async () => {
     try {
       clearAllStates();
-      isResetting.current = true; // Set reset flag
       setIsLoading(true);
       
       const currentWalletAddress = publicKey?.toString();
@@ -72,7 +71,7 @@ export const WalletAuthButton = () => {
       console.log('Reset: Successfully deleted wallet record');
       
       // Add a delay before allowing new connections
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
         title: "Reset Successful",
@@ -80,15 +79,13 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
 
-      // Immediately clear isResetting to allow new connections
-      isResetting.current = false;
-
-      // Set a timeout to clear the justReset flag
+      // Set a timeout to clear the reset state
       resetTimeout.current = setTimeout(() => {
         console.log('Clearing reset state');
+        isResetting.current = false;
         justReset.current = false;
         resetTimeout.current = null;
-      }, 2000);
+      }, 3000);
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
@@ -98,8 +95,6 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
-      // Make sure to clear reset state even on error
-      isResetting.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -218,27 +213,11 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
-          
-          // Force a small delay to ensure state updates are processed
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
             duration: 3000,
           });
-
-          // Trigger an immediate verification check
-          const { data: verificationCheck } = await supabase
-            .from('wallet_auth')
-            .select('nft_verified')
-            .eq('wallet_address', publicKey.toString())
-            .maybeSingle();
-
-          if (verificationCheck?.nft_verified) {
-            console.log('Verification confirmed in database');
-            setIsVerified(true);
-          }
         } else {
           setShouldVerify(false);
           toast({
@@ -268,16 +247,18 @@ export const WalletAuthButton = () => {
 
   useEffect(() => {
     const checkInitialVerification = async () => {
-      if (!publicKey || !connected || isResetting.current) {
+      if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
         return;
       }
 
-      // Skip if we just reset
+      // Clear verification check if we just reset
       if (justReset.current) {
         console.log('Skipping verification check due to recent reset');
         return;
       }
 
+      hasInitialVerificationCheck.current = true;
+      
       try {
         console.log('Checking verification status for wallet:', publicKey.toString());
         const { data, error } = await supabase
@@ -295,8 +276,8 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else {
-          console.log('Setting shouldVerify to true - wallet not verified');
+        } else if (!userRejected && !justReset.current && !isResetting.current) {
+          console.log('Setting shouldVerify to true');
           setShouldVerify(true);
         }
       } catch (error) {
@@ -304,19 +285,18 @@ export const WalletAuthButton = () => {
       }
     };
 
-    // Add a small delay to allow wallet connection to stabilize
+    // Add a small delay to allow any reset operations to complete
     const timeoutId = setTimeout(() => {
       checkInitialVerification();
-    }, 1000);
+    }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [connected, publicKey]);
+  }, [connected, publicKey, userRejected]);
 
   useEffect(() => {
     if (!connected) {
       console.log('Wallet disconnected, resetting verification states');
       clearAllStates();
-      isResetting.current = false; // Make sure to clear reset state on disconnect
     }
   }, [connected]);
 
