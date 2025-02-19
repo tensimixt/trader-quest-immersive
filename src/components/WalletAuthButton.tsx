@@ -3,7 +3,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Wallet } from 'lucide-react';
+import { LogOut, Wallet, RefreshCcw } from 'lucide-react';
 import bs58 from 'bs58';
 
 export const WalletAuthButton = () => {
@@ -18,6 +18,70 @@ export const WalletAuthButton = () => {
   const hasInitialVerificationCheck = useRef(false);
   const justReset = useRef(false);
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const checkVerificationStatus = async () => {
+    if (!publicKey || !connected) {
+      toast({
+        title: "Check Failed",
+        description: "Please connect your wallet first",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('Manually checking verification status for:', publicKey.toString());
+      
+      const { data, error } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (error) {
+        console.error('Manual verification check error:', error);
+        toast({
+          title: "Check Failed",
+          description: "Error checking verification status",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+
+      if (data?.nft_verified) {
+        console.log('Manual check: Wallet is verified:', data);
+        setIsVerified(true);
+        setShouldVerify(false);
+        toast({
+          title: "Verification Status",
+          description: "Your wallet is verified! You should now see the chat view.",
+          duration: 3000,
+        });
+      } else {
+        console.log('Manual check: Wallet is not verified');
+        setIsVerified(false);
+        toast({
+          title: "Verification Status",
+          description: "Your wallet is not verified. Please complete the verification process.",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error in manual verification check:', error);
+      toast({
+        title: "Check Error",
+        description: "Failed to check verification status",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleReset = async () => {
     try {
@@ -96,15 +160,6 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-    };
-  }, []);
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
@@ -318,6 +373,16 @@ export const WalletAuthButton = () => {
           startIcon={<Wallet className="w-5 h-5 text-white/70" />}
           disabled={isResetting.current || isLoading}
         />
+        {connected && (
+          <button
+            onClick={checkVerificationStatus}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm transition-all duration-300 border border-emerald-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
+          >
+            <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Check Status</span>
+          </button>
+        )}
         {(connected || userRejected) && (
           <button
             onClick={handleReset}
