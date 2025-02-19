@@ -93,24 +93,19 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-black/20 rounded-full;
+  @apply bg-white/5;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-emerald-500/20 rounded-full transition-colors duration-200;
+  @apply bg-white/10 rounded-full;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-emerald-500/40;
-}
-
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(16, 185, 129, 0.2) rgba(0, 0, 0, 0.2);
+  @apply bg-white/20;
 }
 
 .bat-grid {
