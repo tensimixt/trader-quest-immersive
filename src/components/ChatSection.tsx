@@ -1,23 +1,20 @@
-
 import React from 'react';
 import { Send } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import { ChatMessage } from './ChatMessage';
+import ChatMessage from './ChatMessage';
 
 interface ChatSectionProps {
-  chatHistory: Array<{
-    message: string;
-    timestamp: string;
-    isUser?: boolean;
-    type?: 'chat' | 'intel' | 'history';
+  chatHistory: Array<{ 
+    message: string, 
+    timestamp: string, 
+    isUser?: boolean, 
+    type?: 'chat' | 'intel' | 'history',
     contextData?: {
-      showChart?: boolean;
-      showCalls?: boolean;
-    };
+      showChart?: boolean,
+      showCalls?: boolean
+    }
   }>;
   userInput: string;
-  onUserInput: (value: string) => void;
+  onUserInput: (input: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   containerRef: React.RefObject<HTMLDivElement>;
   showIntel?: boolean;
@@ -33,10 +30,14 @@ const ChatSection = ({
   showIntel = false,
   isThinking = false
 }: ChatSectionProps) => {
-  // Filter messages based on type
   const filteredMessages = chatHistory.filter(msg => 
     showIntel ? msg.type === 'intel' : msg.type !== 'intel'
   );
+
+  const handleViewChart = () => {
+    // This will be passed down to ChatMessage
+    // setIsHistoryView(true); // setIsHistoryView is not defined here
+  };
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -51,29 +52,29 @@ const ChatSection = ({
             timestamp={msg.timestamp}
             isUser={msg.isUser}
             type={msg.type}
+            onViewChart={handleViewChart}
+            isThinking={false}
           />
         ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
-      {!showIntel && (
-        <form onSubmit={onSubmit} className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Enter command, Master Wayne..."
-              value={userInput}
-              onChange={(e) => onUserInput(e.target.value)}
-              className="w-full bg-black/40 border border-emerald-500/20 text-emerald-400 placeholder:text-emerald-500/50 pr-10 font-mono"
-            />
-            <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </form>
-      )}
+      <form onSubmit={onSubmit} className="absolute bottom-0 inset-x-0 bg-black/40 p-4">
+        <div className="relative">
+          <input
+            type="text"
+            value={userInput}
+            onChange={(e) => onUserInput(e.target.value)}
+            placeholder="Type your message..."
+            className="w-full rounded-full py-2 px-4 bg-black/60 border border-emerald-500/20 text-white placeholder-emerald-400 focus:border-emerald-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full p-2"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

@@ -130,7 +130,6 @@ const Index = () => {
       const year = '2024';
       const performanceStats = generatePerformanceData(marketCalls, year);
       setPerformanceData(performanceStats);
-      setIsHistoryView(true);
 
       const response: typeof chatHistory[0] = {
         message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performanceStats.overall}%. Click here to view the monthly breakdown.`,
@@ -141,6 +140,7 @@ const Index = () => {
         }
       };
       setChatHistory(prev => [...prev, response]);
+      setFilteredHistory([]);
     } else if (command.includes('trading history') || command.includes('show history')) {
       setIsHistoryView(true);
       const response: typeof chatHistory[0] = {
@@ -154,6 +154,7 @@ const Index = () => {
       };
       setChatHistory(prev => [...prev, response]);
       setFilteredHistory(marketCalls.slice(0, 6));
+      setPerformanceData(null);
     } else {
       const aiResponse: typeof chatHistory[0] = {
         message: "I understand you're interested in " + userInput + ". Could you please be more specific about what you'd like to know? I can help you with:\n\n• Trading history analysis\n• Win rate calculations\n• Market performance metrics\n• Specific trader insights",
@@ -372,7 +373,7 @@ const Index = () => {
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                    {isHistoryView ? (
+                    {isHistoryView && (
                       <>
                         {performanceData && (
                           <motion.div
@@ -405,7 +406,8 @@ const Index = () => {
                           ))}
                         </AnimatePresence>
                       </>
-                    ) : (
+                    )}
+                    {!isHistoryView && (
                       <AnimatePresence>
                         {marketIntelligence.map((intel, index) => (
                           <motion.div
