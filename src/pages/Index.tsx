@@ -126,22 +126,7 @@ const Index = () => {
 
     const command = userInput.toLowerCase();
     
-    if (command.includes('win rate') && command.includes('2024')) {
-      const data = generatePerformanceData(marketCalls, '2024');
-      setPerformanceData(data);
-      
-      const response: typeof chatHistory[0] = {
-        message: `Based on the analysis of trading data for 2024, I've calculated the following metrics:\n\n• Overall Win Rate: ${data.overall}%\n• Total Trades: ${data.totalTrades}\n• Successful Trades: ${data.wins}\n\nI've generated a detailed performance chart for your review. Let me know if you need any specific insights from this data.`,
-        timestamp: formatJapanTime(new Date()),
-        isUser: false,
-        type: activeTab === 'codec' ? 'intel' : 'chat',
-        contextData: {
-          showChart: true
-        }
-      };
-      
-      setChatHistory(prev => [...prev, response]);
-    } else if (command.includes('trading history') || command.includes('show history')) {
+    if (command.includes('trading history') || command.includes('show history')) {
       setIsHistoryView(true);
       const response: typeof chatHistory[0] = {
         message: "I've pulled up the recent trading history for you. You can see the detailed trade entries on the right panel. Each entry includes the market, direction, confidence level, and timestamp.\n\nWould you like me to analyze any specific patterns or trends in these trades?",
@@ -337,77 +322,29 @@ const Index = () => {
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
             <div className="h-full flex flex-col">
-              <AnimatePresence mode="sync">
+              <AnimatePresence mode="wait">
                 <motion.div 
                   key={isHistoryView ? 'history' : 'intel'}
-                  initial={{ 
-                    opacity: 0,
-                    scale: 0.9,
-                    y: 20
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 20
                   }}
-                  animate={{ 
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                    transition: {
-                      duration: 0.5,
-                      ease: "easeInOut"
-                    }
-                  }}
-                  exit={{ 
-                    opacity: 0,
-                    scale: 1.1,
-                    y: -20,
-                    transition: {
-                      duration: 0.3
-                    }
-                  }}
-                  className="relative"
+                  className="flex-1"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <motion.div
-                        animate={{
-                          rotate: isHistoryView ? [0, 180, 360] : 0,
-                        }}
-                        transition={{
-                          duration: 0.5,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        {isHistoryView ? (
-                          <History className="w-5 h-5 text-blue-400" />
-                        ) : (
-                          <Eye className="w-5 h-5 text-emerald-400" />
-                        )}
-                      </motion.div>
-                      <motion.div
-                        layout
-                        className="relative"
-                      >
-                        <motion.h2 
-                          className="text-xl font-bold text-white flex items-center gap-2"
-                        >
-                          {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className={`h-2 w-2 rounded-full ${isHistoryView ? 'bg-blue-400' : 'bg-emerald-400'}`}
-                          />
-                        </motion.h2>
-                        <motion.div 
-                          className="absolute -bottom-1 left-0 right-0 h-[2px]"
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: 0.1 }}
-                          style={{
-                            background: isHistoryView 
-                              ? 'linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.5) 50%, rgba(59,130,246,0) 100%)'
-                              : 'linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0.5) 50%, rgba(16,185,129,0) 100%)'
-                          }}
-                        />
-                      </motion.div>
+                      {isHistoryView ? (
+                        <History className="w-5 h-5 text-blue-400" />
+                      ) : (
+                        <Eye className="w-5 h-5 text-emerald-400" />
+                      )}
+                      <h2 className="text-xl font-bold text-white">
+                        {isHistoryView ? 'MARKET_HISTORY' : 'MARKET_INTEL'}
+                      </h2>
                     </div>
                     {isHistoryView && (
                       <Button
@@ -421,62 +358,71 @@ const Index = () => {
                       </Button>
                     )}
                   </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                    {isHistoryView ? (
+                      <AnimatePresence>
+                        {filteredHistory.map((prediction, index) => (
+                          <motion.div
+                            key={`history-${index}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.1 }}
+                          >
+                            <PredictionCard
+                              symbol={prediction.market}
+                              prediction={prediction.direction === "LONG" ? "up" : "down"}
+                              confidence={prediction.confidence}
+                              timestamp={prediction.timestamp}
+                              traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    ) : (
+                      <AnimatePresence>
+                        {marketIntelligence.map((intel, index) => (
+                          <motion.div
+                            key={`intel-${index}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.1 }}
+                          >
+                            <div className="glass-card p-4 rounded-xl border border-emerald-500/20 mb-4">
+                              <p className="text-white/90 mb-2">{intel.message}</p>
+                              <div className="flex items-center justify-between">
+                                <span className={`text-sm ${
+                                  intel.impact === 'BULLISH' ? 'text-green-400' : 
+                                  intel.impact === 'BEARISH' ? 'text-red-400' : 
+                                  'text-blue-400'
+                                }`}>
+                                  {intel.impact}
+                                </span>
+                                <span className="text-emerald-400/50 text-sm">
+                                  Confidence: {intel.confidence}%
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    )}
+                    {performanceData && (
+                      <motion.div
+                        ref={chartRef}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                      >
+                        <PerformanceChart monthlyData={performanceData.monthlyData} />
+                      </motion.div>
+                    )}
+                  </div>
                 </motion.div>
               </AnimatePresence>
-              
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                <AnimatePresence mode="wait">
-                  {filteredHistory.length > 0 && isHistoryView && (
-                    <div>
-                      {filteredHistory.map((prediction, index) => (
-                        <motion.div
-                          key={`history-${index}`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <PredictionCard
-                            symbol={prediction.market}
-                            prediction={prediction.direction === "LONG" ? "up" : "down"}
-                            confidence={prediction.confidence}
-                            timestamp={prediction.timestamp}
-                            traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                  {!isHistoryView && predictions.map((prediction, index) => (
-                    <motion.div
-                      key={`intel-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <PredictionCard
-                        symbol={prediction.market}
-                        prediction={prediction.direction === "LONG" ? "up" : "down"}
-                        confidence={prediction.confidence}
-                        timestamp={prediction.timestamp}
-                        traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                      />
-                    </motion.div>
-                  ))}
-                  {performanceData && (
-                    <motion.div
-                      ref={chartRef}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="glass-card p-4 rounded-xl border border-emerald-500/20"
-                    >
-                      <PerformanceChart monthlyData={performanceData.monthlyData} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
             </div>
           </motion.div>
         </div>
