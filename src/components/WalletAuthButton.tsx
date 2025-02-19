@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -268,16 +269,18 @@ export const WalletAuthButton = () => {
 
   useEffect(() => {
     const checkInitialVerification = async () => {
-      if (!publicKey || !connected || isResetting.current) {
+      if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
         return;
       }
 
-      // Skip if we just reset
+      // Clear verification check if we just reset
       if (justReset.current) {
         console.log('Skipping verification check due to recent reset');
         return;
       }
 
+      hasInitialVerificationCheck.current = true;
+      
       try {
         console.log('Checking verification status for wallet:', publicKey.toString());
         const { data, error } = await supabase
@@ -295,8 +298,8 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else {
-          console.log('Setting shouldVerify to true - wallet not verified');
+        } else if (!userRejected && !justReset.current && !isResetting.current) {
+          console.log('Setting shouldVerify to true');
           setShouldVerify(true);
         }
       } catch (error) {
@@ -304,13 +307,13 @@ export const WalletAuthButton = () => {
       }
     };
 
-    // Add a small delay to allow wallet connection to stabilize
+    // Add a small delay to allow any reset operations to complete
     const timeoutId = setTimeout(() => {
       checkInitialVerification();
-    }, 1000);
+    }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [connected, publicKey]);
+  }, [connected, publicKey, userRejected]);
 
   useEffect(() => {
     if (!connected) {
