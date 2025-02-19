@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -19,6 +18,15 @@ export const WalletAuthButton = () => {
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
+
+  const handleTabTransition = async () => {
+    try {
+      await setActiveTab("chat");
+      console.log("Tab transition completed");
+    } catch (error) {
+      console.error("Error during tab transition:", error);
+    }
+  };
 
   const handleReset = async () => {
     try {
@@ -131,13 +139,14 @@ export const WalletAuthButton = () => {
       }
 
       console.log('Verification successful:', data);
+      setIsVerified(true);
+      await handleTabTransition();
+      
       toast({
         title: "Verification Successful",
         description: "Your NFT ownership has been verified",
         duration: 3000,
       });
-      
-      setActiveTab("chat");
       
     } catch (err) {
       console.error('Error in verification:', err);
@@ -182,7 +191,7 @@ export const WalletAuthButton = () => {
         console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
-        setActiveTab("chat");
+        await handleTabTransition();
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -266,7 +275,8 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
-          setActiveTab("chat");
+          await handleTabTransition();
+          
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",

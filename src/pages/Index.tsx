@@ -32,7 +32,7 @@ const Index = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [forceCheck, setForceCheck] = useState(0);
-  const { activeTab, setActiveTab } = useTab();
+  const { activeTab, setActiveTab, isTransitioning } = useTab();
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -413,7 +413,11 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <Tabs 
+                value={activeTab} 
+                onValueChange={async (value) => await setActiveTab(value)}
+                className="flex-1 flex flex-col"
+              >
                 <div className="flex items-center gap-4 mb-4">
                   <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl">
                     <TabsTrigger 
