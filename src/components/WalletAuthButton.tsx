@@ -19,19 +19,9 @@ export const WalletAuthButton = () => {
   const justReset = useRef(false);
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const clearAllStates = () => {
-    setIsVerified(false);
-    setUserRejected(false);
-    setShouldVerify(false);
-    hasInitialVerificationCheck.current = false;
-    verificationInProgress.current = false;
-    justReset.current = true;
-    isResetting.current = true;
-  };
-
   const handleReset = async () => {
     try {
-      clearAllStates();
+      isResetting.current = true;
       setIsLoading(true);
       
       const currentWalletAddress = publicKey?.toString();
@@ -48,12 +38,15 @@ export const WalletAuthButton = () => {
         return;
       }
 
+      // Clear any existing timeout
       if (resetTimeout.current) {
         clearTimeout(resetTimeout.current);
       }
 
+      // First, disconnect the wallet
       await disconnect();
 
+      // Then delete the record
       console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
       const { error: deleteError } = await supabase
         .from('wallet_auth')
@@ -67,14 +60,25 @@ export const WalletAuthButton = () => {
       
       console.log('Reset: Successfully deleted wallet record');
       
+      // Reset all states
+      setIsVerified(false);
+      setUserRejected(false);
+      setShouldVerify(false);
+      hasInitialVerificationCheck.current = false;
+      verificationInProgress.current = false;
+      justReset.current = true;
+      
+      // Add a delay before allowing new connections
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       toast({
         title: "Reset Successful",
         description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
         duration: 3000,
       });
 
+      // Set a timeout to clear the reset state
       resetTimeout.current = setTimeout(() => {
-        console.log('Clearing reset state');
         isResetting.current = false;
         justReset.current = false;
         resetTimeout.current = null;
@@ -92,6 +96,15 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
+      }
+    };
+  }, []);
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
@@ -188,6 +201,9 @@ export const WalletAuthButton = () => {
               wallet_address: publicKey.toString(),
               nft_verified: true,
               last_verification: new Date().toISOString()
+            }, {
+              onConflict: 'wallet_address',
+              ignoreDuplicates: false
             });
 
           if (upsertError) {
@@ -241,6 +257,7 @@ export const WalletAuthButton = () => {
         return;
       }
 
+      // Clear verification check if we just reset
       if (justReset.current) {
         console.log('Skipping verification check due to recent reset');
         return;
@@ -265,7 +282,7 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else if (!userRejected && !justReset.current && !isResetting.current) {
+        } else if (!userRejected && !justReset.current) {
           console.log('Setting shouldVerify to true');
           setShouldVerify(true);
         }
@@ -274,17 +291,16 @@ export const WalletAuthButton = () => {
       }
     };
 
-    const timeoutId = setTimeout(() => {
-      checkInitialVerification();
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
+    checkInitialVerification();
   }, [connected, publicKey, userRejected]);
 
   useEffect(() => {
     if (!connected) {
       console.log('Wallet disconnected, resetting verification states');
-      clearAllStates();
+      verificationInProgress.current = false;
+      hasInitialVerificationCheck.current = false;
+      setShouldVerify(false);
+      setIsVerified(false);
     }
   }, [connected]);
 
@@ -294,14 +310,6 @@ export const WalletAuthButton = () => {
       verifyWallet();
     }
   }, [shouldVerify, verifyWallet]);
-
-  useEffect(() => {
-    return () => {
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-    };
-  }, []);
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
