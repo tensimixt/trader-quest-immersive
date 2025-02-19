@@ -36,7 +36,7 @@ const ChatMessage = ({
   }
 
   const renderMessage = () => {
-    if (message.includes("Click here to view")) {
+    if (message.includes("Click here")) {
       const [beforeClick, afterClick] = message.split("Click here");
       return (
         <>
@@ -57,10 +57,14 @@ const ChatMessage = ({
 
   return (
     <div className={cn("flex", isUser ? "justify-start" : "justify-start")}>
-      <div className="bg-black/40 p-3 rounded-lg max-w-[80%]">
+      <div className={cn(
+        "bg-black/40 p-3 rounded-lg max-w-[80%]",
+        isUser ? "bg-black/40" : "bg-black/40"
+      )}>
         <div className="flex items-center gap-2 mb-1">
           {type === 'history' && <History className="w-4 h-4 text-blue-400" />}
           {type === 'intel' && <Eye className="w-4 h-4 text-emerald-400" />}
+          {type === 'history' && <span className="text-xs text-blue-400 uppercase tracking-wider">TRADING HISTORY</span>}
         </div>
         <p className={cn(
           "text-sm font-mono",

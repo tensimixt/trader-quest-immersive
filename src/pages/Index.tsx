@@ -131,6 +131,7 @@ const Index = () => {
       const performanceStats = generatePerformanceData(marketCalls, year);
       setPerformanceData(performanceStats);
       setFilteredHistory([]);
+      setIsHistoryView(true);
 
       const response: typeof chatHistory[0] = {
         message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performanceStats.overall}%. Click here to view the monthly breakdown.`,
@@ -143,6 +144,8 @@ const Index = () => {
       setChatHistory(prev => [...prev, response]);
     } else if (command.includes('trading history') || command.includes('show history')) {
       setIsHistoryView(true);
+      setPerformanceData(null);
+      setFilteredHistory(marketCalls.slice(0, 6));
     } else {
       const aiResponse: typeof chatHistory[0] = {
         message: "I understand you're interested in " + userInput + ". Could you please be more specific about what you'd like to know? I can help you with:\n\n• Trading history analysis\n• Win rate calculations\n• Market performance metrics\n• Specific trader insights",
@@ -158,6 +161,10 @@ const Index = () => {
 
   const handleViewChart = () => {
     setIsHistoryView(true);
+    setFilteredHistory([]);
+    if (performanceData) {
+      setIsHistoryView(true);
+    }
   };
 
   const handleSort = (key: 'rank' | 'roi' | 'score') => {
@@ -366,41 +373,37 @@ const Index = () => {
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                    {isHistoryView && (
-                      <>
-                        {performanceData && (
+                    {isHistoryView && performanceData && (
+                      <motion.div
+                        ref={chartRef}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                      >
+                        <PerformanceChart monthlyData={performanceData.monthlyData} />
+                      </motion.div>
+                    )}
+                    {isHistoryView && filteredHistory.length > 0 && (
+                      <AnimatePresence>
+                        {filteredHistory.map((prediction, index) => (
                           <motion.div
-                            ref={chartRef}
+                            key={`history-${index}`}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="glass-card p-4 rounded-xl border border-emerald-500/20"
+                            transition={{ delay: index * 0.1 }}
                           >
-                            <PerformanceChart monthlyData={performanceData.monthlyData} />
+                            <PredictionCard
+                              symbol={prediction.market}
+                              prediction={prediction.direction === "LONG" ? "up" : "down"}
+                              confidence={prediction.confidence}
+                              timestamp={prediction.timestamp}
+                              traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
+                            />
                           </motion.div>
-                        )}
-                        {filteredHistory.length > 0 && (
-                          <AnimatePresence>
-                            {filteredHistory.map((prediction, index) => (
-                              <motion.div
-                                key={`history-${index}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ delay: index * 0.1 }}
-                              >
-                                <PredictionCard
-                                  symbol={prediction.market}
-                                  prediction={prediction.direction === "LONG" ? "up" : "down"}
-                                  confidence={prediction.confidence}
-                                  timestamp={prediction.timestamp}
-                                  traderText={prediction.analysis || `Trading call by ${prediction.trader}`}
-                                />
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        )}
-                      </>
+                        ))}
+                      </AnimatePresence>
                     )}
                     {!isHistoryView && (
                       <AnimatePresence>
