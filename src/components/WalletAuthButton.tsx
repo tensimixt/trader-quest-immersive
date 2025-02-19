@@ -19,6 +19,23 @@ export const WalletAuthButton = () => {
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
 
+  // Effect to handle tab transition when verification succeeds
+  useEffect(() => {
+    const handleVerificationSuccess = async () => {
+      if (isVerified && !isTransitioning) {
+        console.log("Verification successful, transitioning to chat tab...");
+        try {
+          await setActiveTab("chat");
+          console.log("Tab transition completed after verification");
+        } catch (error) {
+          console.error("Error transitioning after verification:", error);
+        }
+      }
+    };
+
+    handleVerificationSuccess();
+  }, [isVerified, setActiveTab]);
+
   const handleTabTransition = async () => {
     try {
       await setActiveTab("chat");
@@ -140,7 +157,6 @@ export const WalletAuthButton = () => {
 
       console.log('Verification successful:', data);
       setIsVerified(true);
-      await handleTabTransition();
       
       toast({
         title: "Verification Successful",
@@ -191,7 +207,6 @@ export const WalletAuthButton = () => {
         console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
-        await handleTabTransition();
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -275,7 +290,6 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
-          await handleTabTransition();
           
           toast({
             title: "Verification Successful",
