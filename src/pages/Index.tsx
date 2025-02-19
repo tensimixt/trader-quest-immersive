@@ -113,14 +113,14 @@ const Index = () => {
     e.preventDefault();
     if (!userInput.trim()) return;
 
-    const newMessage: typeof chatHistory[0] = {
+    const userMessage: typeof chatHistory[0] = {
       message: userInput,
       timestamp: formatJapanTime(new Date()),
       isUser: true,
       type: activeTab === 'codec' ? 'intel' : 'chat'
     };
 
-    setChatHistory(prev => [...prev, newMessage]);
+    setChatHistory(prev => [...prev, userMessage]);
     setUserInput('');
     setIsThinking(true);
 
@@ -131,7 +131,7 @@ const Index = () => {
       setPerformanceData(data);
       
       const response: typeof chatHistory[0] = {
-        message: `Here's the win rate analysis for 2024:\nOverall Win Rate: ${data.overall}%`,
+        message: `Based on the analysis of trading data for 2024, I've calculated the following metrics:\n\n• Overall Win Rate: ${data.overall}%\n• Total Trades: ${data.totalTrades}\n• Successful Trades: ${data.wins}\n\nI've generated a detailed performance chart for your review. Let me know if you need any specific insights from this data.`,
         timestamp: formatJapanTime(new Date()),
         isUser: false,
         type: activeTab === 'codec' ? 'intel' : 'chat',
@@ -144,7 +144,7 @@ const Index = () => {
     } else if (command.includes('trading history') || command.includes('show history')) {
       setIsHistoryView(true);
       const response: typeof chatHistory[0] = {
-        message: "Displaying recent trading history...",
+        message: "I've pulled up the recent trading history for you. You can see the detailed trade entries on the right panel. Each entry includes the market, direction, confidence level, and timestamp.\n\nWould you like me to analyze any specific patterns or trends in these trades?",
         timestamp: formatJapanTime(new Date()),
         isUser: false,
         type: 'history',
@@ -156,7 +156,7 @@ const Index = () => {
       setFilteredHistory(marketCalls.slice(0, 6));
     } else {
       const aiResponse: typeof chatHistory[0] = {
-        message: `Received your message: "${userInput}"`,
+        message: "I understand you're interested in " + userInput + ". Could you please be more specific about what you'd like to know? I can help you with:\n\n• Trading history analysis\n• Win rate calculations\n• Market performance metrics\n• Specific trader insights",
         timestamp: formatJapanTime(new Date()),
         isUser: false,
         type: activeTab === 'codec' ? 'intel' : 'chat'

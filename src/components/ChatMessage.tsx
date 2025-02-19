@@ -49,6 +49,12 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking }: Ch
             <span className="text-[10px] text-blue-400 uppercase tracking-wider">Trading History</span>
           </div>
         )}
+        {!isUser && !type && (
+          <div className="flex items-center gap-2 mb-2">
+            <Bot className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs text-emerald-400 uppercase tracking-wider">JARVIS</span>
+          </div>
+        )}
         <p 
           className="text-sm text-white font-mono whitespace-pre-line"
           dangerouslySetInnerHTML={{ __html: message }}
