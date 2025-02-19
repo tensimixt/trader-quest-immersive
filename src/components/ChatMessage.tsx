@@ -23,7 +23,7 @@ const ChatMessage = ({
 }: ChatMessageProps) => {
   if (isThinking) {
     return (
-      <div className="flex justify-start">
+      <div className="flex justify-start mb-4">
         <div className="bg-black/40 p-3 rounded-lg">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
@@ -56,23 +56,38 @@ const ChatMessage = ({
   };
 
   return (
-    <div className={cn("flex", isUser ? "justify-start" : "justify-start")}>
+    <div className={cn(
+      "flex mb-4",
+      isUser ? "justify-end" : "justify-start"
+    )}>
       <div className={cn(
-        "bg-black/40 p-3 rounded-lg max-w-[80%]",
-        isUser ? "bg-black/40" : "bg-black/40"
+        "rounded-lg max-w-[80%]",
+        isUser ? "bg-black/60" : "bg-black/40",
+        isUser ? "p-3" : "p-4"
       )}>
-        <div className="flex items-center gap-2 mb-1">
-          {type === 'history' && <History className="w-4 h-4 text-blue-400" />}
-          {type === 'intel' && <Eye className="w-4 h-4 text-emerald-400" />}
-          {type === 'history' && <span className="text-xs text-blue-400 uppercase tracking-wider">TRADING HISTORY</span>}
-        </div>
+        {!isUser && type && (
+          <div className="flex items-center gap-2 mb-2">
+            {type === 'history' && <History className="w-4 h-4 text-blue-400" />}
+            {type === 'intel' && <Eye className="w-4 h-4 text-emerald-400" />}
+            {type === 'history' && (
+              <span className="text-xs text-blue-400 uppercase tracking-wider font-mono">
+                TRADING HISTORY
+              </span>
+            )}
+          </div>
+        )}
         <p className={cn(
-          "text-sm font-mono",
+          "font-mono text-sm leading-relaxed",
           isUser ? "text-emerald-400" : "text-white"
         )}>
           {renderMessage()}
         </p>
-        <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
+        <p className={cn(
+          "text-[10px] mt-2 font-mono",
+          isUser ? "text-emerald-400/50" : "text-emerald-400/40"
+        )}>
+          {timestamp}
+        </p>
       </div>
     </div>
   );
