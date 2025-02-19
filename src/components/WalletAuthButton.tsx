@@ -48,15 +48,12 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Clear any existing timeout
       if (resetTimeout.current) {
         clearTimeout(resetTimeout.current);
       }
 
-      // First, disconnect the wallet
       await disconnect();
 
-      // Then delete the record
       console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
       const { error: deleteError } = await supabase
         .from('wallet_auth')
@@ -70,22 +67,18 @@ export const WalletAuthButton = () => {
       
       console.log('Reset: Successfully deleted wallet record');
       
-      // Add a delay before allowing new connections
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       toast({
         title: "Reset Successful",
         description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
         duration: 3000,
       });
 
-      // Set a timeout to clear the reset state
       resetTimeout.current = setTimeout(() => {
         console.log('Clearing reset state');
         isResetting.current = false;
         justReset.current = false;
         resetTimeout.current = null;
-      }, 3000);
+      }, 2000);
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
@@ -195,9 +188,6 @@ export const WalletAuthButton = () => {
               wallet_address: publicKey.toString(),
               nft_verified: true,
               last_verification: new Date().toISOString()
-            }, {
-              onConflict: 'wallet_address',
-              ignoreDuplicates: false
             });
 
           if (upsertError) {
@@ -251,7 +241,6 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Clear verification check if we just reset
       if (justReset.current) {
         console.log('Skipping verification check due to recent reset');
         return;
@@ -285,7 +274,6 @@ export const WalletAuthButton = () => {
       }
     };
 
-    // Add a small delay to allow any reset operations to complete
     const timeoutId = setTimeout(() => {
       checkInitialVerification();
     }, 500);
@@ -307,7 +295,6 @@ export const WalletAuthButton = () => {
     }
   }, [shouldVerify, verifyWallet]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (resetTimeout.current) {
