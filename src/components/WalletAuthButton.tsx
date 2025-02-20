@@ -57,6 +57,7 @@ export const WalletAuthButton = () => {
   const handleReset = async () => {
     try {
       setIsLoading(true);
+      isResetting.current = true;
       
       const currentWalletAddress = publicKey?.toString();
       console.log('Reset: Starting reset for wallet address:', currentWalletAddress);
@@ -344,13 +345,13 @@ export const WalletAuthButton = () => {
       <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
         <WalletMultiButton 
           startIcon={<Wallet className="w-5 h-5 text-white/70" />}
-          disabled={isLoading}
+          disabled={isLoading || isResetting.current}
         />
         {(connected || userRejected) && (
           <button
             onClick={handleReset}
             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading}
+            disabled={isLoading || isResetting.current}
           >
             <LogOut className="w-4 h-4" />
             <span>Reset</span>
