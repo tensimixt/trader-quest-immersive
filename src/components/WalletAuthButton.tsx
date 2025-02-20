@@ -119,7 +119,8 @@ export const WalletAuthButton = () => {
         console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
-        navigate('/chat');
+        // Instead of navigating to a route, we just set verification state
+        // The parent component will handle showing the correct tab
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -200,7 +201,7 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
-          navigate('/chat');
+          // The parent component will handle showing the correct tab
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
@@ -231,7 +232,7 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
       verificationInProgress.current = false;
     }
-  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify, navigate]);
+  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
 
   useEffect(() => {
     const checkInitialVerification = async () => {
@@ -258,7 +259,7 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-          navigate('/chat');
+          // The parent component will handle showing the correct tab based on verification state
         } else if (!userRejected) {
           console.log('Setting shouldVerify to true');
           setShouldVerify(true);
@@ -269,7 +270,7 @@ export const WalletAuthButton = () => {
     };
 
     checkInitialVerification();
-  }, [connected, publicKey, userRejected, navigate]);
+  }, [connected, publicKey, userRejected]);
 
   useEffect(() => {
     if (!connected) {
