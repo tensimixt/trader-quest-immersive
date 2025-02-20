@@ -339,8 +339,8 @@ const Index = () => {
         <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
           <AppHeader />
           <div className="text-center space-y-4">
-            <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
-            <p className="text-emerald-400">Connect your Solana wallet to access the features</p>
+            <h1 className="text-2xl text-white font-bold">ESTABLISH NEURAL LINK</h1>
+            <p className="text-emerald-400 font-mono tracking-wider">Initialize your quantum wallet interface to access the COPENET neural framework</p>
           </div>
           <WalletAuthButton />
         </div>
