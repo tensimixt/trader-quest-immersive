@@ -1,10 +1,9 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Wallet } from 'lucide-react';
+import { LogOut, Loader, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
 
 export const WalletAuthButton = () => {
@@ -20,24 +19,20 @@ export const WalletAuthButton = () => {
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const resetAllStates = () => {
-    // Reset all state variables
     setIsVerified(false);
     setIsLoading(false);
     setUserRejected(false);
     setShouldVerify(false);
     
-    // Reset all refs
     verificationInProgress.current = false;
     isResetting.current = false;
     hasInitialVerificationCheck.current = false;
     
-    // Clear any existing timeout
     if (resetTimeout.current) {
       clearTimeout(resetTimeout.current);
       resetTimeout.current = null;
     }
 
-    // Clear all wallet-related localStorage items
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.includes('wallet') || key?.includes('Wallet')) {
@@ -45,12 +40,10 @@ export const WalletAuthButton = () => {
       }
     }
 
-    // Clear any potential Solana wallet adapter items
     localStorage.removeItem('walletName');
     localStorage.removeItem('wallet');
     localStorage.removeItem('autoConnect');
     
-    // Clear any session storage items as well
     sessionStorage.clear();
   };
 
@@ -73,10 +66,8 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // First, disconnect the wallet
       await disconnect();
 
-      // Then delete the record
       console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
       const { error: deleteError } = await supabase
         .from('wallet_auth')
@@ -90,7 +81,6 @@ export const WalletAuthButton = () => {
       
       console.log('Reset: Successfully deleted wallet record');
       
-      // Reset all states immediately
       resetAllStates();
       
       toast({
@@ -99,7 +89,6 @@ export const WalletAuthButton = () => {
         duration: 2000,
       });
 
-      // Add a small delay to allow the toast to be seen
       setTimeout(() => {
         window.location.reload();
       }, 2000);
@@ -112,19 +101,8 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
-    } finally {
-      setIsLoading(false);
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-    };
-  }, []);
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
@@ -280,6 +258,35 @@ export const WalletAuthButton = () => {
     }
   }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
 
+  const CustomWalletButton = () => {
+    if (isResetting.current) {
+      return (
+        <button 
+          className="wallet-adapter-button !bg-white/5 !border !border-white/10 !shadow-lg hover:!shadow-white/5 !rounded-xl !px-6 !py-3 !h-auto !font-medium !tracking-wide !backdrop-blur-sm !text-white !cursor-not-allowed !opacity-50 flex items-center gap-2"
+          disabled
+        >
+          <Loader className="w-5 h-5 text-white/70 animate-spin" />
+          <span>Reloading...</span>
+        </button>
+      );
+    }
+
+    return (
+      <WalletMultiButton 
+        startIcon={<Wallet className="w-5 h-5 text-white/70" />}
+        disabled={isLoading || isResetting.current}
+      />
+    );
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const checkInitialVerification = async () => {
       if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
@@ -343,10 +350,7 @@ export const WalletAuthButton = () => {
   return (
     <div className="fixed top-4 right-4 z-[100]">
       <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
-        <WalletMultiButton 
-          startIcon={<Wallet className="w-5 h-5 text-white/70" />}
-          disabled={isLoading || isResetting.current}
-        />
+        <CustomWalletButton />
         {(connected || userRejected) && (
           <button
             onClick={handleReset}
