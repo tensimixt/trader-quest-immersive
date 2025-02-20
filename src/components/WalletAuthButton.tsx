@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -16,11 +17,11 @@ export const WalletAuthButton = () => {
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
-  const justReset = useRef(false);
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleReset = async () => {
     try {
+      // Set resetting state
       isResetting.current = true;
       setIsLoading(true);
       
@@ -64,12 +65,7 @@ export const WalletAuthButton = () => {
       setIsVerified(false);
       setUserRejected(false);
       setShouldVerify(false);
-      hasInitialVerificationCheck.current = false;
       verificationInProgress.current = false;
-      justReset.current = true;
-      
-      // Add a delay before allowing new connections
-      await new Promise(resolve => setTimeout(resolve, 1500));
       
       toast({
         title: "Reset Successful",
@@ -77,12 +73,13 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
 
-      // Set a timeout to clear the reset state
+      // Add delay before allowing new verification
       resetTimeout.current = setTimeout(() => {
+        console.log('Reset timeout completed, clearing reset state');
         isResetting.current = false;
-        justReset.current = false;
+        hasInitialVerificationCheck.current = false;
         resetTimeout.current = null;
-      }, 2000);
+      }, 3000);
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
@@ -108,6 +105,15 @@ export const WalletAuthButton = () => {
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
+      console.log('Verification skipped:', {
+        noPublicKey: !publicKey,
+        noSignMessage: !signMessage,
+        isLoading,
+        verificationInProgress: verificationInProgress.current,
+        userRejected,
+        shouldNotVerify: !shouldVerify,
+        isResetting: isResetting.current
+      });
       return;
     }
     
@@ -254,12 +260,12 @@ export const WalletAuthButton = () => {
   useEffect(() => {
     const checkInitialVerification = async () => {
       if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
-        return;
-      }
-
-      // Clear verification check if we just reset
-      if (justReset.current) {
-        console.log('Skipping verification check due to recent reset');
+        console.log('Skipping initial verification check:', {
+          noPublicKey: !publicKey,
+          notConnected: !connected,
+          alreadyChecked: hasInitialVerificationCheck.current,
+          isResetting: isResetting.current
+        });
         return;
       }
 
@@ -282,7 +288,7 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else if (!userRejected && !justReset.current) {
+        } else if (!userRejected) {
           console.log('Setting shouldVerify to true');
           setShouldVerify(true);
         }
@@ -305,7 +311,7 @@ export const WalletAuthButton = () => {
   }, [connected]);
 
   useEffect(() => {
-    if (shouldVerify && !verificationInProgress.current && !isResetting.current && !justReset.current) {
+    if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
       console.log('Starting verification process');
       verifyWallet();
     }
