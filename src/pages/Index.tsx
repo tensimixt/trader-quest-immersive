@@ -340,33 +340,50 @@ const Index = () => {
     );
   }
 
-  if (!publicKey) {
-    if (isReloading) {
-      return (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="min-h-screen overflow-hidden bat-grid"
-        >
-          <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
-            <AppHeader />
-            <div className="text-center space-y-4">
-              <h1 className="text-2xl text-white font-bold">ESTABLISH NEURAL-LINK</h1>
-              <p className="text-emerald-400 font-mono tracking-wider">Initialize your quantum wallet interface to access the COPENET neural framework</p>
+  if (isReloading) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="min-h-screen overflow-hidden bat-grid"
+      >
+        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
+          <AppHeader />
+          <div className="text-center space-y-6">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <Loader className="w-12 h-12 text-emerald-400 animate-spin" />
+              <h1 className="text-3xl text-white font-bold tracking-wider">COPENET RELOADING</h1>
             </div>
-            <button 
-              className="wallet-adapter-button !bg-white/5 !border !border-white/10 !shadow-lg hover:!shadow-white/5 !rounded-xl !px-6 !py-3 !h-auto !font-medium !tracking-wide !backdrop-blur-sm !text-white !cursor-not-allowed !opacity-50 flex items-center gap-2 mt-4"
-              disabled
-            >
-              <Loader className="w-5 h-5 text-white/70 animate-spin" />
-              <span>Reloading...</span>
-            </button>
+            <div className="max-w-md">
+              <p className="text-emerald-400/70 font-mono text-sm">
+                Resetting neural framework configurations...
+              </p>
+              <motion.div 
+                className="h-0.5 bg-emerald-400/20 mt-6 overflow-hidden rounded-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <motion.div 
+                  className="h-full bg-emerald-400"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ 
+                    duration: 2,
+                    ease: "linear",
+                    repeat: Infinity
+                  }}
+                />
+              </motion.div>
+            </div>
           </div>
-        </motion.div>
-      );
-    }
+        </div>
+      </motion.div>
+    );
+  }
 
+  if (!publicKey) {
     return (
       <motion.div 
         initial={{ opacity: 0 }}
