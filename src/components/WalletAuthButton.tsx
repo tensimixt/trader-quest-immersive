@@ -351,7 +351,7 @@ export const WalletAuthButton = () => {
     <div className="fixed top-4 right-4 z-[100]">
       <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
         <CustomWalletButton />
-        {(connected || userRejected) && (
+        {(connected || userRejected) && !isResetting.current && (
           <button
             onClick={handleReset}
             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
@@ -362,12 +362,12 @@ export const WalletAuthButton = () => {
           </button>
         )}
       </div>
-      {isLoading && (
+      {isLoading && !isResetting.current && (
         <div className="absolute -top-1 -right-1 w-3 h-3">
           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
         </div>
       )}
-      {isVerified && (
+      {isVerified && !isResetting.current && (
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]">
           <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-soft"></div>
         </div>
