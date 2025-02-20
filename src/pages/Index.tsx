@@ -1,9 +1,8 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Search
+  MessageCircle, Activity, Radio, Search, Loader
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,8 +26,20 @@ import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
-  const { toast } = useToast();
   const { publicKey, connected } = useWallet();
+  const [isReloading, setIsReloading] = useState(false);
+
+  useEffect(() => {
+    const resetting = localStorage.getItem('walletResetting');
+    if (resetting === 'true') {
+      setIsReloading(true);
+    }
+    return () => {
+      localStorage.removeItem('walletResetting');
+    };
+  }, []);
+
+  const { toast } = useToast();
   const [isVerified, setIsVerified] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
@@ -330,6 +341,32 @@ const Index = () => {
   }
 
   if (!publicKey) {
+    if (isReloading) {
+      return (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="min-h-screen overflow-hidden bat-grid"
+        >
+          <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
+            <AppHeader />
+            <div className="text-center space-y-4">
+              <h1 className="text-2xl text-white font-bold">ESTABLISH NEURAL-LINK</h1>
+              <p className="text-emerald-400 font-mono tracking-wider">Initialize your quantum wallet interface to access the COPENET neural framework</p>
+            </div>
+            <button 
+              className="wallet-adapter-button !bg-white/5 !border !border-white/10 !shadow-lg hover:!shadow-white/5 !rounded-xl !px-6 !py-3 !h-auto !font-medium !tracking-wide !backdrop-blur-sm !text-white !cursor-not-allowed !opacity-50 flex items-center gap-2 mt-4"
+              disabled
+            >
+              <Loader className="w-5 h-5 text-white/70 animate-spin" />
+              <span>Reloading...</span>
+            </button>
+          </div>
+        </motion.div>
+      );
+    }
+
     return (
       <motion.div 
         initial={{ opacity: 0 }}

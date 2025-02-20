@@ -54,6 +54,8 @@ export const WalletAuthButton = () => {
       isResetting.current = true;
       setShowLoadingButton(true);
       
+      localStorage.setItem('walletResetting', 'true');
+      
       const currentWalletAddress = publicKey?.toString();
       console.log('Reset: Starting reset for wallet address:', currentWalletAddress);
       
@@ -96,6 +98,7 @@ export const WalletAuthButton = () => {
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
+      localStorage.removeItem('walletResetting');
       toast({
         title: "Reset Error",
         description: error?.message || "There was an error resetting your wallet data. Please try again.",
