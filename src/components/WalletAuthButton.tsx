@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -85,13 +86,12 @@ export const WalletAuthButton = () => {
       
       toast({
         title: "Reset Successful",
-        description: "Your wallet authentication data has been cleared. Refreshing page...",
-        duration: 2000,
+        description: "Your wallet authentication data has been cleared.",
+        duration: 1000,
       });
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Reload immediately after cleanup
+      window.location.reload();
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
