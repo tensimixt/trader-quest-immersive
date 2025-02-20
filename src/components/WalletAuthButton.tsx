@@ -13,9 +13,10 @@ export const WalletAuthButton = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
   const [shouldVerify, setShouldVerify] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const { toast } = useToast();
   const verificationInProgress = useRef(false);
-  const isResetting = useRef(false);
+  const isResettingRef = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -57,6 +58,7 @@ export const WalletAuthButton = () => {
   const handleReset = async () => {
     try {
       setIsLoading(true);
+      setIsResetting(true);
       
       const currentWalletAddress = publicKey?.toString();
       console.log('Reset: Starting reset for wallet address:', currentWalletAddress);
@@ -111,6 +113,7 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
+      setIsResetting(false);
     } finally {
       setIsLoading(false);
     }
@@ -340,34 +343,47 @@ export const WalletAuthButton = () => {
   }, [shouldVerify, verifyWallet]);
 
   return (
-    <div className="fixed top-4 right-4 z-[100]">
-      <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
-        <WalletMultiButton 
-          startIcon={<Wallet className="w-5 h-5 text-white/70" />}
-          disabled={isLoading}
-        />
-        {(connected || userRejected) && (
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+    <>
+      <div className="fixed top-4 right-4 z-[100]">
+        <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
+          <WalletMultiButton 
+            startIcon={<Wallet className="w-5 h-5 text-white/70" />}
             disabled={isLoading}
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
+          />
+          {(connected || userRejected) && (
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
+        {isLoading && (
+          <div className="absolute -top-1 -right-1 w-3 h-3">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+          </div>
+        )}
+        {isVerified && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]">
+            <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-soft"></div>
+          </div>
         )}
       </div>
-      {isLoading && (
-        <div className="absolute -top-1 -right-1 w-3 h-3">
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+
+      {/* Fullscreen overlay during reset */}
+      {isResetting && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] flex items-center justify-center">
+          <div className="bg-black/30 p-8 rounded-2xl border border-white/10 shadow-2xl flex flex-col items-center gap-4 animate-fade-up">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            <p className="text-white text-lg font-medium">Resetting wallet data...</p>
+            <p className="text-white/70 text-sm">Page will refresh automatically</p>
+          </div>
         </div>
       )}
-      {isVerified && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]">
-          <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-soft"></div>
-        </div>
-      )}
-    </div>
+    </>
   );
 };
 
