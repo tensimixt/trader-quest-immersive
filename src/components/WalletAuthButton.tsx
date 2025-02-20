@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -5,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
+import { useNavigate } from 'react-router-dom';
 
 export const WalletAuthButton = () => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
@@ -13,11 +15,10 @@ export const WalletAuthButton = () => {
   const [userRejected, setUserRejected] = useState(false);
   const [shouldVerify, setShouldVerify] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const verificationInProgress = useRef(false);
   const isResetting = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
-  const justReset = useRef(false);
-  const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleReset = async () => {
     try {
@@ -38,15 +39,7 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Clear any existing timeout
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-
-      // First, disconnect the wallet
-      await disconnect();
-
-      // Then delete the record
+      // First, delete the record
       console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
       const { error: deleteError } = await supabase
         .from('wallet_auth')
@@ -66,10 +59,12 @@ export const WalletAuthButton = () => {
       setShouldVerify(false);
       hasInitialVerificationCheck.current = false;
       verificationInProgress.current = false;
-      justReset.current = true;
       
-      // Add a delay before allowing new connections
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Navigate back to home
+      navigate('/');
+      
+      // Then disconnect the wallet
+      await disconnect();
       
       toast({
         title: "Reset Successful",
@@ -77,13 +72,9 @@ export const WalletAuthButton = () => {
         duration: 3000,
       });
 
-      // Set a timeout to clear the reset state
-      resetTimeout.current = setTimeout(() => {
-        isResetting.current = false;
-        justReset.current = false;
-        resetTimeout.current = null;
-      }, 2000);
-
+      // Add a delay before allowing new connections
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
     } catch (error: any) {
       console.error('Reset verification error:', error);
       toast({
@@ -94,17 +85,9 @@ export const WalletAuthButton = () => {
       });
     } finally {
       setIsLoading(false);
+      isResetting.current = false;
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-    };
-  }, []);
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
@@ -136,6 +119,7 @@ export const WalletAuthButton = () => {
         console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
+        navigate('/chat');
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -201,9 +185,6 @@ export const WalletAuthButton = () => {
               wallet_address: publicKey.toString(),
               nft_verified: true,
               last_verification: new Date().toISOString()
-            }, {
-              onConflict: 'wallet_address',
-              ignoreDuplicates: false
             });
 
           if (upsertError) {
@@ -219,6 +200,7 @@ export const WalletAuthButton = () => {
 
           setIsVerified(true);
           setShouldVerify(false);
+          navigate('/chat');
           toast({
             title: "Verification Successful",
             description: "Your NFT ownership has been verified",
@@ -249,17 +231,11 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
       verificationInProgress.current = false;
     }
-  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
+  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify, navigate]);
 
   useEffect(() => {
     const checkInitialVerification = async () => {
       if (!publicKey || !connected || hasInitialVerificationCheck.current || isResetting.current) {
-        return;
-      }
-
-      // Clear verification check if we just reset
-      if (justReset.current) {
-        console.log('Skipping verification check due to recent reset');
         return;
       }
 
@@ -282,7 +258,8 @@ export const WalletAuthButton = () => {
           console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else if (!userRejected && !justReset.current) {
+          navigate('/chat');
+        } else if (!userRejected) {
           console.log('Setting shouldVerify to true');
           setShouldVerify(true);
         }
@@ -292,7 +269,7 @@ export const WalletAuthButton = () => {
     };
 
     checkInitialVerification();
-  }, [connected, publicKey, userRejected]);
+  }, [connected, publicKey, userRejected, navigate]);
 
   useEffect(() => {
     if (!connected) {
@@ -301,11 +278,14 @@ export const WalletAuthButton = () => {
       hasInitialVerificationCheck.current = false;
       setShouldVerify(false);
       setIsVerified(false);
+      if (!isResetting.current) {
+        navigate('/');
+      }
     }
-  }, [connected]);
+  }, [connected, navigate]);
 
   useEffect(() => {
-    if (shouldVerify && !verificationInProgress.current && !isResetting.current && !justReset.current) {
+    if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
       console.log('Starting verification process');
       verifyWallet();
     }
