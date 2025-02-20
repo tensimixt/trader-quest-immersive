@@ -36,6 +36,22 @@ export const WalletAuthButton = () => {
       clearTimeout(resetTimeout.current);
       resetTimeout.current = null;
     }
+
+    // Clear all wallet-related localStorage items
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.includes('wallet') || key?.includes('Wallet')) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    // Clear any potential Solana wallet adapter items
+    localStorage.removeItem('walletName');
+    localStorage.removeItem('wallet');
+    localStorage.removeItem('autoConnect');
+    
+    // Clear any session storage items as well
+    sessionStorage.clear();
   };
 
   const handleReset = async () => {
