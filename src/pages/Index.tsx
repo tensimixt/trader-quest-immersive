@@ -1,8 +1,9 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Search, Loader
+  MessageCircle, Activity, Radio, Search
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,20 +27,8 @@ import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
-  const { publicKey, connected } = useWallet();
-  const [isReloading, setIsReloading] = useState(false);
-
-  useEffect(() => {
-    const resetting = localStorage.getItem('walletResetting');
-    if (resetting === 'true') {
-      setIsReloading(true);
-    }
-    return () => {
-      localStorage.removeItem('walletResetting');
-    };
-  }, []);
-
   const { toast } = useToast();
+  const { publicKey, connected } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
@@ -334,49 +323,6 @@ const Index = () => {
           <div className="text-center space-y-4">
             <div className="w-8 h-8 border-4 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mx-auto" />
             <p className="text-emerald-400">Checking verification status...</p>
-          </div>
-        </div>
-      </motion.div>
-    );
-  }
-
-  if (isReloading) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="min-h-screen overflow-hidden bat-grid"
-      >
-        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
-          <AppHeader />
-          <div className="text-center space-y-6">
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <Loader className="w-12 h-12 text-emerald-400 animate-spin" />
-              <h1 className="text-3xl text-white font-bold tracking-wider">COPENET RELOADING</h1>
-            </div>
-            <div className="max-w-md">
-              <p className="text-emerald-400/70 font-mono text-sm">
-                Resetting neural framework configurations...
-              </p>
-              <motion.div 
-                className="h-0.5 bg-emerald-400/20 mt-6 overflow-hidden rounded-full"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <motion.div 
-                  className="h-full bg-emerald-400"
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ 
-                    duration: 2,
-                    ease: "linear",
-                    repeat: Infinity
-                  }}
-                />
-              </motion.div>
-            </div>
           </div>
         </div>
       </motion.div>
