@@ -94,9 +94,14 @@ export const WalletAuthButton = () => {
       
       toast({
         title: "Reset Successful",
-        description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
-        duration: 3000,
+        description: "Your wallet authentication data has been cleared. Refreshing page...",
+        duration: 2000,
       });
+
+      // Add a small delay to allow the toast to be seen
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
 
     } catch (error: any) {
       console.error('Reset verification error:', error);
