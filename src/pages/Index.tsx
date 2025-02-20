@@ -340,7 +340,7 @@ const Index = () => {
           <AppHeader />
           <div className="text-center space-y-4">
             <h1 className="text-2xl text-white font-bold">Connect Your Wallet</h1>
-            <p className="text-emerald-400">Connect your Solana wallet to access the chat and CODEC features</p>
+            <p className="text-emerald-400">Connect your Solana wallet to access the featureset</p>
           </div>
           <WalletAuthButton />
         </div>
