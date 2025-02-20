@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -18,6 +17,7 @@ export const WalletAuthButton = () => {
   const isResetting = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
   const justReset = useRef(false);
+  const resetTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleReset = async () => {
     try {
@@ -25,7 +25,7 @@ export const WalletAuthButton = () => {
       setIsLoading(true);
       
       const currentWalletAddress = publicKey?.toString();
-      console.log('Current wallet address:', currentWalletAddress);
+      console.log('Reset: Starting reset for wallet address:', currentWalletAddress);
       
       if (!currentWalletAddress) {
         console.error('No wallet address found for reset');
@@ -38,37 +38,29 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('wallet_auth')
-        .select('*')
-        .eq('wallet_address', currentWalletAddress)
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Check error:', checkError);
-        throw checkError;
+      // Clear any existing timeout
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
       }
 
-      if (existingRecord) {
-        console.log('Attempting to delete record for wallet:', currentWalletAddress);
-        const { error: deleteError, data: deleteData } = await supabase
-          .from('wallet_auth')
-          .delete()
-          .eq('wallet_address', currentWalletAddress)
-          .select();
-        
-        if (deleteError) {
-          console.error('Delete error:', deleteError);
-          throw deleteError;
-        }
-        
-        console.log('Delete response:', deleteData);
-      } else {
-        console.log('No record found to delete for wallet:', currentWalletAddress);
-      }
-      
+      // First, disconnect the wallet
       await disconnect();
+
+      // Then delete the record
+      console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
+      const { error: deleteError } = await supabase
+        .from('wallet_auth')
+        .delete()
+        .eq('wallet_address', currentWalletAddress);
       
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
+      }
+      
+      console.log('Reset: Successfully deleted wallet record');
+      
+      // Reset all states
       setIsVerified(false);
       setUserRejected(false);
       setShouldVerify(false);
@@ -76,11 +68,22 @@ export const WalletAuthButton = () => {
       verificationInProgress.current = false;
       justReset.current = true;
       
+      // Add a delay before allowing new connections
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       toast({
         title: "Reset Successful",
         description: "Your wallet authentication data has been cleared. Please reconnect your wallet.",
         duration: 3000,
       });
+
+      // Set a timeout to clear the reset state
+      resetTimeout.current = setTimeout(() => {
+        isResetting.current = false;
+        justReset.current = false;
+        resetTimeout.current = null;
+      }, 2000);
+
     } catch (error: any) {
       console.error('Reset verification error:', error);
       toast({
@@ -91,11 +94,17 @@ export const WalletAuthButton = () => {
       });
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        isResetting.current = false;
-      }, 1000);
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
+      }
+    };
+  }, []);
 
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
@@ -248,15 +257,16 @@ export const WalletAuthButton = () => {
         return;
       }
 
-      // Reset justReset flag when starting a new verification
+      // Clear verification check if we just reset
       if (justReset.current) {
-        justReset.current = false;
-        verificationInProgress.current = false;
+        console.log('Skipping verification check due to recent reset');
+        return;
       }
 
       hasInitialVerificationCheck.current = true;
       
       try {
+        console.log('Checking verification status for wallet:', publicKey.toString());
         const { data, error } = await supabase
           .from('wallet_auth')
           .select('nft_verified')
@@ -269,13 +279,12 @@ export const WalletAuthButton = () => {
         }
 
         if (data?.nft_verified) {
+          console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
-        } else if (!userRejected) {
-          // Only set shouldVerify if we haven't just reset
-          if (!justReset.current) {
-            setShouldVerify(true);
-          }
+        } else if (!userRejected && !justReset.current) {
+          console.log('Setting shouldVerify to true');
+          setShouldVerify(true);
         }
       } catch (error) {
         console.error('Error in initial verification check:', error);
@@ -285,32 +294,35 @@ export const WalletAuthButton = () => {
     checkInitialVerification();
   }, [connected, publicKey, userRejected]);
 
-  // Reset verification flags when wallet disconnects
   useEffect(() => {
     if (!connected) {
+      console.log('Wallet disconnected, resetting verification states');
       verificationInProgress.current = false;
       hasInitialVerificationCheck.current = false;
       setShouldVerify(false);
+      setIsVerified(false);
     }
   }, [connected]);
 
   useEffect(() => {
-    if (shouldVerify && !verificationInProgress.current && !isResetting.current) {
+    if (shouldVerify && !verificationInProgress.current && !isResetting.current && !justReset.current) {
+      console.log('Starting verification process');
       verifyWallet();
     }
   }, [shouldVerify, verifyWallet]);
 
   return (
     <div className="fixed top-4 right-4 z-[100]">
-      <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white">
+      <div className="flex items-center gap-3 [&_.wallet-adapter-button]:!bg-white/5 [&_.wallet-adapter-button]:hover:!bg-white/10 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:!duration-300 [&_.wallet-adapter-button]:!border [&_.wallet-adapter-button]:!border-white/10 [&_.wallet-adapter-button]:!shadow-lg [&_.wallet-adapter-button]:hover:!shadow-white/5 [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!px-6 [&_.wallet-adapter-button]:!py-3 [&_.wallet-adapter-button]:!h-auto [&_.wallet-adapter-button]:!font-medium [&_.wallet-adapter-button]:!tracking-wide [&_.wallet-adapter-button]:!backdrop-blur-sm [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button:disabled]:!opacity-50 [&_.wallet-adapter-button:disabled]:!cursor-not-allowed">
         <WalletMultiButton 
           startIcon={<Wallet className="w-5 h-5 text-white/70" />}
+          disabled={isResetting.current || isLoading}
         />
         {(connected || userRejected) && (
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg"
-            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm transition-all duration-300 border border-red-500/20 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || isResetting.current}
           >
             <LogOut className="w-4 h-4" />
             <span>Reset</span>
