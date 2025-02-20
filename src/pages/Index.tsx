@@ -339,8 +339,8 @@ const Index = () => {
         <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
           <AppHeader />
           <div className="text-center space-y-4">
-            <h1 className="text-2xl text-white font-bold">INITIATE STRAND CONNECTION</h1>
-            <p className="text-emerald-400 font-mono tracking-wider">Synchronize your cryptographic porter to access the collective trading consciousness</p>
+            <h1 className="text-2xl text-white font-bold">BREACH THE VOID</h1>
+            <p className="text-emerald-400 font-mono tracking-wider">Transcend your cryptographic porter to access the collective trading consciousness</p>
           </div>
           <WalletAuthButton />
         </div>
