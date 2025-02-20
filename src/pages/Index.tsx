@@ -1,9 +1,8 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Search
+  MessageCircle, Activity, Radio, Search, Loader
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -340,8 +339,8 @@ const Index = () => {
         <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
           <AppHeader />
           <div className="text-center space-y-4">
-            <h1 className="text-2xl text-white font-bold">ESTABLISH NEURAL-LINK</h1>
-            <p className="text-emerald-400 font-mono tracking-wider">Initialize your quantum wallet interface to access the COPENET neural framework</p>
+            <h1 className="text-2xl text-white font-bold">CONNECT TO COPENET</h1>
+            <p className="text-emerald-400 font-mono tracking-wider">Link your wallet to access real-time trading signals and market intelligence</p>
           </div>
           <WalletAuthButton />
         </div>
