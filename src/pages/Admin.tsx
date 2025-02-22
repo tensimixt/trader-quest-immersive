@@ -102,19 +102,19 @@ const Admin = () => {
     console.log('Deleting existing calls for trader:', trader);
     
     try {
-      // First, get the count of existing records
+      // First, get the count of existing records using case-insensitive matching
       const { count } = await supabase
         .from('trading_calls')
         .select('*', { count: 'exact', head: true })
-        .eq('trader_name', trader);
+        .ilike('trader_name', trader);
       
       console.log(`Found ${count} existing records for trader: ${trader}`);
       
-      // Then perform the deletion
+      // Then perform the deletion with case-insensitive matching
       const { error: deleteError } = await supabase
         .from('trading_calls')
         .delete()
-        .eq('trader_name', trader);
+        .ilike('trader_name', trader);
       
       if (deleteError) {
         console.error('Error deleting existing calls:', deleteError);
@@ -229,4 +229,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
