@@ -51,17 +51,17 @@ const Admin = () => {
       
       console.log('Formatting calls data for trader:', trader);
       const formattedCalls = calls.map((call: TraderCall) => ({
-        screenName: call['fields.screenName'],
+        trader_name: call['fields.screenName'],
         call_start_date: call['fields.call_start_date'],
         call_end_date: call['fields.call_end_date'],
         exchange: call['fields.exchange'],
         market: call['fields.market'],
         market_id: call['fields.market_id'],
-        expected_market_direction: call['fields.expected_market_direction'],
-        current_score: call['fields.current_score'],
+        direction: call['fields.expected_market_direction'],
+        score: call['fields.current_score'],
         score_delta: call['fields.score_delta'],
         tweet_url: call['fields.tweet_url'],
-        user_entered_text: call['fields.user_entered_text'],
+        text: call['fields.user_entered_text'],
         created_at: new Date().toISOString()
       }));
 
