@@ -75,7 +75,6 @@ const Admin = () => {
         throw error;
       }
 
-      // Invalidate queries and show success message
       await queryClient.invalidateQueries({ queryKey: ['trading_calls'] });
       
       toast({
@@ -83,7 +82,6 @@ const Admin = () => {
         description: `Added ${formattedCalls.length} calls for ${trader}`,
       });
 
-      // Force a page refresh
       window.location.reload();
     } catch (error: any) {
       console.error('Error adding calls to Supabase:', error);
@@ -99,6 +97,7 @@ const Admin = () => {
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
+      <WalletAuthButton />
       <h1 className="text-2xl font-bold mb-6 text-white">Trader Management</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -129,4 +128,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
