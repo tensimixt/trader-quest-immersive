@@ -28,6 +28,37 @@ interface TraderCall {
   id: string;
 }
 
+interface TraderRowProps {
+  trader: string;
+  callCount: number;
+  isLoading: boolean;
+  onUpdate: () => void;
+}
+
+const TraderRow = ({ trader, callCount, isLoading, onUpdate }: TraderRowProps) => (
+  <div className="grid grid-cols-4 gap-4 py-2">
+    <div className="text-white">{trader}</div>
+    <div className="text-white">{callCount}</div>
+    <div className="text-white">Update Calls</div>
+    <div>
+      <Button
+        onClick={onUpdate}
+        variant="outline"
+        size="sm"
+        className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <span className="animate-spin">⏳</span>
+        ) : (
+          <Plus className="w-4 h-4" />
+        )}
+        {isLoading ? 'Updating...' : 'Update Calls'}
+      </Button>
+    </div>
+  </div>
+);
+
 const traders = ['ninjascalp', 'satsdart', 'cryptofelon'];
 
 const Admin = () => {
@@ -89,10 +120,7 @@ const Admin = () => {
     try {
       setIsLoading(trader);
       
-      // First delete existing calls and wait for completion
       await deleteExistingCalls(trader);
-      
-      // Then fetch new calls
       const calls = await fetchTraderCalls(trader);
       
       const formattedCalls = calls.map((call: TraderCall) => {
@@ -160,36 +188,24 @@ const Admin = () => {
       <h1 className="text-2xl font-bold mb-6 text-white">Trader Management &lt;&gt;</h1>
       
       <div className="bg-black/20 border border-emerald-500/20 rounded-lg p-4">
-        <div className="grid grid-cols-4 gap-4">
-          {/* Header Row */}
-          <div className="text-lg font-medium text-white">Trader Name</div>
-          <div className="text-lg font-medium text-white">Calls in Database</div>
-          <div className="text-lg font-medium text-white">Actions</div>
-          <div></div> {/* Empty cell for alignment */}
-
-          {/* Data Rows */}
+        <div className="space-y-2">
+          {/* Header */}
+          <div className="grid grid-cols-4 gap-4 pb-2 border-b border-emerald-500/20">
+            <div className="text-lg font-medium text-white">Trader Name</div>
+            <div className="text-lg font-medium text-white">Calls in Database</div>
+            <div className="text-lg font-medium text-white">Actions</div>
+            <div></div>
+          </div>
+          
+          {/* Trader Rows */}
           {traders.map((trader) => (
-            <React.Fragment key={trader}>
-              <div className="text-white">{trader}</div>
-              <div className="text-white">{getTraderCallCount(trader)}</div>
-              <div className="text-white">Update Calls</div>
-              <div>
-                <Button
-                  onClick={() => addTraderCallsToSupabase(trader)}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
-                  disabled={isLoading === trader}
-                >
-                  {isLoading === trader ? (
-                    <span className="animate-spin">⏳</span>
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  {isLoading === trader ? 'Updating...' : 'Update Calls'}
-                </Button>
-              </div>
-            </React.Fragment>
+            <TraderRow
+              key={trader}
+              trader={trader}
+              callCount={getTraderCallCount(trader)}
+              isLoading={isLoading === trader}
+              onUpdate={() => addTraderCallsToSupabase(trader)}
+            />
           ))}
         </div>
       </div>
@@ -198,3 +214,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
