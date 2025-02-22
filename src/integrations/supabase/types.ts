@@ -177,51 +177,6 @@ export type Database = {
         }
         Relationships: []
       }
-      trading_calls: {
-        Row: {
-          call_end_date: string | null
-          call_start_date: string
-          created_at: string
-          direction: string
-          exchange: string
-          id: string
-          market: string
-          score: number
-          score_delta: number
-          text: string
-          trader_name: string
-          tweet_url: string
-        }
-        Insert: {
-          call_end_date?: string | null
-          call_start_date: string
-          created_at: string
-          direction: string
-          exchange: string
-          id?: string
-          market: string
-          score: number
-          score_delta: number
-          text: string
-          trader_name: string
-          tweet_url: string
-        }
-        Update: {
-          call_end_date?: string | null
-          call_start_date?: string
-          created_at?: string
-          direction?: string
-          exchange?: string
-          id?: string
-          market?: string
-          score?: number
-          score_delta?: number
-          text?: string
-          trader_name?: string
-          tweet_url?: string
-        }
-        Relationships: []
-      }
       user_progress: {
         Row: {
           average_score: number | null
