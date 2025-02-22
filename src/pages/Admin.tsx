@@ -37,7 +37,9 @@ const Admin = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch trader calls');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('API Response for trader:', trader, data);
+      return data;
     } catch (error) {
       console.error('Error fetching trader calls:', error);
       throw error;
@@ -49,23 +51,31 @@ const Admin = () => {
       setIsLoading(trader);
       const calls = await fetchTraderCalls(trader);
       
-      console.log('Formatting calls data for trader:', trader);
-      const formattedCalls = calls.map((call: TraderCall) => ({
-        trader_name: call['fields.screenName'],
-        call_start_date: call['fields.call_start_date'],
-        call_end_date: call['fields.call_end_date'],
-        exchange: call['fields.exchange'],
-        market: call['fields.market'],
-        market_id: call['fields.market_id'],
-        direction: call['fields.expected_market_direction'],
-        score: call['fields.current_score'],
-        score_delta: call['fields.score_delta'],
-        tweet_url: call['fields.tweet_url'],
-        text: call['fields.user_entered_text'],
-        created_at: new Date().toISOString()
-      }));
+      console.log('Raw calls data for trader:', trader, calls);
+      const formattedCalls = calls.map((call: TraderCall) => {
+        // Validate required fields
+        if (!call['fields.screenName']) {
+          console.error('Missing screenName for call:', call);
+          throw new Error(`Missing screenName for trader ${trader}`);
+        }
 
-      console.log('Attempting to insert calls:', formattedCalls);
+        return {
+          trader_name: call['fields.screenName'],
+          call_start_date: call['fields.call_start_date'],
+          call_end_date: call['fields.call_end_date'],
+          exchange: call['fields.exchange'],
+          market: call['fields.market'],
+          market_id: call['fields.market_id'],
+          direction: call['fields.expected_market_direction'],
+          score: call['fields.current_score'],
+          score_delta: call['fields.score_delta'],
+          tweet_url: call['fields.tweet_url'],
+          text: call['fields.user_entered_text'],
+          created_at: new Date().toISOString()
+        };
+      });
+
+      console.log('Formatted calls ready for insert:', formattedCalls);
       const { error } = await supabase
         .from('trading_calls')
         .insert(formattedCalls);
