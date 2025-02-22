@@ -61,7 +61,7 @@ const Admin = () => {
         console.log('No active session found');
         toast({
           title: "Authentication required",
-          description: "Please login using the wallet button to add trader calls",
+          description: "Please connect and verify your wallet to add trader calls",
           variant: "destructive",
         });
         return;
@@ -111,15 +111,10 @@ const Admin = () => {
         description: `Added ${formattedCalls.length} calls for ${trader}`,
       });
     } catch (error: any) {
-      console.error('Error adding calls to Supabase:', {
-        error,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
+      console.error('Error adding calls to Supabase:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to add trader calls",
+        description: error?.message || "Failed to add trader calls. Make sure your wallet is verified.",
         variant: "destructive",
       });
     } finally {
@@ -162,3 +157,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
