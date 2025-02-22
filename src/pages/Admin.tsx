@@ -18,7 +18,7 @@ interface TraderCall {
   'fields.market': string;
   'fields.market_id': string;
   'fields.score_delta': number;
-  'fields.screenName': string;
+  'fields.screenName': string | null;
   'fields.tweet_url': string;
   'fields.user_entered_text': string;
   id: string;
@@ -53,14 +53,11 @@ const Admin = () => {
       
       console.log('Raw calls data for trader:', trader, calls);
       const formattedCalls = calls.map((call: TraderCall) => {
-        // Validate required fields
-        if (!call['fields.screenName']) {
-          console.error('Missing screenName for call:', call);
-          throw new Error(`Missing screenName for trader ${trader}`);
-        }
-
+        // Get screenName from the API response, fallback to the trader name with proper casing
+        const screenName = call['fields.screenName'] || trader.charAt(0).toUpperCase() + trader.slice(1);
+        
         return {
-          trader_name: call['fields.screenName'],
+          trader_name: screenName,
           call_start_date: call['fields.call_start_date'],
           call_end_date: call['fields.call_end_date'],
           exchange: call['fields.exchange'],
