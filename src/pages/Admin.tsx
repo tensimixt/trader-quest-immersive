@@ -76,6 +76,15 @@ const Admin = () => {
       const formattedCalls = calls.map((call: TraderCall) => {
         const screenName = call['fields.screenName'] || trader.charAt(0).toUpperCase() + trader.slice(1);
         
+        // Convert empty strings to null for integer fields
+        const numberOfCalls = call['fields.number_of_calls_in_timeframe'] 
+          ? parseInt(call['fields.number_of_calls_in_timeframe']) || null
+          : null;
+
+        const marketcapCategory = call['fields.marketcap_category'] 
+          ? call['fields.marketcap_category'].toString()
+          : null;
+        
         return {
           trader_name: screenName,
           call_start_date: call['fields.call_start_date'],
@@ -89,8 +98,8 @@ const Admin = () => {
           tweet_url: call['fields.tweet_url'],
           text: call['fields.user_entered_text'],
           default_call_timeframe: call['fields.default_call_timeframe'],
-          marketcap_category: call['fields.marketcap_category'],
-          number_of_calls_in_timeframe: call['fields.number_of_calls_in_timeframe'],
+          marketcap_category: marketcapCategory,
+          number_of_calls_in_timeframe: numberOfCalls,
           use_default_timeframe: call['fields.use_default_timeframe'],
           created_at: new Date().toISOString()
         };
