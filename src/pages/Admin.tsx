@@ -59,7 +59,7 @@ const Admin = () => {
         throw new Error('Failed to fetch trader calls');
       }
       const data = await response.json();
-      console.log('API Response for trader:', trader, data);
+      console.log('API Response for trader:', trader, 'Number of calls:', data.length);
       return data;
     } catch (error) {
       console.error('Error fetching trader calls:', error);
@@ -68,25 +68,33 @@ const Admin = () => {
   };
 
   const deleteExistingCalls = async (trader: string) => {
-    const { error } = await supabase
+    console.log('Deleting existing calls for trader:', trader);
+    const { error, count } = await supabase
       .from('trading_calls')
       .delete()
-      .eq('trader_name', trader);
-
+      .eq('trader_name', trader)
+      .select('count');
+      
     if (error) {
       console.error('Error deleting existing calls:', error);
       throw error;
     }
+    
+    console.log(`Deleted ${count} existing calls for trader: ${trader}`);
+    // Wait a moment to ensure deletion is complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
   const addTraderCallsToSupabase = async (trader: string) => {
     try {
       setIsLoading(trader);
       
+      // First delete existing calls and wait for completion
       await deleteExistingCalls(trader);
+      
+      // Then fetch new calls
       const calls = await fetchTraderCalls(trader);
       
-      console.log('Raw calls data for trader:', trader, calls);
       const formattedCalls = calls.map((call: TraderCall) => {
         const screenName = call['fields.screenName'] || trader.charAt(0).toUpperCase() + trader.slice(1);
         
@@ -118,7 +126,7 @@ const Admin = () => {
         };
       });
 
-      console.log('Formatted calls ready for insert:', formattedCalls);
+      console.log('Inserting new calls for trader:', trader, 'Number of calls:', formattedCalls.length);
       const { error } = await supabase
         .from('trading_calls')
         .insert(formattedCalls);
@@ -134,8 +142,6 @@ const Admin = () => {
         title: "Success",
         description: `Updated ${formattedCalls.length} calls for ${trader}`,
       });
-
-      window.location.reload();
     } catch (error: any) {
       console.error('Error adding calls to Supabase:', error);
       toast({
