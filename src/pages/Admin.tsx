@@ -28,6 +28,7 @@ const traders = ['ninjascalp', 'satsdart', 'cryptofelon'];
 const Admin = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = React.useState<string | null>(null);
 
   const fetchTraderCalls = async (trader: string) => {
     try {
@@ -44,10 +45,12 @@ const Admin = () => {
 
   const addTraderCallsToSupabase = async (trader: string) => {
     try {
+      setIsLoading(trader);
       const calls = await fetchTraderCalls(trader);
       
+      console.log('Formatting calls data for trader:', trader);
       const formattedCalls = calls.map((call: TraderCall) => ({
-        trader: call['fields.screenName'],
+        trader_name: call['fields.screenName'],
         call_start_date: call['fields.call_start_date'],
         call_end_date: call['fields.call_end_date'],
         exchange: call['fields.exchange'],
@@ -57,33 +60,39 @@ const Admin = () => {
         score: call['fields.current_score'],
         score_delta: call['fields.score_delta'],
         tweet_url: call['fields.tweet_url'],
-        tweet_text: call['fields.user_entered_text'],
+        text: call['fields.user_entered_text'],
         created_at: new Date().toISOString()
       }));
 
+      console.log('Attempting to insert calls:', formattedCalls);
       const { error } = await supabase
         .from('trading_calls')
         .insert(formattedCalls);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
 
-      // Invalidate and refetch queries after successful insert
+      // Invalidate queries and show success message
       await queryClient.invalidateQueries({ queryKey: ['trading_calls'] });
-
+      
       toast({
         title: "Success",
         description: `Added ${formattedCalls.length} calls for ${trader}`,
       });
 
-      // Force a page refresh to ensure all data is current
+      // Force a page refresh
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding calls to Supabase:', error);
       toast({
         title: "Error",
-        description: "Failed to add trader calls",
+        description: error?.message || "Failed to add trader calls",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(null);
     }
   };
 
@@ -101,9 +110,14 @@ const Admin = () => {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
+                disabled={isLoading === trader}
               >
-                <Plus className="w-4 h-4" />
-                Add Calls
+                {isLoading === trader ? (
+                  <span className="animate-spin">⏳</span>
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {isLoading === trader ? 'Adding...' : 'Add Calls'}
               </Button>
             </div>
           </div>
