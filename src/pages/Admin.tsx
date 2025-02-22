@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,11 @@ const Admin = () => {
     },
     enabled: !!publicKey,
   });
+
+  const handleVerificationComplete = () => {
+    console.log('Verification complete, refreshing authorization status');
+    queryClient.invalidateQueries({ queryKey: ['wallet_auth'] });
+  };
 
   const { data: tradingCalls } = useQuery({
     queryKey: ['trading_calls'],
@@ -236,7 +242,7 @@ const Admin = () => {
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <WalletAuthButton />
+      <WalletAuthButton onVerificationComplete={handleVerificationComplete} />
       <h1 className="text-2xl font-bold mb-6 text-white">Trader Management &lt;&gt;</h1>
       
       <div className="bg-black/20 border border-emerald-500/20 rounded-lg p-4">

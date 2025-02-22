@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -7,7 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
 
-export const WalletAuthButton = () => {
+interface WalletAuthButtonProps {
+  onVerificationComplete?: () => void;
+}
+
+export const WalletAuthButton = ({ onVerificationComplete }: WalletAuthButtonProps = {}) => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -231,6 +234,8 @@ export const WalletAuthButton = () => {
             description: "Your NFT ownership has been verified",
             duration: 3000,
           });
+          
+          onVerificationComplete?.();
         } else {
           setShouldVerify(false);
           toast({
@@ -256,7 +261,7 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
       verificationInProgress.current = false;
     }
-  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
+  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify, onVerificationComplete]);
 
   const CustomWalletButton = () => {
     if (isResetting.current) {
