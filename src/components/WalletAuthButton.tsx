@@ -1,4 +1,3 @@
-
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -140,9 +139,34 @@ export const WalletAuthButton = () => {
       }
 
       if (existingVerification?.nft_verified) {
-        console.log('Already verified:', existingVerification);
+        console.log('Wallet already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
+        
+        // Create Supabase session for verified wallet
+        try {
+          const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
+            email: `${publicKey.toString()}@wallet.verified`,
+            password: publicKey.toString(),
+          });
+
+          if (sessionError && sessionError.message.includes('Invalid login credentials')) {
+            // If login fails, create an account first
+            await supabase.auth.signUp({
+              email: `${publicKey.toString()}@wallet.verified`,
+              password: publicKey.toString(),
+            });
+            
+            // Try signing in again
+            await supabase.auth.signInWithPassword({
+              email: `${publicKey.toString()}@wallet.verified`,
+              password: publicKey.toString(),
+            });
+          }
+        } catch (authError) {
+          console.error('Auth error:', authError);
+        }
+        
         toast({
           title: "Already Verified",
           description: "Your wallet is already verified",
@@ -222,6 +246,21 @@ export const WalletAuthButton = () => {
               duration: 3000,
             });
             throw upsertError;
+          }
+
+          // Create Supabase session for newly verified wallet
+          try {
+            await supabase.auth.signUp({
+              email: `${publicKey.toString()}@wallet.verified`,
+              password: publicKey.toString(),
+            });
+            
+            await supabase.auth.signInWithPassword({
+              email: `${publicKey.toString()}@wallet.verified`,
+              password: publicKey.toString(),
+            });
+          } catch (authError) {
+            console.error('Auth error:', authError);
           }
 
           setIsVerified(true);

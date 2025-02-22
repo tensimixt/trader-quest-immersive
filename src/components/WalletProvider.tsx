@@ -4,6 +4,7 @@ import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { supabase } from '@/integrations/supabase/client';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 interface Props {
@@ -21,6 +22,39 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
     ],
     [network]
   );
+
+  // Auto sign in with Supabase when verification is successful
+  const signInWithSupabase = async (walletAddress: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: `${walletAddress}@wallet.verified`,
+        password: walletAddress, // Using wallet address as password for simplicity
+      });
+
+      if (error) {
+        // If sign in fails, try to sign up first
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: `${walletAddress}@wallet.verified`,
+          password: walletAddress,
+        });
+
+        if (signUpError) {
+          console.error('Error creating Supabase account:', signUpError);
+          return;
+        }
+
+        // Try signing in again after successful signup
+        await supabase.auth.signInWithPassword({
+          email: `${walletAddress}@wallet.verified`,
+          password: walletAddress,
+        });
+      }
+
+      console.log('Successfully created Supabase session');
+    } catch (err) {
+      console.error('Error in Supabase auth:', err);
+    }
+  };
 
   return (
     <ConnectionProvider endpoint={endpoint}>
