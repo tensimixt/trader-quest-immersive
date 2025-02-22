@@ -1,11 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import WalletAuthButton from '@/components/WalletAuthButton';
 
 interface TraderCall {
   createdTime: string;
@@ -28,34 +28,6 @@ const traders = ['ninjascalp', 'satsdart', 'cryptofelon']; // Example traders
 
 const Admin = () => {
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "Please login to access the admin panel",
-          variant: "destructive",
-        });
-        navigate('/auth');
-        return;
-      }
-      setIsAuthenticated(true);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        navigate('/auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, toast]);
 
   const fetchTraderCalls = async (trader: string) => {
     try {
@@ -72,6 +44,16 @@ const Admin = () => {
 
   const addTraderCallsToSupabase = async (trader: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please login using the wallet button to add trader calls",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const calls = await fetchTraderCalls(trader);
       
       const formattedCalls = calls.map((call: TraderCall) => {
@@ -122,13 +104,12 @@ const Admin = () => {
     }
   };
 
-  if (!isAuthenticated) {
-    return null; // Or a loading spinner if you prefer
-  }
-
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6 text-white">Trader Management</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-white">Trader Management</h1>
+        <WalletAuthButton />
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {traders.map((trader) => (
@@ -153,4 +134,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
