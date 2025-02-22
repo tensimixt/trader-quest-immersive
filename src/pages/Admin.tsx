@@ -3,7 +3,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from 'lucide-react';
+import { Plus, Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface TraderCall {
@@ -45,7 +45,7 @@ const Admin = () => {
     try {
       const calls = await fetchTraderCalls(trader);
       
-      // Prepare the data for insertion - now matching the actual table schema
+      // Map the data to match Supabase table schema
       const formattedCalls = calls.map((call: TraderCall) => ({
         trader_name: call['fields.screenName'],
         call_start_date: call['fields.call_start_date'],
@@ -57,24 +57,28 @@ const Admin = () => {
         score_delta: call['fields.score_delta'],
         tweet_url: call['fields.tweet_url'],
         text: call['fields.user_entered_text'],
+        market_id: call['fields.market_id'],
         created_at: new Date().toISOString()
       }));
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('trading_calls')
-        .insert(formattedCalls);
+        .insert(formattedCalls)
+        .select();
 
       if (error) throw error;
 
+      console.log('Successfully added calls:', data);
+      
       toast({
         title: "Success",
         description: `Added ${formattedCalls.length} calls for ${trader}`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding calls to Supabase:', error);
       toast({
         title: "Error",
-        description: "Failed to add trader calls",
+        description: error.message || "Failed to add trader calls",
         variant: "destructive",
       });
     }
@@ -107,3 +111,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
