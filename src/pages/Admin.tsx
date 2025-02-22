@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { CircleUserRound, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import type { TradingCall } from '@/types/database';
 
 interface TraderData {
   createdTime: string;
@@ -35,7 +36,7 @@ const fetchTraderData = async (trader: string) => {
   return data as TraderData[];
 };
 
-const traders = ['ninjascalp', 'satsdart', 'inmortalcrypto']; // Add more traders as needed
+const traders = ['ninjascalp', 'satsdart', 'inmortalcrypto'];
 
 export default function Admin() {
   const [selectedTrader, setSelectedTrader] = React.useState<string | null>(null);
@@ -48,21 +49,23 @@ export default function Admin() {
 
   const addCallsToSupabase = async (calls: TraderData[]) => {
     try {
-      const { error } = await supabase.from('trading_calls').insert(
-        calls.map(call => ({
-          trader_name: call.fields.screenName,
-          created_at: call.createdTime,
-          call_start_date: call.fields.call_start_date,
-          call_end_date: call.fields.call_end_date,
-          market: call.fields.market,
-          direction: call.fields.expected_market_direction,
-          tweet_url: call.fields.tweet_url,
-          score: call.fields.current_score,
-          score_delta: call.fields.score_delta,
-          exchange: call.fields.exchange,
-          text: call.fields.user_entered_text
-        }))
-      );
+      const { error } = await supabase
+        .from('trading_calls')
+        .insert(
+          calls.map(call => ({
+            trader_name: call.fields.screenName,
+            created_at: call.createdTime,
+            call_start_date: call.fields.call_start_date,
+            call_end_date: call.fields.call_end_date,
+            market: call.fields.market,
+            direction: call.fields.expected_market_direction,
+            tweet_url: call.fields.tweet_url,
+            score: call.fields.current_score,
+            score_delta: call.fields.score_delta,
+            exchange: call.fields.exchange,
+            text: call.fields.user_entered_text
+          } satisfies TradingCall))
+        );
 
       if (error) throw error;
       toast.success(`Successfully added ${calls.length} calls for ${selectedTrader}`);
