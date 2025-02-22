@@ -101,33 +101,34 @@ const Admin = () => {
   const deleteExistingCalls = async (trader: string) => {
     console.log('Deleting existing calls for trader:', trader);
     
-    // First, get the count of records to be deleted
-    const { data: countData, error: countError } = await supabase
-      .from('trading_calls')
-      .select('id', { count: 'exact' })
-      .eq('trader_name', trader);
+    try {
+      // First, get the count of existing records
+      const { count } = await supabase
+        .from('trading_calls')
+        .select('*', { count: 'exact', head: true })
+        .eq('trader_name', trader);
       
-    if (countError) {
-      console.error('Error getting count:', countError);
-      throw countError;
-    }
-    
-    // Then perform the deletion
-    const { error: deleteError } = await supabase
-      .from('trading_calls')
-      .delete()
-      .eq('trader_name', trader);
+      console.log(`Found ${count} existing records for trader: ${trader}`);
       
-    if (deleteError) {
-      console.error('Error deleting existing calls:', deleteError);
-      throw deleteError;
+      // Then perform the deletion
+      const { error: deleteError } = await supabase
+        .from('trading_calls')
+        .delete()
+        .eq('trader_name', trader);
+      
+      if (deleteError) {
+        console.error('Error deleting existing calls:', deleteError);
+        throw deleteError;
+      }
+      
+      console.log(`Successfully deleted records for trader: ${trader}`);
+      
+      // Wait a moment to ensure deletion is complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('Error in deleteExistingCalls:', error);
+      throw error;
     }
-    
-    const count = countData?.length || 0;
-    console.log(`Deleted ${count} existing calls for trader: ${trader}`);
-    
-    // Wait a moment to ensure deletion is complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
   const addTraderCallsToSupabase = async (trader: string) => {
@@ -228,3 +229,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
