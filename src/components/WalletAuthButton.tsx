@@ -21,7 +21,7 @@ export const WalletAuthButton = () => {
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
   const location = useLocation();
 
-  const resetAllStates = () => {
+  const resetAllStates = useCallback(() => {
     setIsVerified(false);
     setIsLoading(false);
     setUserRejected(false);
@@ -49,7 +49,7 @@ export const WalletAuthButton = () => {
     localStorage.removeItem('autoConnect');
     
     sessionStorage.clear();
-  };
+  }, []);
 
   const handleReset = async () => {
     try {
@@ -71,8 +71,8 @@ export const WalletAuthButton = () => {
       }
 
       await disconnect();
-
       console.log('Reset: Attempting to delete wallet record:', currentWalletAddress);
+      
       const { error: deleteError } = await supabase
         .from('wallet_auth')
         .delete()
@@ -84,7 +84,6 @@ export const WalletAuthButton = () => {
       }
       
       console.log('Reset: Successfully deleted wallet record');
-      
       resetAllStates();
       
       toast({
@@ -264,22 +263,11 @@ export const WalletAuthButton = () => {
   }, [publicKey, signMessage, disconnect, toast, userRejected, shouldVerify]);
 
   const CustomWalletButton = () => {
-    if (isResetting.current) {
-      return (
-        <button 
-          className="wallet-adapter-button !bg-white/5 !border !border-white/10 !shadow-lg hover:!shadow-white/5 !rounded-xl !px-6 !py-3 !h-auto !font-medium !tracking-wide !backdrop-blur-sm !text-white !cursor-not-allowed !opacity-50 flex items-center gap-2"
-          disabled
-        >
-          <Loader className="w-5 h-5 text-white/70 animate-spin" />
-          <span>Reloading...</span>
-        </button>
-      );
-    }
-
     return (
       <WalletMultiButton 
         startIcon={<Wallet className="w-5 h-5 text-white/70" />}
         disabled={isLoading || isResetting.current}
+        className={isResetting.current ? 'pointer-events-none opacity-50' : ''}
       />
     );
   };
@@ -290,7 +278,7 @@ export const WalletAuthButton = () => {
     if (!connected) {
       resetAllStates();
     }
-  }, [location.pathname]);
+  }, [location.pathname, connected, resetAllStates]);
 
   useEffect(() => {
     return () => {
@@ -390,4 +378,3 @@ export const WalletAuthButton = () => {
 };
 
 export default WalletAuthButton;
-
