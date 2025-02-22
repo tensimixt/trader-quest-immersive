@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -35,6 +34,23 @@ const Admin = () => {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = React.useState<string | null>(null);
 
+  const { data: tradingCalls } = useQuery({
+    queryKey: ['trading_calls'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('trading_calls')
+        .select('trader_name');
+      return data || [];
+    },
+  });
+
+  const getTraderCallCount = (trader: string) => {
+    if (!tradingCalls) return 0;
+    return tradingCalls.filter((call) => 
+      call.trader_name.toLowerCase() === trader.toLowerCase()
+    ).length;
+  };
+
   const fetchTraderCalls = async (trader: string) => {
     try {
       const response = await fetch(`https://metadata.unlimitedcope.com/trader-report-gen/${trader}`);
@@ -66,17 +82,13 @@ const Admin = () => {
     try {
       setIsLoading(trader);
       
-      // First delete existing calls for this trader
       await deleteExistingCalls(trader);
-      
-      // Then fetch and add new calls
       const calls = await fetchTraderCalls(trader);
       
       console.log('Raw calls data for trader:', trader, calls);
       const formattedCalls = calls.map((call: TraderCall) => {
         const screenName = call['fields.screenName'] || trader.charAt(0).toUpperCase() + trader.slice(1);
         
-        // Convert empty strings to null for integer fields
         const numberOfCalls = call['fields.number_of_calls_in_timeframe'] 
           ? parseInt(call['fields.number_of_calls_in_timeframe']) || null
           : null;
@@ -140,25 +152,37 @@ const Admin = () => {
       <WalletAuthButton />
       <h1 className="text-2xl font-bold mb-6 text-white">Trader Management &lt;&gt;</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-4">
         {traders.map((trader) => (
           <div key={trader} className="bg-black/20 border border-emerald-500/20 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-white">{trader}</h3>
-              <Button
-                onClick={() => addTraderCallsToSupabase(trader)}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
-                disabled={isLoading === trader}
-              >
-                {isLoading === trader ? (
-                  <span className="animate-spin">⏳</span>
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-                {isLoading === trader ? 'Updating...' : 'Update Calls'}
-              </Button>
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-medium text-white">Trader Name:</span>
+                <span className="text-white">{trader}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-medium text-white">Calls in Database:</span>
+                <span className="text-white">{getTraderCallCount(trader)}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-medium text-white">Actions:</span>
+                <Button
+                  onClick={() => addTraderCallsToSupabase(trader)}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
+                  disabled={isLoading === trader}
+                >
+                  {isLoading === trader ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  {isLoading === trader ? 'Updating...' : 'Update Calls'}
+                </Button>
+              </div>
             </div>
           </div>
         ))}
@@ -168,4 +192,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
