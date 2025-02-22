@@ -45,19 +45,18 @@ const Admin = () => {
     try {
       const calls = await fetchTraderCalls(trader);
       
-      // Prepare the data for insertion
+      // Prepare the data for insertion - now matching the actual table schema
       const formattedCalls = calls.map((call: TraderCall) => ({
-        trader: call['fields.screenName'],
+        trader_name: call['fields.screenName'],
         call_start_date: call['fields.call_start_date'],
         call_end_date: call['fields.call_end_date'],
         exchange: call['fields.exchange'],
         market: call['fields.market'],
-        market_id: call['fields.market_id'],
         direction: call['fields.expected_market_direction'],
         score: call['fields.current_score'],
         score_delta: call['fields.score_delta'],
         tweet_url: call['fields.tweet_url'],
-        tweet_text: call['fields.user_entered_text'],
+        text: call['fields.user_entered_text'],
         created_at: new Date().toISOString()
       }));
 
