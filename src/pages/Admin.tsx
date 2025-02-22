@@ -51,7 +51,7 @@ const Admin = () => {
       
       console.log('Formatting calls data for trader:', trader);
       const formattedCalls = calls.map((call: TraderCall) => ({
-        trader_name: call['fields.screenName'],
+        trader_name: call['fields.screenName'],  // Using bracket notation to access property with dot
         call_start_date: call['fields.call_start_date'],
         call_end_date: call['fields.call_end_date'],
         exchange: call['fields.exchange'],
