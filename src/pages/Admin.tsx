@@ -45,28 +45,40 @@ const Admin = () => {
     try {
       const calls = await fetchTraderCalls(trader);
       
-      // Map the data to match Supabase table schema
-      const formattedCalls = calls.map((call: TraderCall) => ({
-        trader_name: call['fields.screenName'],
-        call_start_date: call['fields.call_start_date'],
-        call_end_date: call['fields.call_end_date'],
-        exchange: call['fields.exchange'],
-        market: call['fields.market'],
-        direction: call['fields.expected_market_direction'],
-        score: call['fields.current_score'],
-        score_delta: call['fields.score_delta'],
-        tweet_url: call['fields.tweet_url'],
-        text: call['fields.user_entered_text'],
-        market_id: call['fields.market_id'],
-        created_at: new Date().toISOString()
-      }));
+      // Map the data to match Supabase table schema and handle missing fields
+      const formattedCalls = calls.map((call: TraderCall) => {
+        // Create base object with default values for required fields
+        const formattedCall = {
+          trader_name: call['fields.screenName'] || trader,
+          call_start_date: call['fields.call_start_date'] || new Date().toISOString(),
+          call_end_date: call['fields.call_end_date'],
+          exchange: call['fields.exchange'] || 'unknown',
+          market: call['fields.market'] || 'unknown',
+          direction: call['fields.expected_market_direction'] || 'unknown',
+          score: call['fields.current_score'] || 0,
+          score_delta: call['fields.score_delta'] || 0,
+          tweet_url: call['fields.tweet_url'] || '',
+          text: call['fields.user_entered_text'] || '',
+          market_id: call['fields.market_id'] || null,
+          created_at: new Date().toISOString()
+        };
+
+        console.log('Formatted call:', formattedCall);
+        return formattedCall;
+      });
+
+      // Log the entire payload before insertion
+      console.log('Attempting to insert calls:', formattedCalls);
 
       const { error, data } = await supabase
         .from('trading_calls')
         .insert(formattedCalls)
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
 
       console.log('Successfully added calls:', data);
       
