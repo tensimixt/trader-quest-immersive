@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface TraderCall {
   createdTime: string;
@@ -27,6 +28,34 @@ const traders = ['ninjascalp', 'satsdart', 'cryptofelon']; // Example traders
 
 const Admin = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please login to access the admin panel",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+      setIsAuthenticated(true);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
 
   const fetchTraderCalls = async (trader: string) => {
     try {
@@ -45,9 +74,7 @@ const Admin = () => {
     try {
       const calls = await fetchTraderCalls(trader);
       
-      // Map the data to match Supabase table schema and handle missing fields
       const formattedCalls = calls.map((call: TraderCall) => {
-        // Create base object with default values for required fields
         const formattedCall = {
           trader_name: call['fields.screenName'] || trader,
           call_start_date: call['fields.call_start_date'] || new Date().toISOString(),
@@ -67,7 +94,6 @@ const Admin = () => {
         return formattedCall;
       });
 
-      // Log the entire payload before insertion
       console.log('Attempting to insert calls:', formattedCalls);
 
       const { error, data } = await supabase
@@ -95,6 +121,10 @@ const Admin = () => {
       });
     }
   };
+
+  if (!isAuthenticated) {
+    return null; // Or a loading spinner if you prefer
+  }
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
