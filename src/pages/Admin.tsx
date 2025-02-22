@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { WalletAuthButton } from '@/components/WalletAuthButton';
 
 interface TraderCall {
   createdTime: string;
@@ -128,3 +129,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
