@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WalletAuthButton } from '@/components/WalletAuthButton';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 interface TraderCall {
   createdTime: string;
@@ -33,9 +33,10 @@ interface TraderRowProps {
   callCount: number;
   isLoading: boolean;
   onUpdate: () => void;
+  isAuthorized: boolean;
 }
 
-const TraderRow = ({ trader, callCount, isLoading, onUpdate }: TraderRowProps) => (
+const TraderRow = ({ trader, callCount, isLoading, onUpdate, isAuthorized }: TraderRowProps) => (
   <div className="grid grid-cols-4 gap-4 py-2">
     <div className="text-white">{trader}</div>
     <div className="text-white">{callCount}</div>
@@ -45,8 +46,13 @@ const TraderRow = ({ trader, callCount, isLoading, onUpdate }: TraderRowProps) =
         onClick={onUpdate}
         variant="outline"
         size="sm"
-        className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
-        disabled={isLoading}
+        className={`flex items-center gap-2 ${
+          isAuthorized 
+            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20' 
+            : 'bg-gray-500/10 hover:bg-gray-500/10 border-gray-500/20 cursor-not-allowed'
+        }`}
+        disabled={isLoading || !isAuthorized}
+        title={!isAuthorized ? "Only authorized wallet can update calls" : ""}
       >
         {isLoading ? (
           <span className="animate-spin">⏳</span>
@@ -60,11 +66,36 @@ const TraderRow = ({ trader, callCount, isLoading, onUpdate }: TraderRowProps) =
 );
 
 const traders = ['ninjascalp', 'satsdart', 'cryptofelon'];
+const AUTHORIZED_WALLET = 'HvUQguTWSctpGY5iP6biw4hYxNiTPDCY6mXsjUkdwQ6E';
 
 const Admin = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = React.useState<string | null>(null);
+  const { publicKey } = useWallet();
+
+  const { data: isWalletAuthorized } = useQuery({
+    queryKey: ['wallet_auth', publicKey?.toString()],
+    queryFn: async () => {
+      if (!publicKey || publicKey.toString() !== AUTHORIZED_WALLET) {
+        return false;
+      }
+
+      const { data, error } = await supabase
+        .from('wallet_auth')
+        .select('nft_verified')
+        .eq('wallet_address', publicKey.toString())
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking wallet authorization:', error);
+        return false;
+      }
+
+      return data?.nft_verified === true;
+    },
+    enabled: !!publicKey,
+  });
 
   const { data: tradingCalls } = useQuery({
     queryKey: ['trading_calls'],
@@ -102,7 +133,6 @@ const Admin = () => {
     console.log('Deleting existing calls for trader:', trader);
     
     try {
-      // First, get the count of existing records using case-insensitive matching
       const { count } = await supabase
         .from('trading_calls')
         .select('*', { count: 'exact', head: true })
@@ -110,7 +140,6 @@ const Admin = () => {
       
       console.log(`Found ${count} existing records for trader: ${trader}`);
       
-      // Then perform the deletion with case-insensitive matching
       const { error: deleteError } = await supabase
         .from('trading_calls')
         .delete()
@@ -123,7 +152,6 @@ const Admin = () => {
       
       console.log(`Successfully deleted records for trader: ${trader}`);
       
-      // Wait a moment to ensure deletion is complete
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error('Error in deleteExistingCalls:', error);
@@ -132,6 +160,15 @@ const Admin = () => {
   };
 
   const addTraderCallsToSupabase = async (trader: string) => {
+    if (!isWalletAuthorized) {
+      toast({
+        title: "Unauthorized",
+        description: "Only authorized wallet can update calls",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(trader);
       
@@ -204,7 +241,6 @@ const Admin = () => {
       
       <div className="bg-black/20 border border-emerald-500/20 rounded-lg p-4">
         <div className="space-y-2">
-          {/* Header */}
           <div className="grid grid-cols-4 gap-4 pb-2 border-b border-emerald-500/20">
             <div className="text-lg font-medium text-white">Trader Name</div>
             <div className="text-lg font-medium text-white">Calls in Database</div>
@@ -212,7 +248,6 @@ const Admin = () => {
             <div></div>
           </div>
           
-          {/* Trader Rows */}
           {traders.map((trader) => (
             <TraderRow
               key={trader}
@@ -220,6 +255,7 @@ const Admin = () => {
               callCount={getTraderCallCount(trader)}
               isLoading={isLoading === trader}
               onUpdate={() => addTraderCallsToSupabase(trader)}
+              isAuthorized={!!isWalletAuthorized}
             />
           ))}
         </div>
