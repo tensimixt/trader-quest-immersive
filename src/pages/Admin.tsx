@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -152,22 +153,21 @@ const Admin = () => {
       <WalletAuthButton />
       <h1 className="text-2xl font-bold mb-6 text-white">Trader Management &lt;&gt;</h1>
       
-      <div className="space-y-4">
-        {traders.map((trader) => (
-          <div key={trader} className="bg-black/20 border border-emerald-500/20 rounded-lg p-4">
-            <div className="flex flex-col space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-medium text-white">Trader Name:</span>
-                <span className="text-white">{trader}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-medium text-white">Calls in Database:</span>
-                <span className="text-white">{getTraderCallCount(trader)}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-medium text-white">Actions:</span>
+      <div className="bg-black/20 border border-emerald-500/20 rounded-lg p-4">
+        <div className="grid grid-cols-4 gap-4">
+          {/* Header Row */}
+          <div className="text-lg font-medium text-white">Trader Name</div>
+          <div className="text-lg font-medium text-white">Calls in Database</div>
+          <div className="text-lg font-medium text-white">Actions</div>
+          <div></div> {/* Empty cell for alignment */}
+
+          {/* Data Rows */}
+          {traders.map((trader) => (
+            <React.Fragment key={trader}>
+              <div className="text-white">{trader}</div>
+              <div className="text-white">{getTraderCallCount(trader)}</div>
+              <div className="text-white">Update Calls</div>
+              <div>
                 <Button
                   onClick={() => addTraderCallsToSupabase(trader)}
                   variant="outline"
@@ -183,9 +183,9 @@ const Admin = () => {
                   {isLoading === trader ? 'Updating...' : 'Update Calls'}
                 </Button>
               </div>
-            </div>
-          </div>
-        ))}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
     </div>
   );
