@@ -21,6 +21,7 @@ interface TraderCall {
   'fields.screenName': string | null;
   'fields.tweet_url': string;
   'fields.user_entered_text': string;
+  'fields.default_call_timeframe': number;
   id: string;
 }
 
@@ -68,6 +69,7 @@ const Admin = () => {
           score_delta: call['fields.score_delta'],
           tweet_url: call['fields.tweet_url'],
           text: call['fields.user_entered_text'],
+          default_call_timeframe: call['fields.default_call_timeframe'],
           created_at: new Date().toISOString()
         };
       });
