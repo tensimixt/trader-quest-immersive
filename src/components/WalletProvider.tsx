@@ -32,4 +32,3 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
     </ConnectionProvider>
   );
 };
-

@@ -1,3 +1,4 @@
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -103,50 +104,6 @@ export const WalletAuthButton = () => {
     }
   };
 
-  const createSupabaseSession = async (walletAddress: string) => {
-    try {
-      // First try to sign in
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: `${walletAddress}@wallet.verified`,
-        password: walletAddress,
-      });
-
-      if (signInError) {
-        console.log('Signing up new user...');
-        // If sign in fails, create a new account
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: `${walletAddress}@wallet.verified`,
-          password: walletAddress,
-        });
-
-        if (signUpError) {
-          console.error('Error signing up:', signUpError);
-          throw signUpError;
-        }
-
-        // Try signing in again after successful signup
-        const { data: finalSignInData, error: finalSignInError } = await supabase.auth.signInWithPassword({
-          email: `${walletAddress}@wallet.verified`,
-          password: walletAddress,
-        });
-
-        if (finalSignInError) {
-          console.error('Error signing in after signup:', finalSignInError);
-          throw finalSignInError;
-        }
-
-        console.log('Successfully created and signed in user');
-        return finalSignInData;
-      }
-
-      console.log('Successfully signed in existing user');
-      return signInData;
-    } catch (error) {
-      console.error('Error in createSupabaseSession:', error);
-      throw error;
-    }
-  };
-
   const verifyWallet = useCallback(async () => {
     if (!publicKey || !signMessage || isLoading || verificationInProgress.current || userRejected || !shouldVerify || isResetting.current) {
       console.log('Verification skipped:', {
@@ -173,15 +130,17 @@ export const WalletAuthButton = () => {
 
       if (verificationError) {
         console.error('Verification check error:', verificationError);
-        throw verificationError;
+        toast({
+          title: "Verification Check Failed",
+          description: "Error checking verification status. Please try again.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
       }
 
       if (existingVerification?.nft_verified) {
-        console.log('Wallet already verified:', existingVerification);
-        
-        // Create/sign in Supabase session for verified wallet
-        await createSupabaseSession(publicKey.toString());
-        
+        console.log('Already verified:', existingVerification);
         setIsVerified(true);
         setShouldVerify(false);
         toast({
@@ -231,13 +190,18 @@ export const WalletAuthButton = () => {
 
         if (verificationFnError) {
           console.error('Verification function error:', verificationFnError);
+          toast({
+            title: "Verification Failed",
+            description: "Error during NFT verification. Please try again.",
+            variant: "destructive",
+            duration: 3000,
+          });
           throw verificationFnError;
         }
 
         console.log('Verification response:', verificationData);
 
         if (verificationData?.verified) {
-          // Update wallet_auth table
           const { error: upsertError } = await supabase
             .from('wallet_auth')
             .upsert({
@@ -251,11 +215,14 @@ export const WalletAuthButton = () => {
 
           if (upsertError) {
             console.error('Upsert error:', upsertError);
+            toast({
+              title: "Database Error",
+              description: "Error saving verification status. Please try again.",
+              variant: "destructive",
+              duration: 3000,
+            });
             throw upsertError;
           }
-
-          // Create/sign in Supabase session
-          await createSupabaseSession(publicKey.toString());
 
           setIsVerified(true);
           setShouldVerify(false);
@@ -348,8 +315,7 @@ export const WalletAuthButton = () => {
         }
 
         if (data?.nft_verified) {
-          console.log('Wallet already verified, creating session...');
-          await createSupabaseSession(publicKey.toString());
+          console.log('Wallet already verified:', data);
           setIsVerified(true);
           setShouldVerify(false);
         } else if (!userRejected) {

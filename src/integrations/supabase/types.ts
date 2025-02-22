@@ -182,61 +182,43 @@ export type Database = {
           call_end_date: string | null
           call_start_date: string
           created_at: string
-          default_call_timeframe: number | null
           direction: string
           exchange: string
           id: string
           market: string
-          market_id: string | null
-          marketcap_category: string | null
-          notes: string | null
-          number_of_calls_in_timeframe: number | null
           score: number
           score_delta: number
           text: string
           trader_name: string
           tweet_url: string
-          use_default_timeframe: string | null
         }
         Insert: {
           call_end_date?: string | null
           call_start_date: string
           created_at: string
-          default_call_timeframe?: number | null
           direction: string
           exchange: string
           id?: string
           market: string
-          market_id?: string | null
-          marketcap_category?: string | null
-          notes?: string | null
-          number_of_calls_in_timeframe?: number | null
           score: number
           score_delta: number
           text: string
           trader_name: string
           tweet_url: string
-          use_default_timeframe?: string | null
         }
         Update: {
           call_end_date?: string | null
           call_start_date?: string
           created_at?: string
-          default_call_timeframe?: number | null
           direction?: string
           exchange?: string
           id?: string
           market?: string
-          market_id?: string | null
-          marketcap_category?: string | null
-          notes?: string | null
-          number_of_calls_in_timeframe?: number | null
           score?: number
           score_delta?: number
           text?: string
           trader_name?: string
           tweet_url?: string
-          use_default_timeframe?: string | null
         }
         Relationships: []
       }

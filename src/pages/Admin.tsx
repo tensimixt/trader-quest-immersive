@@ -1,11 +1,10 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import WalletAuthButton from '@/components/WalletAuthButton';
 
 interface TraderCall {
   createdTime: string;
@@ -28,18 +27,14 @@ const traders = ['ninjascalp', 'satsdart', 'cryptofelon']; // Example traders
 
 const Admin = () => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const fetchTraderCalls = async (trader: string) => {
     try {
-      console.log(`Fetching calls for trader: ${trader}`);
       const response = await fetch(`https://metadata.unlimitedcope.com/trader-report-gen/${trader}`);
       if (!response.ok) {
         throw new Error('Failed to fetch trader calls');
       }
-      const data = await response.json();
-      console.log(`Received ${data.length} calls for ${trader}`);
-      return data;
+      return response.json();
     } catch (error) {
       console.error('Error fetching trader calls:', error);
       throw error;
@@ -48,86 +43,47 @@ const Admin = () => {
 
   const addTraderCallsToSupabase = async (trader: string) => {
     try {
-      setIsLoading(trader);
-      console.log('Checking authentication session...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        throw new Error('Failed to check authentication status');
-      }
-
-      if (!session) {
-        console.log('No active session found');
-        toast({
-          title: "Authentication required",
-          description: "Please connect and verify your wallet to add trader calls",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Session found, user is authenticated');
       const calls = await fetchTraderCalls(trader);
       
+      // Prepare the data for insertion
       const formattedCalls = calls.map((call: TraderCall) => ({
-        trader_name: call['fields.screenName'] || trader,
-        call_start_date: call['fields.call_start_date'] || new Date().toISOString(),
+        trader: call['fields.screenName'],
+        call_start_date: call['fields.call_start_date'],
         call_end_date: call['fields.call_end_date'],
-        exchange: call['fields.exchange'] || 'unknown',
-        market: call['fields.market'] || 'unknown',
-        direction: call['fields.expected_market_direction'] || 'unknown',
-        score: call['fields.current_score'] || 0,
-        score_delta: call['fields.score_delta'] || 0,
-        tweet_url: call['fields.tweet_url'] || '',
-        text: call['fields.user_entered_text'] || '',
-        market_id: call['fields.market_id'] || null,
+        exchange: call['fields.exchange'],
+        market: call['fields.market'],
+        market_id: call['fields.market_id'],
+        direction: call['fields.expected_market_direction'],
+        score: call['fields.current_score'],
+        score_delta: call['fields.score_delta'],
+        tweet_url: call['fields.tweet_url'],
+        tweet_text: call['fields.user_entered_text'],
         created_at: new Date().toISOString()
       }));
 
-      console.log('Attempting to insert calls:', {
-        numberOfCalls: formattedCalls.length,
-        sampleCall: formattedCalls[0]
-      });
-
-      const { error: insertError, data } = await supabase
+      const { error } = await supabase
         .from('trading_calls')
-        .insert(formattedCalls)
-        .select();
+        .insert(formattedCalls);
 
-      if (insertError) {
-        console.error('Supabase insert error:', {
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint
-        });
-        throw insertError;
-      }
+      if (error) throw error;
 
-      console.log('Successfully added calls:', data);
-      
       toast({
         title: "Success",
         description: `Added ${formattedCalls.length} calls for ${trader}`,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding calls to Supabase:', error);
       toast({
         title: "Error",
-        description: error?.message || "Failed to add trader calls. Make sure your wallet is verified.",
+        description: "Failed to add trader calls",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(null);
     }
   };
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white">Trader Management</h1>
-        <WalletAuthButton />
-      </div>
+      <h1 className="text-2xl font-bold mb-6 text-white">Trader Management</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {traders.map((trader) => (
@@ -139,14 +95,9 @@ const Admin = () => {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
-                disabled={isLoading === trader}
               >
-                {isLoading === trader ? (
-                  <Loader className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-                {isLoading === trader ? 'Adding...' : 'Add Calls'}
+                <Plus className="w-4 h-4" />
+                Add Calls
               </Button>
             </div>
           </div>
@@ -157,4 +108,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
