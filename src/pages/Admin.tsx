@@ -22,6 +22,9 @@ interface TraderCall {
   'fields.tweet_url': string;
   'fields.user_entered_text': string;
   'fields.default_call_timeframe': number;
+  'fields.marketcap_category': number | null;
+  'fields.number_of_calls_in_timeframe': string | null;
+  'fields.use_default_timeframe': string | null;
   id: string;
 }
 
@@ -70,6 +73,9 @@ const Admin = () => {
           tweet_url: call['fields.tweet_url'],
           text: call['fields.user_entered_text'],
           default_call_timeframe: call['fields.default_call_timeframe'],
+          marketcap_category: call['fields.marketcap_category'],
+          number_of_calls_in_timeframe: call['fields.number_of_calls_in_timeframe'],
+          use_default_timeframe: call['fields.use_default_timeframe'],
           created_at: new Date().toISOString()
         };
       });
