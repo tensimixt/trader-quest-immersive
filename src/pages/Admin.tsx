@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Plus } from 'lucide-react';
@@ -23,10 +23,11 @@ interface TraderCall {
   id: string;
 }
 
-const traders = ['ninjascalp', 'satsdart', 'cryptofelon']; // Example traders
+const traders = ['ninjascalp', 'satsdart', 'cryptofelon'];
 
 const Admin = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const fetchTraderCalls = async (trader: string) => {
     try {
@@ -45,7 +46,6 @@ const Admin = () => {
     try {
       const calls = await fetchTraderCalls(trader);
       
-      // Prepare the data for insertion
       const formattedCalls = calls.map((call: TraderCall) => ({
         trader: call['fields.screenName'],
         call_start_date: call['fields.call_start_date'],
@@ -67,10 +67,16 @@ const Admin = () => {
 
       if (error) throw error;
 
+      // Invalidate and refetch queries after successful insert
+      await queryClient.invalidateQueries({ queryKey: ['trading_calls'] });
+
       toast({
         title: "Success",
         description: `Added ${formattedCalls.length} calls for ${trader}`,
       });
+
+      // Force a page refresh to ensure all data is current
+      window.location.reload();
     } catch (error) {
       console.error('Error adding calls to Supabase:', error);
       toast({
