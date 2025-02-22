@@ -50,14 +50,30 @@ const Admin = () => {
     }
   };
 
+  const deleteExistingCalls = async (trader: string) => {
+    const { error } = await supabase
+      .from('trading_calls')
+      .delete()
+      .eq('trader_name', trader);
+
+    if (error) {
+      console.error('Error deleting existing calls:', error);
+      throw error;
+    }
+  };
+
   const addTraderCallsToSupabase = async (trader: string) => {
     try {
       setIsLoading(trader);
+      
+      // First delete existing calls for this trader
+      await deleteExistingCalls(trader);
+      
+      // Then fetch and add new calls
       const calls = await fetchTraderCalls(trader);
       
       console.log('Raw calls data for trader:', trader, calls);
       const formattedCalls = calls.map((call: TraderCall) => {
-        // Get screenName from the API response, fallback to the trader name with proper casing
         const screenName = call['fields.screenName'] || trader.charAt(0).toUpperCase() + trader.slice(1);
         
         return {
@@ -94,7 +110,7 @@ const Admin = () => {
       
       toast({
         title: "Success",
-        description: `Added ${formattedCalls.length} calls for ${trader}`,
+        description: `Updated ${formattedCalls.length} calls for ${trader}`,
       });
 
       window.location.reload();
@@ -132,7 +148,7 @@ const Admin = () => {
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-                {isLoading === trader ? 'Adding...' : 'Add Calls'}
+                {isLoading === trader ? 'Updating...' : 'Update Calls'}
               </Button>
             </div>
           </div>
@@ -143,3 +159,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
