@@ -100,18 +100,32 @@ const Admin = () => {
 
   const deleteExistingCalls = async (trader: string) => {
     console.log('Deleting existing calls for trader:', trader);
-    const { error, count } = await supabase
+    
+    // First, get the count of records to be deleted
+    const { data: countData, error: countError } = await supabase
       .from('trading_calls')
-      .delete()
-      .eq('trader_name', trader)
-      .select('count');
+      .select('id', { count: 'exact' })
+      .eq('trader_name', trader);
       
-    if (error) {
-      console.error('Error deleting existing calls:', error);
-      throw error;
+    if (countError) {
+      console.error('Error getting count:', countError);
+      throw countError;
     }
     
+    // Then perform the deletion
+    const { error: deleteError } = await supabase
+      .from('trading_calls')
+      .delete()
+      .eq('trader_name', trader);
+      
+    if (deleteError) {
+      console.error('Error deleting existing calls:', deleteError);
+      throw deleteError;
+    }
+    
+    const count = countData?.length || 0;
     console.log(`Deleted ${count} existing calls for trader: ${trader}`);
+    
     // Wait a moment to ensure deletion is complete
     await new Promise(resolve => setTimeout(resolve, 1000));
   };
@@ -214,4 +228,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
