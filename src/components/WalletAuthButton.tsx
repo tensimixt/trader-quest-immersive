@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Loader, Wallet } from 'lucide-react';
 import bs58 from 'bs58';
+import { useLocation } from 'react-router-dom';
 
 export const WalletAuthButton = () => {
   const { publicKey, connected, signMessage, disconnect } = useWallet();
@@ -18,6 +19,7 @@ export const WalletAuthButton = () => {
   const isResetting = useRef(false);
   const hasInitialVerificationCheck = useRef(false);
   const resetTimeout = useRef<NodeJS.Timeout | null>(null);
+  const location = useLocation();
 
   const resetAllStates = () => {
     setIsVerified(false);
@@ -34,6 +36,7 @@ export const WalletAuthButton = () => {
       resetTimeout.current = null;
     }
 
+    // Clear wallet-related localStorage items
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.includes('wallet') || key?.includes('Wallet')) {
@@ -90,7 +93,6 @@ export const WalletAuthButton = () => {
         duration: 1000,
       });
 
-      // Reload immediately after cleanup
       window.location.reload();
 
     } catch (error: any) {
@@ -101,6 +103,9 @@ export const WalletAuthButton = () => {
         variant: "destructive",
         duration: 3000,
       });
+    } finally {
+      setIsLoading(false);
+      isResetting.current = false;
     }
   };
 
@@ -256,7 +261,7 @@ export const WalletAuthButton = () => {
       setIsLoading(false);
       verificationInProgress.current = false;
     }
-  }, [publicKey, signMessage, isLoading, disconnect, toast, userRejected, shouldVerify]);
+  }, [publicKey, signMessage, disconnect, toast, userRejected, shouldVerify]);
 
   const CustomWalletButton = () => {
     if (isResetting.current) {
@@ -278,6 +283,14 @@ export const WalletAuthButton = () => {
       />
     );
   };
+
+  // Reset states when route changes
+  useEffect(() => {
+    hasInitialVerificationCheck.current = false;
+    if (!connected) {
+      resetAllStates();
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     return () => {
@@ -377,3 +390,4 @@ export const WalletAuthButton = () => {
 };
 
 export default WalletAuthButton;
+
