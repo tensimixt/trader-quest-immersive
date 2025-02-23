@@ -55,7 +55,6 @@ const ChatSection = ({
       if (isMobile) {
         setShowHistoryView(true);
       }
-      // Always trigger onViewChart with data when showChart is true
       if (contextData.showChart) {
         onViewChart?.({ monthlyData: MONTHLY_DATA });
       }
