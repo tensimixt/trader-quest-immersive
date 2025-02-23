@@ -53,6 +53,12 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onVi
         <div 
           className="text-sm text-white font-mono whitespace-pre-line"
           dangerouslySetInnerHTML={{ __html: message }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('.text-emerald-400')) {
+              onViewChart?.();
+            }
+          }}
         />
         <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
       </div>
