@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Network, ArrowLeft } from 'lucide-react';
 import ChatMessage from './ChatMessage';
@@ -54,13 +54,20 @@ const ChatSection = ({
   } | null>(null);
   const isMobile = useIsMobile();
 
+  // Add effect to handle desktop view updates
+  useEffect(() => {
+    if (!isMobile && selectedMessage && onViewChart) {
+      if (selectedMessage.showChart) {
+        onViewChart();
+      }
+    }
+  }, [selectedMessage, isMobile, onViewChart]);
+
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      } else if (onViewChart && contextData.showChart) {
-        onViewChart();
       }
     }
   };
@@ -165,3 +172,4 @@ const ChatSection = ({
 };
 
 export default ChatSection;
+
