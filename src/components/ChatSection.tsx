@@ -57,11 +57,10 @@ const ChatSection = ({
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
       setSelectedMessage(contextData);
+      
       if (isMobile) {
         setShowHistoryView(true);
       } else if (onViewChart) {
-        // For desktop, update the view first before calling onViewChart
-        setSelectedMessage(contextData);
         onViewChart();
       }
     }
@@ -91,7 +90,6 @@ const ChatSection = ({
               timestamp={msg.timestamp}
               isUser={msg.isUser}
               type={msg.type}
-              onViewChart={onViewChart}
               onMessageClick={() => handleMessageClick(msg.contextData)}
             />
           ))}
@@ -158,3 +156,4 @@ const ChatSection = ({
 };
 
 export default ChatSection;
+
