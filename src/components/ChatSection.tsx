@@ -6,6 +6,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import PerformanceChart from './PerformanceChart';
 import PredictionCard from './PredictionCard';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface ChatSectionProps {
   chatHistory: Array<{
@@ -51,11 +52,16 @@ const ChatSection = ({
     showChart?: boolean;
     showCalls?: boolean;
   } | null>(null);
+  const isMobile = useMediaQuery('(max-width: 1024px)');
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
       setSelectedMessage(contextData);
-      setShowHistoryView(true);
+      if (isMobile) {
+        setShowHistoryView(true);
+      } else {
+        onViewChart?.();
+      }
     }
   };
 
@@ -100,13 +106,13 @@ const ChatSection = ({
       )}
 
       <AnimatePresence>
-        {showHistoryView && (
+        {showHistoryView && isMobile && (
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-50 bg-black/95 lg:hidden overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/95 overflow-y-auto"
           >
             <div className="p-4 space-y-4">
               <button
