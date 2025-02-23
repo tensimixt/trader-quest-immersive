@@ -25,7 +25,7 @@ interface ChatSectionProps {
   containerRef: React.RefObject<HTMLDivElement>;
   showIntel?: boolean;
   isThinking?: boolean;
-  onViewChart?: () => void;
+  onViewChart?: (data?: { monthlyData?: Array<{ month: string; winRate: number }> }) => void;
 }
 
 const MONTHLY_DATA = [
@@ -59,6 +59,8 @@ const ChatSection = ({
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
+      } else if (contextData.showChart) {
+        onViewChart?.({ monthlyData: MONTHLY_DATA });
       } else {
         onViewChart?.();
       }
