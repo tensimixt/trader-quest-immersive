@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Network, ArrowLeft } from 'lucide-react';
+import { Network } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 
@@ -64,18 +64,21 @@ const ChatSection = ({
       >
         {chatHistory
           .filter(msg => showIntel ? msg.type === 'intel' : msg.type !== 'intel')
-          .map((msg, idx) => (
-            <ChatMessage
-              key={idx}
-              message={msg.message}
-              timestamp={msg.timestamp}
-              isUser={msg.isUser}
-              type={msg.type}
-              onViewChart={onViewChart}
-              showBackButton={isHistoryView && idx === chatHistory.length - 1}
-              onBackToChat={handleBackToChat}
-            />
-          ))}
+          .map((msg, idx) => {
+            const isLastMessage = idx === chatHistory.length - 1;
+            return (
+              <ChatMessage
+                key={idx}
+                message={msg.message}
+                timestamp={msg.timestamp}
+                isUser={msg.isUser}
+                type={isHistoryView && isLastMessage ? 'history' : msg.type}
+                onViewChart={onViewChart}
+                showBackButton={isHistoryView && isLastMessage}
+                onBackToChat={handleBackToChat}
+              />
+            );
+          })}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
       {!showIntel && !isHistoryView && (
