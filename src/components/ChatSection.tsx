@@ -45,17 +45,6 @@ const ChatSection = ({
 }: ChatSectionProps) => {
   const handleBackToChat = () => {
     setIsHistoryView(false);
-    if (window.innerWidth <= 1024) {  // 1024px is the lg breakpoint in Tailwind
-      setActiveTab("chat");
-    }
-  };
-
-  const handleViewChartWrapper = () => {
-    setIsHistoryView(true);
-    if (window.innerWidth <= 1024) {
-      setActiveTab("market_intel");
-    }
-    onViewChart?.();
   };
 
   return (
@@ -91,7 +80,7 @@ const ChatSection = ({
               timestamp={msg.timestamp}
               isUser={msg.isUser}
               type={msg.type}
-              onViewChart={handleViewChartWrapper}
+              onViewChart={onViewChart}
             />
           ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
