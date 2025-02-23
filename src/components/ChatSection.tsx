@@ -45,7 +45,6 @@ const ChatSection = ({
 }: ChatSectionProps) => {
   const handleBackToChat = () => {
     setIsHistoryView(false);
-    setActiveTab("chat");
   };
 
   return (
@@ -59,7 +58,7 @@ const ChatSection = ({
           <div className="w-2 h-2 rounded-full bg-[#9b87f5] animate-pulse" />
         </div>
       )}
-      {isHistoryView && activeTab === "chat" && (
+      {isHistoryView && (
         <button
           onClick={handleBackToChat}
           className="flex items-center gap-2 mb-4 text-emerald-400 hover:text-emerald-300 transition-colors"

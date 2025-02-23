@@ -56,6 +56,7 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onVi
           onClick={(e) => {
             const target = e.target as HTMLElement;
             if (target.closest('.text-emerald-400')) {
+              e.preventDefault();
               onViewChart?.();
             }
           }}
