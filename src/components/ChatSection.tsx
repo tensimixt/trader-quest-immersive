@@ -59,8 +59,8 @@ const ChatSection = ({
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      } else {
-        onViewChart?.();
+      } else if (onViewChart) {
+        onViewChart();
       }
     }
   };
@@ -106,7 +106,7 @@ const ChatSection = ({
       )}
 
       <AnimatePresence>
-        {showHistoryView && isMobile && (
+        {showHistoryView && isMobile && selectedMessage && (
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -123,13 +123,13 @@ const ChatSection = ({
                 Back to Chat
               </button>
 
-              {selectedMessage?.showChart && (
+              {selectedMessage.showChart && (
                 <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
                   <PerformanceChart monthlyData={MONTHLY_DATA} />
                 </div>
               )}
 
-              {selectedMessage?.showCalls && (
+              {selectedMessage.showCalls && (
                 <div className="space-y-4">
                   <PredictionCard
                     symbol="BTC/USD"
