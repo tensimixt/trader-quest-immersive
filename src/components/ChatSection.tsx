@@ -59,7 +59,7 @@ const ChatSection = ({
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      } else if (onViewChart) {
+      } else if (onViewChart && contextData.showChart) {
         onViewChart();
       }
     }
@@ -165,4 +165,3 @@ const ChatSection = ({
 };
 
 export default ChatSection;
-
