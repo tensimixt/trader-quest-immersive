@@ -45,6 +45,9 @@ const ChatSection = ({
 }: ChatSectionProps) => {
   const handleBackToChat = () => {
     setIsHistoryView(false);
+    if (window.innerWidth <= 1024) {  // 1024px is the lg breakpoint in Tailwind
+      setActiveTab("chat");
+    }
   };
 
   return (

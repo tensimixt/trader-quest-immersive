@@ -34,6 +34,15 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onVi
     );
   }
 
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.text-emerald-400')) {
+      e.preventDefault();
+      e.stopPropagation();
+      onViewChart?.();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: isUser ? 20 : -20 }}
@@ -53,13 +62,7 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onVi
         <div 
           className="text-sm text-white font-mono whitespace-pre-line"
           dangerouslySetInnerHTML={{ __html: message }}
-          onClick={(e) => {
-            const target = e.target as HTMLElement;
-            if (target.closest('.text-emerald-400')) {
-              e.preventDefault();
-              onViewChart?.();
-            }
-          }}
+          onClick={handleClick}
         />
         <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
       </div>
