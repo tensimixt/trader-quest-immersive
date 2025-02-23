@@ -50,6 +50,14 @@ const ChatSection = ({
     }
   };
 
+  const handleViewChartWrapper = () => {
+    setIsHistoryView(true);
+    if (window.innerWidth <= 1024) {
+      setActiveTab("market_intel");
+    }
+    onViewChart?.();
+  };
+
   return (
     <div className="absolute inset-0 flex flex-col">
       {showIntel && (
@@ -83,7 +91,7 @@ const ChatSection = ({
               timestamp={msg.timestamp}
               isUser={msg.isUser}
               type={msg.type}
-              onViewChart={onViewChart}
+              onViewChart={handleViewChartWrapper}
             />
           ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
