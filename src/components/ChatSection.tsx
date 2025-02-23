@@ -56,16 +56,26 @@ const ChatSection = ({
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
-      setSelectedMessage(contextData);
       if (isMobile) {
-        setShowHistoryView(true);
-      } else if (onViewChart) {
-        // For desktop, update the view first before calling onViewChart
         setSelectedMessage(contextData);
-        onViewChart();
+        setShowHistoryView(true);
+      } else {
+        // For desktop, update the state first
+        setSelectedMessage(contextData);
+        // Then use a React.useEffect to handle chart visibility
+        if (onViewChart) {
+          onViewChart();
+        }
       }
     }
   };
+
+  // Listen for selectedMessage changes on desktop
+  React.useEffect(() => {
+    if (!isMobile && selectedMessage && onViewChart) {
+      onViewChart();
+    }
+  }, [selectedMessage, isMobile, onViewChart]);
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -158,3 +168,4 @@ const ChatSection = ({
 };
 
 export default ChatSection;
+
