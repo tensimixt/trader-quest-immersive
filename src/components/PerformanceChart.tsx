@@ -35,6 +35,7 @@ const PerformanceChart = ({ monthlyData }: PerformanceChartProps) => {
             dataKey="winRate"
             fill="#10B981"
             opacity={0.8}
+            radius={[4, 4, 0, 0]}
           />
         </BarChart>
       </ResponsiveContainer>
@@ -46,3 +47,4 @@ const PerformanceChart = ({ monthlyData }: PerformanceChartProps) => {
 };
 
 export default PerformanceChart;
+

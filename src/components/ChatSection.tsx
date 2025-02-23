@@ -27,6 +27,15 @@ interface ChatSectionProps {
   onViewChart?: () => void;
 }
 
+const MONTHLY_DATA = [
+  { month: 'Jan', winRate: 75 },
+  { month: 'Feb', winRate: 82 },
+  { month: 'Mar', winRate: 68 },
+  { month: 'Apr', winRate: 91 },
+  { month: 'May', winRate: 84 },
+  { month: 'Jun', winRate: 77 }
+];
+
 const ChatSection = ({ 
   chatHistory, 
   userInput, 
@@ -110,17 +119,12 @@ const ChatSection = ({
 
               {selectedMessage?.showChart && (
                 <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
-                  <PerformanceChart monthlyData={[
-                    { month: 'Jan', winRate: 75 },
-                    { month: 'Feb', winRate: 82 },
-                    { month: 'Mar', winRate: 68 }
-                  ]} />
+                  <PerformanceChart monthlyData={MONTHLY_DATA} />
                 </div>
               )}
 
               {selectedMessage?.showCalls && (
                 <div className="space-y-4">
-                  {/* Example prediction cards - replace with actual data */}
                   <PredictionCard
                     symbol="BTC/USD"
                     prediction="up"
@@ -146,3 +150,4 @@ const ChatSection = ({
 };
 
 export default ChatSection;
+
