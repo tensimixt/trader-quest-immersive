@@ -57,13 +57,45 @@ const ChatSection = ({
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
       setSelectedMessage(contextData);
-      
       if (isMobile) {
         setShowHistoryView(true);
-      } else if (onViewChart) {
-        onViewChart();
+      } else {
+        onViewChart?.();
       }
     }
+  };
+
+  const renderHistoryContent = () => {
+    if (!selectedMessage) return null;
+
+    return (
+      <div className="space-y-4">
+        {selectedMessage.showChart && (
+          <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
+            <PerformanceChart monthlyData={MONTHLY_DATA} />
+          </div>
+        )}
+
+        {selectedMessage.showCalls && (
+          <div className="space-y-4">
+            <PredictionCard
+              symbol="BTC/USD"
+              prediction="up"
+              confidence={85}
+              timestamp="2024-03-15 09:30 JST"
+              traderText="Strong bullish momentum with high volume"
+            />
+            <PredictionCard
+              symbol="ETH/USD"
+              prediction="down"
+              confidence={75}
+              timestamp="2024-03-15 10:15 JST"
+              traderText="Bearish divergence on 4H timeframe"
+            />
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -123,30 +155,7 @@ const ChatSection = ({
                 Back to Chat
               </button>
 
-              {selectedMessage.showChart && (
-                <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
-                  <PerformanceChart monthlyData={MONTHLY_DATA} />
-                </div>
-              )}
-
-              {selectedMessage.showCalls && (
-                <div className="space-y-4">
-                  <PredictionCard
-                    symbol="BTC/USD"
-                    prediction="up"
-                    confidence={85}
-                    timestamp="2024-03-15 09:30 JST"
-                    traderText="Strong bullish momentum with high volume"
-                  />
-                  <PredictionCard
-                    symbol="ETH/USD"
-                    prediction="down"
-                    confidence={75}
-                    timestamp="2024-03-15 10:15 JST"
-                    traderText="Bearish divergence on 4H timeframe"
-                  />
-                </div>
-              )}
+              {renderHistoryContent()}
             </div>
           </motion.div>
         )}
