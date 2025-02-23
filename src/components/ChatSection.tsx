@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Network, ArrowLeft } from 'lucide-react';
@@ -59,9 +58,6 @@ const ChatSection = ({
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      }
-      if (!isMobile && onViewChart) {
-        onViewChart();
       }
     }
   };
@@ -166,4 +162,3 @@ const ChatSection = ({
 };
 
 export default ChatSection;
-

@@ -282,9 +282,11 @@ const Index = () => {
             const performance = generatePerformanceData(marketCalls, year);
             setPerformanceData(performance);
             setFilteredHistory([]);
-            if (chartRef.current) {
-              chartRef.current.scrollIntoView({ behavior: 'smooth' });
-            }
+            setTimeout(() => {
+              if (chartRef.current) {
+                chartRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
           } else if (clickedMessage.contextData.showCalls) {
             const filteredCalls = marketCalls.filter(call => 
               call.traderProfile.toLowerCase() === 'hsaka'
@@ -304,8 +306,16 @@ const Index = () => {
       }
     };
 
-    document.addEventListener('click', handleChatClick);
-    return () => document.removeEventListener('click', handleChatClick);
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer) {
+      chatContainer.addEventListener('click', handleChatClick);
+    }
+
+    return () => {
+      if (chatContainer) {
+        chatContainer.removeEventListener('click', handleChatClick);
+      }
+    };
   }, [chatHistory]);
 
   if (isCheckingVerification) {
