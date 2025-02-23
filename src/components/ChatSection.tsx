@@ -60,6 +60,8 @@ const ChatSection = ({
       if (isMobile) {
         setShowHistoryView(true);
       } else if (onViewChart) {
+        // For desktop, update the view first before calling onViewChart
+        setSelectedMessage(contextData);
         onViewChart();
       }
     }
