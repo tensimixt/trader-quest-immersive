@@ -399,7 +399,7 @@ const Index = () => {
                     </TabsTrigger>
                     <TabsTrigger 
                       value="codec"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-950 data-[state=active]:text-emerald-400 data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-200 flex-1 sm:flex-none"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
                     >
                       <Radio className="w-4 h-4 mr-2" />
                       CODEC
@@ -410,6 +410,13 @@ const Index = () => {
                     >
                       <Activity className="w-4 h-4 mr-2" />
                       Leaderboard
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="market_intel"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none lg:hidden"
+                    >
+                      <Network className="w-4 h-4 mr-2" />
+                      Intel
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -447,6 +454,51 @@ const Index = () => {
                     sortConfig={sortConfig}
                   />
                 </TabsContent>
+
+                <TabsContent value="market_intel" className="flex-1 relative mt-0 lg:hidden">
+                  {!isHistoryView && (
+                    <div className="h-full overflow-y-auto custom-scrollbar space-y-4 pb-4">
+                      <AnimatePresence mode="popLayout">
+                        {visibleCards.map((prediction, index) => (
+                          <motion.div
+                            key={`prediction-${index}-${prediction.market}`}
+                            initial={{ 
+                              opacity: 0, 
+                              y: 40,
+                              scale: 0.95,
+                              filter: "blur(10px)"
+                            }}
+                            animate={{ 
+                              opacity: 1, 
+                              y: 0,
+                              scale: 1,
+                              filter: "blur(0px)"
+                            }}
+                            exit={{ 
+                              opacity: 0, 
+                              y: -40,
+                              scale: 0.95,
+                              filter: "blur(10px)"
+                            }}
+                            transition={{ 
+                              duration: 0.7,
+                              ease: [0.20, 0.67, 0.22, 1.0],
+                              delay: index * 0.1
+                            }}
+                          >
+                            <PredictionCard
+                              symbol={prediction.market}
+                              prediction={prediction.direction.toLowerCase() as "up" | "down"}
+                              confidence={prediction.confidence}
+                              timestamp={prediction.timestamp}
+                              traderText={prediction.analysis}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           </motion.div>
@@ -454,7 +506,7 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card rounded-2xl relative overflow-hidden p-4 lg:p-6 h-full order-last lg:order-none"
+            className="glass-card rounded-2xl relative overflow-hidden p-4 lg:p-6 h-full order-last lg:order-none hidden lg:block"
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
             <div className="h-full flex flex-col max-h-[calc(100vh-8rem)]">
