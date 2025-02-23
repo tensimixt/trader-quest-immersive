@@ -51,7 +51,7 @@ export const ChatMessage = ({
       animate={{ opacity: 1, x: 0 }}
       className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
     >
-      {showBackButton && (
+      {showBackButton && type === 'history' && (
         <motion.button
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}

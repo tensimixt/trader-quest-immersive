@@ -64,21 +64,18 @@ const ChatSection = ({
       >
         {chatHistory
           .filter(msg => showIntel ? msg.type === 'intel' : msg.type !== 'intel')
-          .map((msg, idx) => {
-            const isLastMessage = idx === chatHistory.length - 1;
-            return (
-              <ChatMessage
-                key={idx}
-                message={msg.message}
-                timestamp={msg.timestamp}
-                isUser={msg.isUser}
-                type={isHistoryView && isLastMessage ? 'history' : msg.type}
-                onViewChart={onViewChart}
-                showBackButton={isHistoryView && isLastMessage}
-                onBackToChat={handleBackToChat}
-              />
-            );
-          })}
+          .map((msg, idx) => (
+            <ChatMessage
+              key={idx}
+              message={msg.message}
+              timestamp={msg.timestamp}
+              isUser={msg.isUser}
+              type={msg.type}
+              onViewChart={onViewChart}
+              showBackButton={isHistoryView}
+              onBackToChat={handleBackToChat}
+            />
+          ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
       {!showIntel && !isHistoryView && (
