@@ -446,6 +446,10 @@ const Index = () => {
                     containerRef={chatContainerRef}
                     showIntel={true}
                     isThinking={isThinking}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    setIsHistoryView={setIsHistoryView}
+                    isHistoryView={isHistoryView}
                   />
                 </TabsContent>
 
