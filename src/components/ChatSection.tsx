@@ -6,7 +6,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import PerformanceChart from './PerformanceChart';
 import PredictionCard from './PredictionCard';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatSectionProps {
   chatHistory: Array<{
@@ -52,7 +52,7 @@ const ChatSection = ({
     showChart?: boolean;
     showCalls?: boolean;
   } | null>(null);
-  const isMobile = useMediaQuery('(max-width: 1024px)');
+  const isMobile = useIsMobile();
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
