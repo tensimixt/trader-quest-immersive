@@ -48,54 +48,26 @@ const ChatSection = ({
   onViewChart
 }: ChatSectionProps) => {
   const [showHistoryView, setShowHistoryView] = React.useState(false);
-  const [selectedMessage, setSelectedMessage] = React.useState<{
-    showChart?: boolean;
-    showCalls?: boolean;
-  } | null>(null);
   const isMobile = useIsMobile();
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
-      setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      } else if (contextData.showChart) {
+      }
+      // Always trigger onViewChart with data when showChart is true
+      if (contextData.showChart) {
         onViewChart?.({ monthlyData: MONTHLY_DATA });
-      } else {
-        onViewChart?.();
       }
     }
   };
 
   const renderHistoryContent = () => {
-    if (!selectedMessage) return null;
-
     return (
       <div className="space-y-4">
-        {selectedMessage.showChart && (
-          <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
-            <PerformanceChart monthlyData={MONTHLY_DATA} />
-          </div>
-        )}
-
-        {selectedMessage.showCalls && (
-          <div className="space-y-4">
-            <PredictionCard
-              symbol="BTC/USD"
-              prediction="up"
-              confidence={85}
-              timestamp="2024-03-15 09:30 JST"
-              traderText="Strong bullish momentum with high volume"
-            />
-            <PredictionCard
-              symbol="ETH/USD"
-              prediction="down"
-              confidence={75}
-              timestamp="2024-03-15 10:15 JST"
-              traderText="Bearish divergence on 4H timeframe"
-            />
-          </div>
-        )}
+        <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
+          <PerformanceChart monthlyData={MONTHLY_DATA} />
+        </div>
       </div>
     );
   };
@@ -140,7 +112,7 @@ const ChatSection = ({
       )}
 
       <AnimatePresence>
-        {showHistoryView && isMobile && selectedMessage && (
+        {showHistoryView && isMobile && (
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
