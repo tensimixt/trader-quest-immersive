@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { History, Bot, Network, MessageCircle, ArrowLeft } from 'lucide-react';
+import { History, Bot, Network } from 'lucide-react';
 
 interface ChatMessageProps {
   message: string;
@@ -19,10 +19,8 @@ export const ChatMessage = ({
   timestamp, 
   isUser, 
   type, 
-  isThinking, 
-  onViewChart,
-  showBackButton,
-  onBackToChat 
+  isThinking,
+  onViewChart
 }: ChatMessageProps) => {
   if (isThinking) {
     return (
@@ -51,17 +49,6 @@ export const ChatMessage = ({
       animate={{ opacity: 1, x: 0 }}
       className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
     >
-      {showBackButton && type === 'history' && (
-        <motion.button
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={onBackToChat}
-          className="flex items-center gap-2 mb-4 text-emerald-400 hover:text-emerald-300 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Chat</span>
-        </motion.button>
-      )}
       <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
         type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
         isUser ? 'bg-emerald-500/20' : 'bg-white/5'

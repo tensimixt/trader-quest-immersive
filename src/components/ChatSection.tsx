@@ -47,8 +47,28 @@ const ChatSection = ({
     setIsHistoryView(false);
   };
 
+  // Determine if we should show the "Back to Chat" button in mobile view
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
+  const shouldShowBackButton = isMobileView && isHistoryView;
+
   return (
     <div className="absolute inset-0 flex flex-col">
+      {shouldShowBackButton && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 z-10"
+        >
+          <button
+            onClick={handleBackToChat}
+            className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Chat</span>
+          </button>
+        </motion.div>
+      )}
+
       {showIntel && (
         <div className="flex items-center gap-2 mb-4">
           <Network className="w-5 h-5 text-[#9b87f5]" />
@@ -72,8 +92,7 @@ const ChatSection = ({
               isUser={msg.isUser}
               type={msg.type}
               onViewChart={onViewChart}
-              showBackButton={isHistoryView}
-              onBackToChat={handleBackToChat}
+              showBackButton={false} // Never show back button in messages
             />
           ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
