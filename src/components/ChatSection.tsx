@@ -59,13 +59,15 @@ const ChatSection = ({
         </div>
       )}
       {isHistoryView && (
-        <button
+        <motion.button
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
           onClick={handleBackToChat}
           className="flex items-center gap-2 mb-4 text-emerald-400 hover:text-emerald-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Chat</span>
-        </button>
+        </motion.button>
       )}
       <div 
         ref={containerRef}
