@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { MessageCircle, Network } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, Network, ArrowLeft } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import PerformanceChart from './PerformanceChart';
+import PredictionCard from './PredictionCard';
 
 interface ChatSectionProps {
   chatHistory: Array<{
@@ -35,6 +37,19 @@ const ChatSection = ({
   isThinking = false,
   onViewChart
 }: ChatSectionProps) => {
+  const [showHistoryView, setShowHistoryView] = React.useState(false);
+  const [selectedMessage, setSelectedMessage] = React.useState<{
+    showChart?: boolean;
+    showCalls?: boolean;
+  } | null>(null);
+
+  const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
+    if (contextData) {
+      setSelectedMessage(contextData);
+      setShowHistoryView(true);
+    }
+  };
+
   return (
     <div className="absolute inset-0 flex flex-col">
       {showIntel && (
@@ -60,6 +75,7 @@ const ChatSection = ({
               isUser={msg.isUser}
               type={msg.type}
               onViewChart={onViewChart}
+              onMessageClick={() => handleMessageClick(msg.contextData)}
             />
           ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
@@ -73,6 +89,58 @@ const ChatSection = ({
           />
         </div>
       )}
+
+      <AnimatePresence>
+        {showHistoryView && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-50 bg-black/95 lg:hidden overflow-y-auto"
+          >
+            <div className="p-4 space-y-4">
+              <button
+                onClick={() => setShowHistoryView(false)}
+                className="flex items-center gap-2 text-emerald-400 mb-4"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Back to Chat
+              </button>
+
+              {selectedMessage?.showChart && (
+                <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
+                  <PerformanceChart monthlyData={[
+                    { month: 'Jan', winRate: 75 },
+                    { month: 'Feb', winRate: 82 },
+                    { month: 'Mar', winRate: 68 }
+                  ]} />
+                </div>
+              )}
+
+              {selectedMessage?.showCalls && (
+                <div className="space-y-4">
+                  {/* Example prediction cards - replace with actual data */}
+                  <PredictionCard
+                    symbol="BTC/USD"
+                    prediction="up"
+                    confidence={85}
+                    timestamp="2024-03-15 09:30 JST"
+                    traderText="Strong bullish momentum with high volume"
+                  />
+                  <PredictionCard
+                    symbol="ETH/USD"
+                    prediction="down"
+                    confidence={75}
+                    timestamp="2024-03-15 10:15 JST"
+                    traderText="Bearish divergence on 4H timeframe"
+                  />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

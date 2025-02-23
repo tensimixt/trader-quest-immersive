@@ -10,9 +10,18 @@ interface ChatMessageProps {
   type?: 'chat' | 'intel' | 'history';
   isThinking?: boolean;
   onViewChart?: () => void;
+  onMessageClick?: () => void;
 }
 
-export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onViewChart }: ChatMessageProps) => {
+export const ChatMessage = ({ 
+  message, 
+  timestamp, 
+  isUser, 
+  type, 
+  isThinking,
+  onViewChart,
+  onMessageClick 
+}: ChatMessageProps) => {
   if (isThinking) {
     return (
       <motion.div
@@ -34,16 +43,32 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onVi
     );
   }
 
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName.toLowerCase() === 'span' && target.classList.contains('clickable-link')) {
+      e.preventDefault();
+      onMessageClick?.();
+    }
+  };
+
+  const processedMessage = message.replace(
+    /(Click here)/g,
+    '<span class="text-emerald-400 cursor-pointer hover:underline clickable-link">$1</span>'
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, x: isUser ? 20 : -20 }}
       animate={{ opacity: 1, x: 0 }}
       className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
     >
-      <div className={`max-w-[80%] glass-card p-3 rounded-xl ${
-        type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
-        isUser ? 'bg-emerald-500/20' : 'bg-white/5'
-      }`}>
+      <div 
+        onClick={handleClick}
+        className={`max-w-[80%] glass-card p-3 rounded-xl ${
+          type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
+          isUser ? 'bg-emerald-500/20' : 'bg-white/5'
+        }`}
+      >
         {type === 'history' && (
           <div className="flex items-center gap-2 mb-1">
             <History className="w-3 h-3 text-blue-400" />
@@ -52,7 +77,7 @@ export const ChatMessage = ({ message, timestamp, isUser, type, isThinking, onVi
         )}
         <div 
           className="text-sm text-white font-mono whitespace-pre-line"
-          dangerouslySetInnerHTML={{ __html: message }}
+          dangerouslySetInnerHTML={{ __html: processedMessage }}
         />
         <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
       </div>
