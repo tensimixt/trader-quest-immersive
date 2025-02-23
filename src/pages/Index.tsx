@@ -239,7 +239,7 @@ const Index = () => {
 
   const handleViewChart = () => {
     setIsHistoryView(true);
-    setActiveTab("chat"); // Stay in chat tab but show history view
+    setFilteredHistory([]);
     if (performanceData) {
       setIsHistoryView(true);
     }
@@ -430,10 +430,6 @@ const Index = () => {
                     containerRef={chatContainerRef}
                     isThinking={isThinking}
                     onViewChart={handleViewChart}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    setIsHistoryView={setIsHistoryView}
-                    isHistoryView={isHistoryView}
                   />
                 </TabsContent>
 
@@ -446,10 +442,6 @@ const Index = () => {
                     containerRef={chatContainerRef}
                     showIntel={true}
                     isThinking={isThinking}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    setIsHistoryView={setIsHistoryView}
-                    isHistoryView={isHistoryView}
                   />
                 </TabsContent>
 
