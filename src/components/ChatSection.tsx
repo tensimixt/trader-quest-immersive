@@ -48,7 +48,7 @@ const ChatSection = ({
       )}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20"
+        className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20 px-2"
       >
         {chatHistory
           .filter(msg => showIntel ? msg.type === 'intel' : msg.type !== 'intel')
@@ -65,7 +65,7 @@ const ChatSection = ({
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
       {!showIntel && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
           <ChatInput
             value={userInput}
             onChange={onUserInput}

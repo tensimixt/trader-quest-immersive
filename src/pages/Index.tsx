@@ -378,35 +378,35 @@ const Index = () => {
         <WalletAuthButton />
         <AppHeader />
         
-        <div className="grid grid-cols-2 gap-4 h-[90vh]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[90vh]">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4"
           >
-            <div className="glass-card rounded-2xl overflow-hidden relative p-6 flex-1 flex flex-col h-full">
+            <div className="glass-card rounded-2xl overflow-hidden relative p-4 lg:p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <div className="flex items-center gap-4 mb-4">
-                  <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
+                  <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl w-full sm:w-auto">
                     <TabsTrigger 
                       value="chat"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
                     >
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Chat
                     </TabsTrigger>
                     <TabsTrigger 
                       value="codec"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-950 data-[state=active]:text-emerald-400 data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-200"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-950 data-[state=active]:text-emerald-400 data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-200 flex-1 sm:flex-none"
                     >
                       <Radio className="w-4 h-4 mr-2" />
                       CODEC
                     </TabsTrigger>
                     <TabsTrigger 
                       value="leaderboard"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
                     >
                       <Activity className="w-4 h-4 mr-2" />
                       Leaderboard
@@ -454,7 +454,7 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card rounded-2xl relative overflow-hidden p-6 h-full"
+            className="glass-card rounded-2xl relative overflow-hidden p-4 lg:p-6 h-full order-last lg:order-none"
           >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
             <div className="h-full flex flex-col max-h-[calc(100vh-8rem)]">
