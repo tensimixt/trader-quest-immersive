@@ -58,17 +58,6 @@ const ChatSection = ({
           <div className="w-2 h-2 rounded-full bg-[#9b87f5] animate-pulse" />
         </div>
       )}
-      {isHistoryView && (
-        <motion.button
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={handleBackToChat}
-          className="flex items-center gap-2 mb-4 text-emerald-400 hover:text-emerald-300 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Chat</span>
-        </motion.button>
-      )}
       <div 
         ref={containerRef}
         className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20 px-2"
@@ -83,6 +72,8 @@ const ChatSection = ({
               isUser={msg.isUser}
               type={msg.type}
               onViewChart={onViewChart}
+              showBackButton={isHistoryView && idx === chatHistory.length - 1}
+              onBackToChat={handleBackToChat}
             />
           ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
