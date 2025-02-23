@@ -59,7 +59,8 @@ const ChatSection = ({
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      } else if (onViewChart) {
+      }
+      if (!isMobile && onViewChart) {
         onViewChart();
       }
     }
