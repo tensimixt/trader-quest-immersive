@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield } from 'lucide-react';
-import { format, parseISO } from 'date-fns-tz';
+import { format } from 'date-fns-tz';
+import { parseISO } from 'date-fns';
 
 interface PredictionCardProps {
   symbol: string;
