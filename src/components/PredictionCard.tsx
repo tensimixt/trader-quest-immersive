@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield } from 'lucide-react';
-import { format } from 'date-fns-tz';
+import { format, parseISO } from 'date-fns-tz';
 
 interface PredictionCardProps {
   symbol: string;
@@ -13,8 +12,26 @@ interface PredictionCardProps {
 }
 
 const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
-  // Convert timestamp string back to Date and format in Japan time
-  const formattedTimestamp = format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+  // Safely format the timestamp
+  const getFormattedTimestamp = () => {
+    try {
+      // Try to parse the timestamp string as an ISO date
+      const date = typeof timestamp === 'string' ? 
+        // If it contains "JST", it's already formatted
+        timestamp.includes('JST') ? 
+          timestamp : 
+          // Otherwise, try to parse and format it
+          format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' })
+        : '';
+      
+      return date;
+    } catch (error) {
+      console.error("Error formatting timestamp:", error, timestamp);
+      return timestamp || "Date unavailable";
+    }
+  };
+
+  const formattedTimestamp = getFormattedTimestamp();
 
   return (
     <motion.div
