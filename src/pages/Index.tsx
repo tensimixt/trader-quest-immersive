@@ -241,14 +241,41 @@ const Index = () => {
     console.log("handleViewChart called in Index.tsx");
     setIsHistoryView(true);
     
-    // Make sure we have a valid performanceData, and if not, generate it
-    if (!performanceData) {
+    // Check the last chat message to determine what to show
+    const lastContextualMessage = [...chatHistory].reverse().find(msg => msg.contextData);
+    
+    if (lastContextualMessage?.contextData?.showCalls) {
+      // If the last message is about calls, show calls
+      const filteredCalls = marketCalls.filter(call => 
+        call.traderProfile.toLowerCase() === 'hsaka'
+      ).map(call => ({
+        market: call.market,
+        direction: call.direction,
+        confidence: call.confidence,
+        roi: call.roi,
+        trader: call.traderProfile,
+        timestamp: call.timestamp,
+        analysis: call.analysis
+      }));
+      
+      setFilteredHistory(filteredCalls);
+      setPerformanceData(null);
+    } else if (lastContextualMessage?.contextData?.showChart) {
+      // If the last message is about charts, show performance data
+      if (!performanceData) {
+        const year = '2024';
+        const performance = generatePerformanceData(marketCalls, year);
+        setPerformanceData(performance);
+      }
+      
+      setFilteredHistory([]);
+    } else {
+      // Default behavior if can't determine from context
       const year = '2024';
       const performance = generatePerformanceData(marketCalls, year);
       setPerformanceData(performance);
+      setFilteredHistory([]);
     }
-    
-    setFilteredHistory([]);
   };
 
   const handleSort = (key: 'rank' | 'roi' | 'score') => {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Network, ArrowLeft } from 'lucide-react';
@@ -67,6 +68,7 @@ const ChatSection = ({
       
       if (!isMobile && onViewChart && !viewChartCalled.current) {
         console.log("Calling onViewChart from handleMessageClick");
+        // When clicking on a message with showCalls, make sure we trigger onViewChart
         onViewChart();
         viewChartCalled.current = true;
         
