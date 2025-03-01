@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Network, ArrowLeft } from 'lucide-react';
@@ -54,7 +53,6 @@ const ChatSection = ({
   } | null>(null);
   const isMobile = useIsMobile();
   
-  // Manual way to track if onViewChart has been called
   const viewChartCalled = React.useRef(false);
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
@@ -63,18 +61,15 @@ const ChatSection = ({
     if (contextData) {
       setSelectedMessage(contextData);
       
-      // For mobile, show the history view directly
       if (isMobile) {
         setShowHistoryView(true);
       }
       
-      // For desktop, directly call onViewChart if it exists
       if (!isMobile && onViewChart && !viewChartCalled.current) {
         console.log("Calling onViewChart from handleMessageClick");
         onViewChart();
         viewChartCalled.current = true;
         
-        // Reset the flag after some time to allow future clicks
         setTimeout(() => {
           viewChartCalled.current = false;
         }, 1000);
@@ -82,27 +77,25 @@ const ChatSection = ({
     }
   };
 
-  // This effect runs when selectedMessage changes
   React.useEffect(() => {
     if (!isMobile && selectedMessage && onViewChart && !viewChartCalled.current) {
       console.log("Calling onViewChart from useEffect");
       onViewChart();
       viewChartCalled.current = true;
       
-      // Reset the flag after some time
       setTimeout(() => {
         viewChartCalled.current = false;
       }, 1000);
     }
-  }, [selectedMessage, isMobile]);  // intentionally exclude onViewChart from dependencies
+  }, [selectedMessage, isMobile]);
 
   const renderHistoryContent = () => {
     if (!selectedMessage) return null;
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 w-full">
         {selectedMessage.showChart && (
-          <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
+          <div className="glass-card p-2 sm:p-4 rounded-xl border border-emerald-500/20 w-full">
             <PerformanceChart monthlyData={MONTHLY_DATA} />
           </div>
         )}
@@ -178,7 +171,7 @@ const ChatSection = ({
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-50 bg-black/95 overflow-y-auto"
           >
-            <div className="p-4 space-y-4">
+            <div className="p-2 sm:p-4 space-y-4">
               <button
                 onClick={() => setShowHistoryView(false)}
                 className="flex items-center gap-2 text-emerald-400 mb-4"
