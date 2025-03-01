@@ -172,7 +172,43 @@ const Index = () => {
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      if (isWinRateQuery) {
+      // Check if the query is asking for both win rate and calls
+      if (isWinRateQuery && isCallsQuery) {
+        // Handle request for both win rate and calls
+        const performance = generatePerformanceData(marketCalls, year);
+        setPerformanceData(performance);
+        
+        const filteredCalls = marketCalls.filter(call => 
+          call.traderProfile.toLowerCase() === 'hsaka'
+        ).map(call => ({
+          market: call.market,
+          direction: call.direction,
+          confidence: call.confidence,
+          roi: call.roi,
+          trader: call.traderProfile,
+          timestamp: call.timestamp,
+          analysis: call.analysis
+        }));
+        
+        setFilteredHistory(filteredCalls);
+
+        setChatHistory(prev => [...prev, { 
+          message: `Found both Hsaka's performance data and trading calls for ${year}. Overall win rate is ${performance.overall}% with ${filteredCalls.length} trades. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view details.`,
+          timestamp: formatJapanTime(new Date()),
+          type: 'history',
+          contextData: {
+            showChart: true,
+            showCalls: true
+          }
+        }]);
+
+        toast({
+          title: "Performance and Calls Found",
+          description: `Win rate for ${year}: ${performance.overall}% with ${filteredCalls.length} trades`,
+          duration: 3000,
+        });
+      }
+      else if (isWinRateQuery) {
         const performance = generatePerformanceData(marketCalls, year);
         setPerformanceData(performance);
         setFilteredHistory([]); // Clear the calls when showing win rate
@@ -244,7 +280,28 @@ const Index = () => {
     // Check the last chat message to determine what to show
     const lastContextualMessage = [...chatHistory].reverse().find(msg => msg.contextData);
     
-    if (lastContextualMessage?.contextData?.showCalls) {
+    if (lastContextualMessage?.contextData?.showCalls && lastContextualMessage?.contextData?.showChart) {
+      // If the last message asks for both, show both chart and calls
+      const filteredCalls = marketCalls.filter(call => 
+        call.traderProfile.toLowerCase() === 'hsaka'
+      ).map(call => ({
+        market: call.market,
+        direction: call.direction,
+        confidence: call.confidence,
+        roi: call.roi,
+        trader: call.traderProfile,
+        timestamp: call.timestamp,
+        analysis: call.analysis
+      }));
+      
+      setFilteredHistory(filteredCalls);
+      
+      if (!performanceData) {
+        const year = '2024';
+        const performance = generatePerformanceData(marketCalls, year);
+        setPerformanceData(performance);
+      }
+    } else if (lastContextualMessage?.contextData?.showCalls) {
       // If the last message is about calls, show calls
       const filteredCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
