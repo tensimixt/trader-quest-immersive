@@ -173,7 +173,7 @@ const ChatSection = ({
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-50 bg-black/95 overflow-y-auto"
           >
-            <div className="p-2 sm:p-4 space-y-4">
+            <div className="p-4 space-y-4">
               <button
                 onClick={() => setShowHistoryView(false)}
                 className="flex items-center gap-2 text-emerald-400 mb-4"
