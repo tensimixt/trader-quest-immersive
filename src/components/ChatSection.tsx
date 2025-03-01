@@ -89,12 +89,11 @@ const ChatSection = ({
         viewChartCalled.current = false;
       }, 1000);
     }
-  }, [selectedMessage, isMobile]);
+  }, [selectedMessage, isMobile, onViewChart]);
 
   const renderHistoryContent = () => {
     if (!selectedMessage) return null;
 
-    // This is the key change - we now display both chart and calls when both are requested
     return (
       <div className="space-y-4 w-full">
         {selectedMessage.showChart && (
