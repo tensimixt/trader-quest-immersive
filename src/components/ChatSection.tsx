@@ -54,24 +54,47 @@ const ChatSection = ({
   } | null>(null);
   const isMobile = useIsMobile();
   
-  // Prevent infinite loop by checking if onViewChart is available
-  // and only trigger it when selectedMessage changes, not on every render
-  React.useEffect(() => {
-    if (!isMobile && selectedMessage && onViewChart) {
-      // Call onViewChart only when a message is selected on desktop
-      onViewChart();
-    }
-  }, [selectedMessage, isMobile]);  // Remove onViewChart from dependencies to avoid the loop
+  // Manual way to track if onViewChart has been called
+  const viewChartCalled = React.useRef(false);
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
+    console.log("Message clicked in ChatSection", contextData);
+    
     if (contextData) {
       setSelectedMessage(contextData);
+      
       // For mobile, show the history view directly
       if (isMobile) {
         setShowHistoryView(true);
       }
+      
+      // For desktop, directly call onViewChart if it exists
+      if (!isMobile && onViewChart && !viewChartCalled.current) {
+        console.log("Calling onViewChart from handleMessageClick");
+        onViewChart();
+        viewChartCalled.current = true;
+        
+        // Reset the flag after some time to allow future clicks
+        setTimeout(() => {
+          viewChartCalled.current = false;
+        }, 1000);
+      }
     }
   };
+
+  // This effect runs when selectedMessage changes
+  React.useEffect(() => {
+    if (!isMobile && selectedMessage && onViewChart && !viewChartCalled.current) {
+      console.log("Calling onViewChart from useEffect");
+      onViewChart();
+      viewChartCalled.current = true;
+      
+      // Reset the flag after some time
+      setTimeout(() => {
+        viewChartCalled.current = false;
+      }, 1000);
+    }
+  }, [selectedMessage, isMobile]);  // intentionally exclude onViewChart from dependencies
 
   const renderHistoryContent = () => {
     if (!selectedMessage) return null;
@@ -131,6 +154,7 @@ const ChatSection = ({
               isUser={msg.isUser}
               type={msg.type}
               onMessageClick={() => handleMessageClick(msg.contextData)}
+              onViewChart={onViewChart}
             />
           ))}
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}

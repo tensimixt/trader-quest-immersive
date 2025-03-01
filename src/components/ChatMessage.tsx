@@ -43,13 +43,16 @@ export const ChatMessage = ({
     );
   }
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName.toLowerCase() === 'span' && target.classList.contains('clickable-link')) {
-      e.preventDefault();
-      if (onMessageClick) {
-        onMessageClick();
-      }
+  // Directly call the callback when the message is clicked
+  const handleClick = () => {
+    console.log("Message clicked, calling onMessageClick");
+    if (onMessageClick) {
+      onMessageClick();
+    }
+    
+    if (onViewChart) {
+      console.log("Calling onViewChart directly");
+      onViewChart();
     }
   };
 
@@ -66,7 +69,6 @@ export const ChatMessage = ({
       className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
     >
       <div 
-        onClick={handleClick}
         className={`max-w-[80%] glass-card p-3 rounded-xl ${
           type === 'history' ? 'bg-blue-500/20 border-blue-500/30' :
           isUser ? 'bg-emerald-500/20' : 'bg-white/5'
@@ -81,6 +83,13 @@ export const ChatMessage = ({
         <div 
           className="text-sm text-white font-mono whitespace-pre-line"
           dangerouslySetInnerHTML={{ __html: processedMessage }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName.toLowerCase() === 'span' && target.classList.contains('clickable-link')) {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
         />
         <p className="text-[10px] text-emerald-400/50 mt-1">{timestamp}</p>
       </div>

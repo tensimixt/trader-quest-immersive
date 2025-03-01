@@ -238,11 +238,17 @@ const Index = () => {
   };
 
   const handleViewChart = () => {
+    console.log("handleViewChart called in Index.tsx");
     setIsHistoryView(true);
-    setFilteredHistory([]);
-    if (performanceData) {
-      setIsHistoryView(true);
+    
+    // Make sure we have a valid performanceData, and if not, generate it
+    if (!performanceData) {
+      const year = '2024';
+      const performance = generatePerformanceData(marketCalls, year);
+      setPerformanceData(performance);
     }
+    
+    setFilteredHistory([]);
   };
 
   const handleSort = (key: 'rank' | 'roi' | 'score') => {
