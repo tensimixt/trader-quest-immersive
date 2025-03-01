@@ -51,9 +51,10 @@ export const ChatMessage = ({
     }
   };
 
+  // Updated to make the clickable-link class clearer and improve click detection
   const processedMessage = message.replace(
     /(Click here)/g,
-    '<span class="text-emerald-400 cursor-pointer hover:underline clickable-link">$1</span>'
+    '<span class="text-emerald-400 cursor-pointer underline clickable-link">$1</span>'
   );
 
   return (
