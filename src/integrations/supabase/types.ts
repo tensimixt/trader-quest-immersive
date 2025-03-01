@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      audio_files: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          duration: number | null
+          file_name: string
+          file_path: string
+          id: string
+          size: number | null
+          transcription: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          duration?: number | null
+          file_name: string
+          file_path: string
+          id?: string
+          size?: number | null
+          transcription?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          duration?: number | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          size?: number | null
+          transcription?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bets: {
         Row: {
           amount: number | null
@@ -50,6 +86,116 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      blog_posts: {
+        Row: {
+          author_wallet_address: string
+          content: string
+          created_at: string
+          credit_cost: number
+          excerpt: string
+          id: string
+          is_restricted: boolean
+          published_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_wallet_address: string
+          content: string
+          created_at?: string
+          credit_cost?: number
+          excerpt: string
+          id?: string
+          is_restricted?: boolean
+          published_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_wallet_address?: string
+          content?: string
+          created_at?: string
+          credit_cost?: number
+          excerpt?: string
+          id?: string
+          is_restricted?: boolean
+          published_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          audio_file_id: string | null
+          content: string
+          created_at: string
+          id: string
+          playback_position: number | null
+          sender: string
+          user_id: string | null
+        }
+        Insert: {
+          audio_file_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          playback_position?: number | null
+          sender: string
+          user_id?: string | null
+        }
+        Update: {
+          audio_file_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          playback_position?: number | null
+          sender?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_audio_file_id_fkey"
+            columns: ["audio_file_id"]
+            isOneToOne: false
+            referencedRelation: "audio_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          post_id: string | null
+          sol_amount: number | null
+          transaction_hash: string | null
+          transaction_type: Database["public"]["Enums"]["credit_transaction_type"]
+          user_wallet_address: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          sol_amount?: number | null
+          transaction_hash?: string | null
+          transaction_type: Database["public"]["Enums"]["credit_transaction_type"]
+          user_wallet_address: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          sol_amount?: number | null
+          transaction_hash?: string | null
+          transaction_type?: Database["public"]["Enums"]["credit_transaction_type"]
+          user_wallet_address?: string
+        }
+        Relationships: []
       }
       participants: {
         Row: {
@@ -240,6 +386,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credit_balances: {
+        Row: {
+          created_at: string
+          credit_balance: number
+          id: string
+          updated_at: string
+          user_wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          credit_balance?: number
+          id?: string
+          updated_at?: string
+          user_wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          credit_balance?: number
+          id?: string
+          updated_at?: string
+          user_wallet_address?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           average_score: number | null
@@ -311,6 +481,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      credit_transaction_type: "purchase" | "unlock" | "refund"
       wallet_status: "active" | "inactive"
     }
     CompositeTypes: {

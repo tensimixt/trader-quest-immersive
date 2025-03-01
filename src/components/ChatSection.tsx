@@ -54,13 +54,18 @@ const ChatSection = ({
   } | null>(null);
   const isMobile = useIsMobile();
 
+  // Add a useEffect to handle desktop chart view when selectedMessage changes
+  React.useEffect(() => {
+    if (!isMobile && selectedMessage && selectedMessage.showChart && onViewChart) {
+      onViewChart();
+    }
+  }, [selectedMessage, isMobile, onViewChart]);
+
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {
       setSelectedMessage(contextData);
       if (isMobile) {
         setShowHistoryView(true);
-      } else if (onViewChart && contextData.showChart) {
-        onViewChart();
       }
     }
   };
