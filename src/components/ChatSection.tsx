@@ -53,14 +53,15 @@ const ChatSection = ({
     showCalls?: boolean;
   } | null>(null);
   const isMobile = useIsMobile();
-
-  // Effect to handle desktop chart view when selectedMessage changes
+  
+  // Prevent infinite loop by checking if onViewChart is available
+  // and only trigger it when selectedMessage changes, not on every render
   React.useEffect(() => {
     if (!isMobile && selectedMessage && onViewChart) {
-      // Always call onViewChart when a message is selected on desktop
+      // Call onViewChart only when a message is selected on desktop
       onViewChart();
     }
-  }, [selectedMessage, isMobile, onViewChart]);
+  }, [selectedMessage, isMobile]);  // Remove onViewChart from dependencies to avoid the loop
 
   const handleMessageClick = (contextData?: { showChart?: boolean; showCalls?: boolean }) => {
     if (contextData) {

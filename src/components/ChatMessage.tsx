@@ -47,11 +47,13 @@ export const ChatMessage = ({
     const target = e.target as HTMLElement;
     if (target.tagName.toLowerCase() === 'span' && target.classList.contains('clickable-link')) {
       e.preventDefault();
-      onMessageClick?.();
+      if (onMessageClick) {
+        onMessageClick();
+      }
     }
   };
 
-  // Updated to make the clickable-link class clearer and improve click detection
+  // Process the message to make "Click here" text clickable
   const processedMessage = message.replace(
     /(Click here)/g,
     '<span class="text-emerald-400 cursor-pointer underline clickable-link">$1</span>'
