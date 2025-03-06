@@ -36,9 +36,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
+      // Fix: Use the correct parameter format for invoking Supabase functions
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
-        body: { symbol, history: true },
-        query: { symbol, history: 'true' }
+        // Fix: Remove body parameter which isn't needed
+        // Fix: Use query parameters instead of including them in both body and query
+        queryParams: { symbol, history: 'true' }
       });
       
       if (fetchError) throw fetchError;
