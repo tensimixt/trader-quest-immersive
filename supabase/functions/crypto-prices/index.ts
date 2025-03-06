@@ -79,20 +79,27 @@ async function handleWebSocketConnection(socket: WebSocket) {
   const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
   let previousPrices: {[key: string]: number} = {};
   
-  // Send initial prices
+  // Send initial prices immediately
   try {
     const initialPrices = await Promise.all(
-      symbols.map(async symbol => ({
-        symbol,
-        price: await fetchBinancePrice(symbol)
-      }))
+      symbols.map(async symbol => {
+        const price = await fetchBinancePrice(symbol);
+        return {
+          symbol,
+          price,
+          change: 0 // Initial change is 0
+        };
+      })
     );
     
     // Store initial prices
     initialPrices.forEach(({symbol, price}) => {
-      previousPrices[symbol] = price;
+      if (price !== null) {
+        previousPrices[symbol] = price;
+      }
     });
     
+    console.log("Sending initial prices:", initialPrices);
     socket.send(JSON.stringify({
       type: 'prices',
       data: initialPrices
@@ -117,10 +124,12 @@ async function handleWebSocketConnection(socket: WebSocket) {
         symbols.map(async symbol => {
           const price = await fetchBinancePrice(symbol);
           const previousPrice = previousPrices[symbol] || price;
-          const change = previousPrice ? ((price - previousPrice) / previousPrice) * 100 : 0;
+          const change = price !== null && previousPrice ? ((price - previousPrice) / previousPrice) * 100 : 0;
           
           // Update previous price
-          previousPrices[symbol] = price;
+          if (price !== null) {
+            previousPrices[symbol] = price;
+          }
           
           return {
             symbol,
@@ -130,6 +139,7 @@ async function handleWebSocketConnection(socket: WebSocket) {
         })
       );
       
+      console.log("Sending price updates:", prices);
       socket.send(JSON.stringify({
         type: 'prices',
         data: prices
@@ -182,7 +192,7 @@ serve(async (req) => {
 
   // Handle regular HTTP requests (keep existing REST API functionality)
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -258,4 +268,4 @@ serve(async (req) => {
       },
     });
   }
-})
+});

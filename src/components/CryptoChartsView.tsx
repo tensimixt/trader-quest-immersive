@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -59,6 +60,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('WebSocket message received:', message);
           
           if (message.type === 'prices') {
             const newPrices = { ...prices };
@@ -69,6 +71,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               newChanges[item.symbol] = item.change;
             });
             
+            console.log('Updated prices:', newPrices);
             setPrices(newPrices);
             setChanges(newChanges);
             if (!isInitialized) setIsInitialized(true);
@@ -136,6 +139,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         return {...acc, [symbol]: change};
       }, {});
       
+      console.log('Fetched prices via HTTP:', newPrices);
       setPrices(newPrices);
       setChanges(newChanges);
       if (!isInitialized) setIsInitialized(true);
@@ -148,8 +152,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
-    // Try to use WebSocket for real-time updates
-    setupWebSocket();
+    // First fetch prices using traditional HTTP request to initialize immediately
+    refreshPrices().then(() => {
+      // Then try to use WebSocket for real-time updates
+      setupWebSocket();
+    });
     
     // Clean up WebSocket connection on component unmount
     return () => {
@@ -237,7 +244,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             <List size={16} />
           </button>
           <button 
-            onClick={setupWebSocket} 
+            onClick={() => {
+              refreshPrices().then(() => setupWebSocket());
+            }} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
           >
