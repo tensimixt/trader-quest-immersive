@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -167,12 +168,14 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
+    // Fix: Pass just the reference to the function with no arguments
     const refreshInterval = setInterval(fetchCryptoData, 5 * 60 * 1000);
     
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
+      // Fix: Clear the interval with the ID stored in refreshInterval
       clearInterval(refreshInterval);
     };
   }, [symbol, interval]);
