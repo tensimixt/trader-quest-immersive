@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
@@ -166,10 +167,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    const refreshInterval = setInterval(() => {
-      console.log("Scheduled full data refresh");
-      fetchCryptoData();
-    }, 5 * 60 * 1000);
+    const refreshInterval = setInterval(fetchCryptoData, 5 * 60 * 1000);
     
     return () => {
       if (wsRef.current) {
@@ -295,6 +293,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[90vw] sm:max-h-[90vh] bg-black/95 border-emerald-500/20">
+              <DialogTitle className="sr-only">{getSymbolName(symbol)} Chart</DialogTitle>
               <div className="pt-6">
                 <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">{getSymbolName(symbol)} - {interval} Chart</h3>
                 <ChartContent height={600} />
