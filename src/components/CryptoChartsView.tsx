@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -27,95 +26,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
-  const webSocketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const setupWebSocket = () => {
-    try {
-      setIsLoading(true);
-      
-      // Get the base URL for Supabase functions
-      const { protocol, hostname } = new URL(window.location.href);
-      const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-      
-      // Construct the WebSocket URL for the Supabase Edge Function
-      const wsUrl = `${wsProtocol}//${hostname}/functions/v1/crypto-prices`;
-      
-      console.log(`Connecting to WebSocket at: ${wsUrl}`);
-      
-      // Close existing connection if any
-      if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN) {
-        webSocketRef.current.close();
-      }
-      
-      const ws = new WebSocket(wsUrl);
-      webSocketRef.current = ws;
-      
-      ws.onopen = () => {
-        console.log('WebSocket connection established');
-        setIsLoading(false);
-        // No need to send any initial message, the server will start sending price updates
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log('WebSocket message received:', message);
-          
-          if (message.type === 'prices') {
-            const newPrices = { ...prices };
-            const newChanges = { ...changes };
-            
-            message.data.forEach((item: { symbol: string; price: number; change: number }) => {
-              newPrices[item.symbol] = item.price;
-              newChanges[item.symbol] = item.change;
-            });
-            
-            console.log('Updated prices:', newPrices);
-            setPrices(newPrices);
-            setChanges(newChanges);
-            if (!isInitialized) setIsInitialized(true);
-          } else if (message.type === 'error') {
-            console.error('WebSocket error message:', message.message);
-            toast.error('Error receiving price updates');
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setIsLoading(false);
-        toast.error('WebSocket connection error');
-      };
-      
-      ws.onclose = (event) => {
-        console.log('WebSocket connection closed:', event.code, event.reason);
-        setIsLoading(false);
-        
-        // Attempt to reconnect after 5 seconds if not closed intentionally
-        if (!event.wasClean) {
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting to reconnect WebSocket...');
-            setupWebSocket();
-          }, 5000);
-        }
-      };
-      
-    } catch (error) {
-      console.error('Error setting up WebSocket:', error);
-      setIsLoading(false);
-      toast.error('Failed to connect to price feed');
-      
-      // Fallback to traditional API if WebSocket fails
-      refreshPrices();
-    }
-  };
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -152,20 +62,55 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
-    // First fetch prices using traditional HTTP request to initialize immediately
-    refreshPrices().then(() => {
-      // Then try to use WebSocket for real-time updates
-      setupWebSocket();
-    });
+    // Initial fetch
+    refreshPrices();
+
+    // Set up WebSocket connection
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/functions/v1/crypto-prices`;
+    console.log('Connecting to WebSocket:', wsUrl);
     
-    // Clean up WebSocket connection on component unmount
-    return () => {
-      if (webSocketRef.current) {
-        webSocketRef.current.close();
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('WebSocket message received:', message);
+        
+        if (message.type === 'prices') {
+          const newPrices = { ...prices };
+          const newChanges = { ...changes };
+          
+          message.data.forEach(({ symbol, price, change }) => {
+            newPrices[symbol] = price;
+            newChanges[symbol] = change;
+          });
+          
+          setPrices(newPrices);
+          setChanges(newChanges);
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
       }
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      toast.error('Live connection error');
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    // Clean up
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
       }
     };
   }, []);
@@ -213,7 +158,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     if (symbol === activeSymbol) {
       setActiveSymbol(null);
     } else {
-      // Force LiveChart to remount by changing its key
       setActiveSymbol(symbol);
       setLiveChartKey(`${symbol}-${Date.now()}`);
     }
