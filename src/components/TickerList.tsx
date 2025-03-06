@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
@@ -54,8 +53,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      // Correctly create the WebSocket URL using Supabase URL
-      const wsUrl = `wss://${supabase.functions.url.host}/functions/v1/crypto-prices`;
+      const baseUrl = supabase.functions.url;
+      const wsUrl = baseUrl.replace('https:', 'wss:') + '/crypto-prices';
       
       console.log('Connecting to WebSocket URL:', wsUrl);
       
