@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -36,11 +35,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
-      // Fix: Use the correct parameter format for invoking Supabase functions
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
-        // Fix: Remove body parameter which isn't needed
-        // Fix: Use query parameters instead of including them in both body and query
-        queryParams: { symbol, history: 'true' }
+        params: { symbol, history: 'true' }
       });
       
       if (fetchError) throw fetchError;
@@ -50,7 +46,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       }
       
       if (responseData.history && responseData.history.length > 0) {
-        // Transform data for chart
         setData(responseData.history);
       }
       
