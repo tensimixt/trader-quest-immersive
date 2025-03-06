@@ -23,9 +23,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   const webSocketRef = useRef<WebSocket | null>(null);
   const tickersMapRef = useRef<Map<string, TickerData>>(new Map());
   const updatedTickersRef = useRef<Set<string>>(new Set());
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
 
   const fetchTickers = async () => {
     setIsLoading(true);
@@ -63,13 +60,11 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       console.log('Connecting to WebSocket URL:', wsUrl);
       
       const ws = new WebSocket(wsUrl);
-      webSocketRef.current = ws;
 
       ws.onopen = () => {
         console.log('WebSocket connected successfully');
         setIsWebSocketConnected(true);
         toast.success('Live ticker updates connected');
-        reconnectAttempts.current = 0;
       };
 
       ws.onmessage = (event) => {
@@ -124,21 +119,11 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
         console.log('WebSocket disconnected');
         setIsWebSocketConnected(false);
         
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          reconnectAttempts.current += 1;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (document.visibilityState === 'visible') {
-              connectWebSocket();
-            }
-          }, delay);
-        } else {
-          console.log('Maximum reconnection attempts reached');
-          toast.error('Connection lost, falling back to manual updates');
-        }
+        setTimeout(() => {
+          if (webSocketRef.current === ws) {
+            connectWebSocket();
+          }
+        }, 5000);
       };
 
       ws.onerror = (error) => {
@@ -146,6 +131,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
         toast.error('Connection error, trying to reconnect...');
         setIsWebSocketConnected(false);
       };
+
+      webSocketRef.current = ws;
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
       toast.error('Failed to establish WebSocket connection');
@@ -155,20 +142,12 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
 
   useEffect(() => {
     fetchTickers();
-    const timeoutId = setTimeout(() => {
-      connectWebSocket();
-    }, 300);
+    connectWebSocket();
     
     return () => {
-      clearTimeout(timeoutId);
       if (webSocketRef.current) {
         webSocketRef.current.close();
         webSocketRef.current = null;
-      }
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
       }
     };
   }, []);
@@ -208,10 +187,9 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
         <h3 className="text-lg font-bold text-white font-mono tracking-wider">BINANCE TICKERS</h3>
         <div className="flex items-center space-x-2">
           <button 
-            onClick={isWebSocketConnected ? fetchTickers : connectWebSocket} 
+            onClick={fetchTickers} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
-            title={isWebSocketConnected ? "Refresh data" : "Connect WebSocket"}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>

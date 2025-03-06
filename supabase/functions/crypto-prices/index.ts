@@ -135,12 +135,10 @@ serve(async (req) => {
         const intervalId = setInterval(() => {
           console.log('Refreshing full ticker list');
           fetch24hTickers().then(tickers => {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'refresh',
-                data: tickers
-              }));
-            }
+            socket.send(JSON.stringify({
+              type: 'refresh',
+              data: tickers
+            }));
           });
         }, 60000); // Every minute
         
