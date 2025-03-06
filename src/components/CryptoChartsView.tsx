@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,70 +27,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
-  const webSocketRef = useRef<WebSocket | null>(null);
-  const autoRefreshIntervalRef = useRef<number | null>(null);
-
-  const connectWebSocket = () => {
-    // Close existing WebSocket if it exists
-    if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN) {
-      webSocketRef.current.close();
-    }
-
-    // Set up WebSocket connection
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/functions/v1/crypto-prices`;
-    console.log('Connecting to WebSocket:', wsUrl);
-    
-    const ws = new WebSocket(wsUrl);
-    webSocketRef.current = ws;
-    
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-      toast.success('Live connection established', { id: 'ws-connection' });
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('WebSocket message received:', message);
-        
-        if (message.type === 'prices') {
-          const newPrices = { ...prices };
-          const newChanges = { ...changes };
-          
-          message.data.forEach(({ symbol, price, change }) => {
-            newPrices[symbol] = price;
-            newChanges[symbol] = change;
-          });
-          
-          setPrices(newPrices);
-          setChanges(newChanges);
-          if (!isInitialized) setIsInitialized(true);
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      toast.error('Live connection error', { id: 'ws-error' });
-      
-      // Try to refresh via HTTP if WebSocket fails
-      refreshPrices();
-      
-      // Try to reconnect WebSocket after a delay
-      setTimeout(() => {
-        if (document.visibilityState !== 'hidden') {
-          connectWebSocket();
-        }
-      }, 5000);
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-  };
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -114,7 +50,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         return {...acc, [symbol]: change};
       }, {});
       
-      console.log('Fetched prices via HTTP:', newPrices);
       setPrices(newPrices);
       setChanges(newChanges);
       if (!isInitialized) setIsInitialized(true);
@@ -126,53 +61,21 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  // Set up auto-refresh fallback (in case WebSocket fails)
-  const setupAutoRefresh = () => {
-    if (autoRefreshIntervalRef.current) {
-      window.clearInterval(autoRefreshIntervalRef.current);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      refreshPrices();
+    }, isMobile ? 300 : 0);
+    
+    let interval: NodeJS.Timeout;
+    if (isInitialized) {
+      interval = setInterval(refreshPrices, 30000); // Refresh every 30 seconds
     }
     
-    autoRefreshIntervalRef.current = window.setInterval(() => {
-      // Only refresh if WebSocket is not connected
-      if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
-        console.log('Auto-refreshing prices via HTTP (WebSocket not connected)');
-        refreshPrices();
-      }
-    }, 15000); // Every 15 seconds
-  };
-
-  useEffect(() => {
-    // Initial fetch
-    refreshPrices();
-    
-    // Set up WebSocket
-    connectWebSocket();
-    
-    // Setup auto-refresh as fallback
-    setupAutoRefresh();
-    
-    // Reconnect when window becomes visible again
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Page became visible, reconnecting WebSocket');
-        connectWebSocket();
-        refreshPrices();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Clean up
     return () => {
-      if (webSocketRef.current) {
-        webSocketRef.current.close();
-      }
-      if (autoRefreshIntervalRef.current) {
-        window.clearInterval(autoRefreshIntervalRef.current);
-      }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(timeoutId);
+      if (interval) clearInterval(interval);
     };
-  }, []);
+  }, [isMobile, isInitialized]);
 
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', {
@@ -217,6 +120,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     if (symbol === activeSymbol) {
       setActiveSymbol(null);
     } else {
+      // Force LiveChart to remount by changing its key
       setActiveSymbol(symbol);
       setLiveChartKey(`${symbol}-${Date.now()}`);
     }
@@ -234,7 +138,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         <div className="flex items-center space-x-3">
           <h3 className="text-lg font-bold text-white font-mono tracking-wider">MARKETS</h3>
           <div className="flex items-center space-x-1">
-            <div className={`w-2 h-2 rounded-full ${webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs text-emerald-400/70 font-mono">LIVE</span>
           </div>
         </div>
@@ -247,10 +151,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             <List size={16} />
           </button>
           <button 
-            onClick={() => {
-              refreshPrices();
-              connectWebSocket();
-            }} 
+            onClick={refreshPrices} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
           >

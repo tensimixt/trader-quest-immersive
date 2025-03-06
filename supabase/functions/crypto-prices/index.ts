@@ -4,7 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 async function fetchBinancePrice(symbol: string) {
   try {
@@ -17,128 +17,227 @@ async function fetchBinancePrice(symbol: string) {
   }
 }
 
-async function handleWebSocketConnection(socket: WebSocket) {
-  console.log("WebSocket client connected");
-  
-  const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
-  let previousPrices: {[key: string]: number} = {};
-  
-  // Send initial prices immediately
+async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) {
   try {
-    const initialPrices = await Promise.all(
-      symbols.map(async symbol => {
-        const price = await fetchBinancePrice(symbol);
-        return {
-          symbol,
-          price,
-          change: 0 // Initial change is 0
-        };
-      })
-    );
+    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+    console.log(`Fetching klines from: ${url}`);
+    const response = await fetch(url);
+    const data = await response.json();
     
-    // Store initial prices
-    initialPrices.forEach(({symbol, price}) => {
-      if (price !== null) {
-        previousPrices[symbol] = price;
-      }
-    });
-    
-    console.log("Sending initial prices:", initialPrices);
-    socket.send(JSON.stringify({
-      type: 'prices',
-      data: initialPrices
+    // Format klines data
+    // Klines format: [openTime, open, high, low, close, volume, closeTime, ...]
+    return data.map((kline: any) => ({
+      timestamp: kline[0],
+      open: parseFloat(kline[1]),
+      high: parseFloat(kline[2]),
+      low: parseFloat(kline[3]),
+      close: parseFloat(kline[4]),
+      volume: parseFloat(kline[5]),
     }));
   } catch (error) {
-    console.error("Error sending initial prices:", error);
-    socket.send(JSON.stringify({
-      type: 'error',
-      message: 'Failed to fetch initial prices'
-    }));
+    console.error(`Error fetching ${symbol} klines:`, error);
+    return [];
   }
-  
-  // Set up interval for price updates (every 5 seconds)
-  const interval = setInterval(async () => {
-    try {
-      if (socket.readyState !== WebSocket.OPEN) {
-        clearInterval(interval);
-        return;
-      }
-      
-      const prices = await Promise.all(
-        symbols.map(async symbol => {
-          const price = await fetchBinancePrice(symbol);
-          const previousPrice = previousPrices[symbol] || price;
-          const change = price !== null && previousPrice ? ((price - previousPrice) / previousPrice) * 100 : 0;
-          
-          // Update previous price
-          if (price !== null) {
-            previousPrices[symbol] = price;
-          }
-          
-          return {
-            symbol,
-            price,
-            change
-          };
-        })
-      );
-      
-      console.log("Sending price updates:", prices);
-      socket.send(JSON.stringify({
-        type: 'prices',
-        data: prices
-      }));
-    } catch (error) {
-      console.error("Error sending price updates:", error);
-      socket.send(JSON.stringify({
-        type: 'error',
-        message: 'Failed to fetch price updates'
-      }));
+}
+
+async function fetch24hTickers() {
+  try {
+    console.log('Fetching 24h tickers from Binance API');
+    const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  }, 5000);
-  
-  // Clean up when the socket closes
-  socket.onclose = () => {
-    console.log("WebSocket client disconnected");
-    clearInterval(interval);
-  };
-  
-  socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
-    clearInterval(interval);
-  };
+    const data = await response.json();
+    
+    // Only include USDT pairs for simplicity and sort by volume
+    const filteredData = data
+      .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
+    
+    console.log(`Fetched ${filteredData.length} USDT pairs from Binance`);
+    
+    // Return all USDT pairs with enhanced volume data
+    return filteredData.map((ticker: any) => ({
+      symbol: ticker.symbol,
+      priceChange: ticker.priceChange,
+      priceChangePercent: ticker.priceChangePercent,
+      lastPrice: ticker.lastPrice,
+      volume: ticker.volume,
+      quoteVolume: ticker.quoteVolume, // This is the USD equivalent volume
+    }));
+  } catch (error) {
+    console.error('Error fetching 24h tickers:', error);
+    return [];
+  }
 }
 
 serve(async (req) => {
-  // Check for WebSocket upgrade request
-  const upgradeHeader = req.headers.get("upgrade") || "";
-  if (upgradeHeader.toLowerCase() === "websocket") {
-    console.log("WebSocket upgrade request received");
-    const { socket, response } = Deno.upgradeWebSocket(req);
-    handleWebSocketConnection(socket);
-    return response;
+  // Check if WebSocket upgrade is requested
+  const upgradeHeader = req.headers.get('upgrade') || '';
+  
+  if (upgradeHeader.toLowerCase() === 'websocket') {
+    // Handle WebSocket connection
+    console.log('WebSocket connection request received');
+    
+    try {
+      const { socket, response } = Deno.upgradeWebSocket(req);
+      
+      // Set up event handlers for WebSocket
+      socket.onopen = () => {
+        console.log('WebSocket connection established');
+        
+        // Immediately send initial data to client
+        fetch24hTickers().then(tickers => {
+          socket.send(JSON.stringify({
+            type: 'initial',
+            data: tickers
+          }));
+        });
+        
+        // Set up connection to Binance WebSocket for combined streams
+        const topSymbols = ['btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt'];
+        const streams = topSymbols.map(symbol => `${symbol}@ticker`);
+        const binanceWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams.join('/')}`);
+        
+        binanceWs.onmessage = (event) => {
+          try {
+            const tickerData = JSON.parse(event.data);
+            
+            // Format ticker data to match our API format
+            const ticker = {
+              symbol: tickerData.s,
+              lastPrice: tickerData.c,
+              priceChange: tickerData.p,
+              priceChangePercent: tickerData.P,
+              volume: tickerData.v,
+              quoteVolume: tickerData.q
+            };
+            
+            // Send update to client
+            socket.send(JSON.stringify({
+              type: 'update',
+              data: ticker
+            }));
+          } catch (e) {
+            console.error('Error processing Binance WebSocket message:', e);
+          }
+        };
+        
+        binanceWs.onerror = (error) => {
+          console.error('Binance WebSocket error:', error);
+          socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Binance connection error'
+          }));
+        };
+        
+        // Periodically refresh the full ticker list
+        const intervalId = setInterval(() => {
+          console.log('Refreshing full ticker list');
+          fetch24hTickers().then(tickers => {
+            socket.send(JSON.stringify({
+              type: 'refresh',
+              data: tickers
+            }));
+          });
+        }, 60000); // Every minute
+        
+        // Clean up WebSocket connections when client disconnects
+        socket.onclose = () => {
+          console.log('Client WebSocket closed');
+          binanceWs.close();
+          clearInterval(intervalId);
+        };
+        
+        socket.onerror = (error) => {
+          console.error('Client WebSocket error:', error);
+          binanceWs.close();
+          clearInterval(intervalId);
+        };
+      };
+      
+      return response;
+    } catch (error) {
+      console.error('WebSocket upgrade error:', error);
+      return new Response(JSON.stringify({ error: 'WebSocket upgrade failed' }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
   }
 
-  // Handle regular HTTP requests
+  // Handle regular HTTP requests as before
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
-    const prices = await Promise.all(
-      symbols.map(async symbol => ({
-        symbol,
-        price: await fetchBinancePrice(symbol)
-      }))
-    );
+    // Handle both URL parameters and body parameters
+    const url = new URL(req.url);
+    let symbol = url.searchParams.get('symbol');
+    let getHistory = url.searchParams.get('history') === 'true';
+    let interval = url.searchParams.get('interval') || '15m';
+    let get24hTickers = url.searchParams.get('get24hTickers') === 'true';
+    
+    // If there's a request body, check for parameters there as well
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const body = await req.json();
+        // Body parameters take precedence over URL parameters
+        symbol = body.symbol || symbol;
+        getHistory = (body.history === 'true' || body.history === true) || getHistory;
+        interval = body.interval || interval;
+        get24hTickers = (body.get24hTickers === 'true' || body.get24hTickers === true) || get24hTickers;
+      } catch (e) {
+        console.error("Error parsing JSON body:", e);
+      }
+    }
+    
+    if (get24hTickers) {
+      // Fetch 24-hour tickers for multiple symbols
+      const tickers = await fetch24hTickers();
+      return new Response(JSON.stringify(tickers), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else if (symbol) {
+      // Single symbol request with optional history
+      const price = await fetchBinancePrice(symbol);
+      
+      let history = [];
+      if (getHistory) {
+        history = await fetchBinanceKlines(symbol, interval);
+      }
+      
+      return new Response(JSON.stringify({ symbol, price, history }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else {
+      // Multiple symbols request (default behavior)
+      const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
+      const prices = await Promise.all(
+        symbols.map(async symbol => ({
+          symbol,
+          price: await fetchBinancePrice(symbol)
+        }))
+      );
 
-    return new Response(JSON.stringify(prices), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
-    });
+      return new Response(JSON.stringify(prices), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
@@ -148,4 +247,4 @@ serve(async (req) => {
       },
     });
   }
-});
+})

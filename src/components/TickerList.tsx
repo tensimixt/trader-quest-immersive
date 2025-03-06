@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,11 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const webSocketRef = useRef<WebSocket | null>(null);
+  const tickersMapRef = useRef<Map<string, TickerData>>(new Map());
+  const updatedTickersRef = useRef<Set<string>>(new Set());
 
   const fetchTickers = async () => {
     setIsLoading(true);
@@ -27,8 +32,14 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       });
 
       if (error) throw error;
+      
+      data.forEach((ticker: TickerData) => {
+        tickersMapRef.current.set(ticker.symbol, ticker);
+      });
+      
       setTickers(data);
-      console.log(`Fetched ${data.length} tickers`);
+      setLastUpdateTime(new Date());
+      console.log(`Fetched ${data.length} tickers via HTTP`);
     } catch (error) {
       console.error('Failed to fetch tickers:', error);
       toast.error('Failed to fetch ticker data');
@@ -37,17 +48,113 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const connectWebSocket = () => {
+    if (webSocketRef.current && webSocketRef.current.readyState !== WebSocket.CLOSED) {
+      webSocketRef.current.close();
+    }
+
+    try {
+      // Correctly create the WebSocket URL using Supabase URL
+      const wsUrl = `wss://${supabase.functions.url.host}/functions/v1/crypto-prices`;
+      
+      console.log('Connecting to WebSocket URL:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected successfully');
+        setIsWebSocketConnected(true);
+        toast.success('Live ticker updates connected');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === 'initial' || message.type === 'refresh') {
+            const newTickers = message.data as TickerData[];
+            
+            tickersMapRef.current.clear();
+            newTickers.forEach((ticker) => {
+              tickersMapRef.current.set(ticker.symbol, ticker);
+            });
+            
+            updatedTickersRef.current.clear();
+            
+            setTickers(newTickers);
+            setLastUpdateTime(new Date());
+            console.log(`Received ${newTickers.length} tickers via WebSocket (${message.type})`);
+          } 
+          else if (message.type === 'update') {
+            const updatedTicker = message.data as TickerData;
+            
+            tickersMapRef.current.set(updatedTicker.symbol, updatedTicker);
+            
+            updatedTickersRef.current.add(updatedTicker.symbol);
+            
+            setTimeout(() => {
+              updatedTickersRef.current.delete(updatedTicker.symbol);
+            }, 2000);
+            
+            const updatedTickers = Array.from(tickersMapRef.current.values())
+              .sort((a, b) => {
+                const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
+                const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
+                return bVolume - aVolume;
+              });
+            
+            setTickers(updatedTickers);
+            setLastUpdateTime(new Date());
+          }
+          else if (message.type === 'error') {
+            console.error('WebSocket error message:', message.message);
+            toast.error(`WebSocket error: ${message.message}`);
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setIsWebSocketConnected(false);
+        
+        setTimeout(() => {
+          if (webSocketRef.current === ws) {
+            connectWebSocket();
+          }
+        }, 5000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast.error('Connection error, trying to reconnect...');
+        setIsWebSocketConnected(false);
+      };
+
+      webSocketRef.current = ws;
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
+      toast.error('Failed to establish WebSocket connection');
+      setIsWebSocketConnected(false);
+    }
+  };
+
   useEffect(() => {
     fetchTickers();
-    // Set up interval to refresh data every 30 seconds
-    const intervalId = setInterval(fetchTickers, 30000);
-    return () => clearInterval(intervalId);
+    connectWebSocket();
+    
+    return () => {
+      if (webSocketRef.current) {
+        webSocketRef.current.close();
+        webSocketRef.current = null;
+      }
+    };
   }, []);
 
   const formatPrice = (price: string): string => {
     const numericPrice = parseFloat(price);
     
-    // For very small numbers (less than 0.01), use more decimal places
     if (numericPrice < 0.01) {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -57,7 +164,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       }).format(numericPrice);
     }
     
-    // For larger numbers, use standard formatting
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -106,6 +212,23 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
         />
       </div>
 
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-emerald-400/70 text-xs font-mono">
+          {filteredTickers.length} tickers
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className={`w-2 h-2 rounded-full ${isWebSocketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span className="text-xs text-emerald-400/70 font-mono">
+            {isWebSocketConnected ? 'LIVE' : 'OFFLINE'}
+          </span>
+          {lastUpdateTime && (
+            <span className="text-xs text-emerald-400/70 font-mono">
+              Updated: {lastUpdateTime.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
         {isLoading && tickers.length === 0 ? (
           <div className="flex justify-center py-8">
@@ -113,9 +236,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
           </div>
         ) : (
           <>
-            <div className="mb-2 text-emerald-400/70 text-xs font-mono">
-              {filteredTickers.length} tickers
-            </div>
             <table className="w-full text-white">
               <thead className="text-emerald-400 text-xs uppercase">
                 <tr>
@@ -131,30 +251,39 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                     <td colSpan={4} className="text-center py-4 text-gray-400">No tickers found</td>
                   </tr>
                 ) : (
-                  filteredTickers.map((ticker) => (
-                    <tr key={ticker.symbol} className="border-b border-white/5 hover:bg-emerald-500/5 transition-colors">
-                      <td className="py-3 text-left font-mono">{ticker.symbol}</td>
-                      <td className="py-3 text-right font-mono">{formatPrice(ticker.lastPrice)}</td>
-                      <td className={`py-3 text-right font-mono flex items-center justify-end ${
-                        parseFloat(ticker.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
-                      }`}>
-                        {parseFloat(ticker.priceChangePercent) >= 0 ? (
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3 mr-1" />
-                        )}
-                        {parseFloat(ticker.priceChangePercent).toFixed(2)}%
-                      </td>
-                      <td className="py-3 text-right font-mono">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD',
-                          notation: 'compact',
-                          maximumFractionDigits: 2
-                        }).format(ticker.quoteVolume ? parseFloat(ticker.quoteVolume) : parseFloat(ticker.volume) * parseFloat(ticker.lastPrice))}
-                      </td>
-                    </tr>
-                  ))
+                  filteredTickers.map((ticker) => {
+                    const isUpdated = updatedTickersRef.current.has(ticker.symbol);
+                    
+                    return (
+                      <tr 
+                        key={ticker.symbol} 
+                        className={`border-b border-white/5 transition-colors ${
+                          isUpdated ? 'bg-emerald-500/20' : 'hover:bg-emerald-500/5'
+                        }`}
+                      >
+                        <td className="py-3 text-left font-mono">{ticker.symbol}</td>
+                        <td className="py-3 text-right font-mono">{formatPrice(ticker.lastPrice)}</td>
+                        <td className={`py-3 text-right font-mono flex items-center justify-end ${
+                          parseFloat(ticker.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}>
+                          {parseFloat(ticker.priceChangePercent) >= 0 ? (
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 mr-1" />
+                          )}
+                          {parseFloat(ticker.priceChangePercent).toFixed(2)}%
+                        </td>
+                        <td className="py-3 text-right font-mono">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            notation: 'compact',
+                            maximumFractionDigits: 2
+                          }).format(ticker.quoteVolume ? parseFloat(ticker.quoteVolume) : parseFloat(ticker.volume) * parseFloat(ticker.lastPrice))}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
