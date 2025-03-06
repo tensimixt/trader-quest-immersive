@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -26,6 +27,57 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
+  const webSocketRef = useRef<WebSocket | null>(null);
+
+  const connectWebSocket = () => {
+    // Close existing WebSocket if it exists
+    if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN) {
+      webSocketRef.current.close();
+    }
+
+    // Set up WebSocket connection
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/functions/v1/crypto-prices`;
+    console.log('Connecting to WebSocket:', wsUrl);
+    
+    const ws = new WebSocket(wsUrl);
+    webSocketRef.current = ws;
+    
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('WebSocket message received:', message);
+        
+        if (message.type === 'prices') {
+          const newPrices = { ...prices };
+          const newChanges = { ...changes };
+          
+          message.data.forEach(({ symbol, price, change }) => {
+            newPrices[symbol] = price;
+            newChanges[symbol] = change;
+          });
+          
+          setPrices(newPrices);
+          setChanges(newChanges);
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      toast.error('Live connection error');
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+  };
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -64,53 +116,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   useEffect(() => {
     // Initial fetch
     refreshPrices();
-
-    // Set up WebSocket connection
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/functions/v1/crypto-prices`;
-    console.log('Connecting to WebSocket:', wsUrl);
-    
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('WebSocket message received:', message);
-        
-        if (message.type === 'prices') {
-          const newPrices = { ...prices };
-          const newChanges = { ...changes };
-          
-          message.data.forEach(({ symbol, price, change }) => {
-            newPrices[symbol] = price;
-            newChanges[symbol] = change;
-          });
-          
-          setPrices(newPrices);
-          setChanges(newChanges);
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      toast.error('Live connection error');
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
+    // Set up WebSocket
+    connectWebSocket();
 
     // Clean up
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
+      if (webSocketRef.current) {
+        webSocketRef.current.close();
       }
     };
   }, []);
@@ -189,7 +201,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           </button>
           <button 
             onClick={() => {
-              refreshPrices().then(() => setupWebSocket());
+              refreshPrices();
+              connectWebSocket();
             }} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
