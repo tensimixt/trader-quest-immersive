@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -65,13 +64,119 @@ async function fetch24hTickers() {
       volume: ticker.volume,
       quoteVolume: ticker.quoteVolume, // This is the USD equivalent volume
     }));
-  } catch (error) {
-    console.error('Error fetching 24h tickers:', error);
-    return [];
   }
 }
 
+// WebSocket connection handler function
+async function handleWebSocketConnection(socket: WebSocket) {
+  console.log("WebSocket client connected");
+  
+  // Set up interval to send price updates
+  const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
+  let previousPrices: {[key: string]: number} = {};
+  
+  // Send initial prices
+  try {
+    const initialPrices = await Promise.all(
+      symbols.map(async symbol => ({
+        symbol,
+        price: await fetchBinancePrice(symbol)
+      }))
+    );
+    
+    // Store initial prices
+    initialPrices.forEach(({symbol, price}) => {
+      previousPrices[symbol] = price;
+    });
+    
+    socket.send(JSON.stringify({
+      type: 'prices',
+      data: initialPrices
+    }));
+  } catch (error) {
+    console.error("Error sending initial prices:", error);
+    socket.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to fetch initial prices'
+    }));
+  }
+  
+  // Set up interval for price updates (every 5 seconds)
+  const interval = setInterval(async () => {
+    try {
+      if (socket.readyState !== WebSocket.OPEN) {
+        clearInterval(interval);
+        return;
+      }
+      
+      const prices = await Promise.all(
+        symbols.map(async symbol => {
+          const price = await fetchBinancePrice(symbol);
+          const previousPrice = previousPrices[symbol] || price;
+          const change = previousPrice ? ((price - previousPrice) / previousPrice) * 100 : 0;
+          
+          // Update previous price
+          previousPrices[symbol] = price;
+          
+          return {
+            symbol,
+            price,
+            change
+          };
+        })
+      );
+      
+      socket.send(JSON.stringify({
+        type: 'prices',
+        data: prices
+      }));
+    } catch (error) {
+      console.error("Error sending price updates:", error);
+      socket.send(JSON.stringify({
+        type: 'error',
+        message: 'Failed to fetch price updates'
+      }));
+    }
+  }, 5000);
+  
+  // Clean up when the socket closes
+  socket.onclose = () => {
+    console.log("WebSocket client disconnected");
+    clearInterval(interval);
+  };
+  
+  socket.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    clearInterval(interval);
+  };
+  
+  // Handle messages from the client
+  socket.onmessage = async (event) => {
+    try {
+      const message = JSON.parse(event.data);
+      
+      if (message.type === 'subscribe') {
+        // Client wants to subscribe to specific symbols
+        // Implementation for specific symbol subscription if needed
+        console.log("Client subscribed to symbols:", message.symbols);
+      }
+    } catch (error) {
+      console.error("Error processing client message:", error);
+    }
+  };
+}
+
 serve(async (req) => {
+  // Check for WebSocket upgrade request
+  const upgradeHeader = req.headers.get("upgrade") || "";
+  if (upgradeHeader.toLowerCase() === "websocket") {
+    console.log("WebSocket upgrade request received");
+    const { socket, response } = Deno.upgradeWebSocket(req);
+    handleWebSocketConnection(socket);
+    return response;
+  }
+
+  // Handle regular HTTP requests (keep existing REST API functionality)
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
