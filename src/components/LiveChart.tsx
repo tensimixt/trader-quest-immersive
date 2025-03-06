@@ -57,6 +57,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [interval, setInterval] = useState<string>('15m');
   const wsRef = useRef<WebSocket | null>(null);
+  const lastFullRefreshRef = useRef<number>(Date.now());
+  const dataMapRef = useRef<Map<number, KlineData>>(new Map());
 
   const fetchCryptoData = async () => {
     try {
@@ -72,10 +74,19 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       }
       
       if (responseData.history && responseData.history.length > 0) {
-        setData(responseData.history);
+        const newDataMap = new Map<number, KlineData>();
+        responseData.history.forEach((kline: KlineData) => {
+          newDataMap.set(kline.timestamp, kline);
+        });
+        
+        dataMapRef.current = newDataMap;
+        
+        const sortedData = Array.from(newDataMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+        setData(sortedData);
       }
       
       setLastUpdated(new Date());
+      lastFullRefreshRef.current = Date.now();
       setError(null);
     } catch (err) {
       console.error('Error fetching crypto data:', err);
@@ -102,30 +113,35 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       
       if (message.k) {
         const kline = message.k;
+        const timestamp = kline.t;
         
         setCurrentPrice(parseFloat(kline.c));
         setLastUpdated(new Date());
         
+        const newKline: KlineData = {
+          timestamp: timestamp,
+          open: parseFloat(kline.o),
+          high: parseFloat(kline.h),
+          low: parseFloat(kline.l),
+          close: parseFloat(kline.c),
+          volume: parseFloat(kline.v)
+        };
+        
+        dataMapRef.current.set(timestamp, newKline);
+        
+        const now = Date.now();
+        if (now - lastFullRefreshRef.current > 5 * 60 * 1000) {
+          console.log("Performing full data refresh");
+          fetchCryptoData();
+          return;
+        }
+        
         setData(prevData => {
-          const newKline: KlineData = {
-            timestamp: kline.t,
-            open: parseFloat(kline.o),
-            high: parseFloat(kline.h),
-            low: parseFloat(kline.l),
-            close: parseFloat(kline.c),
-            volume: parseFloat(kline.v)
-          };
+          const updatedData = Array.from(dataMapRef.current.values())
+            .sort((a, b) => a.timestamp - b.timestamp);
           
-          const updatedData = [...prevData];
-          const lastIndex = updatedData.findIndex(d => d.timestamp === kline.t);
-          
-          if (lastIndex >= 0) {
-            updatedData[lastIndex] = newKline;
-          } else {
-            if (updatedData.length >= 30) {
-              updatedData.shift();
-            }
-            updatedData.push(newKline);
+          if (updatedData.length > 30) {
+            return updatedData.slice(updatedData.length - 30);
           }
           
           return updatedData;
@@ -150,10 +166,16 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
+    const refreshInterval = setInterval(() => {
+      console.log("Scheduled full data refresh");
+      fetchCryptoData();
+    }, 5 * 60 * 1000);
+    
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
+      clearInterval(refreshInterval);
     };
   }, [symbol, interval]);
 
@@ -185,7 +207,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     <div style={{ height }} className="bg-black/40 rounded-lg p-2">
       <div className="mb-2 flex items-center justify-between px-2">
         <div className="text-xs text-emerald-400/70 font-mono">
-          Timeframe: 15 minutes
+          Timeframe: {interval}
         </div>
         <div className="text-xs text-emerald-400/70 font-mono">
           {data.length > 0 ? 
@@ -235,6 +257,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               dot={false}
               strokeWidth={2}
               activeDot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#10B981' }}
+              isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -273,7 +296,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[90vw] sm:max-h-[90vh] bg-black/95 border-emerald-500/20">
               <div className="pt-6">
-                <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">{getSymbolName(symbol)} - 15min Chart</h3>
+                <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">{getSymbolName(symbol)} - {interval} Chart</h3>
                 <ChartContent height={600} />
               </div>
             </DialogContent>
@@ -304,7 +327,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           </div>
         </div>
         <div className="text-xs text-emerald-400/70 font-mono">
-          Updated: {lastUpdated.toLocaleTimeString()}
+          Last update: {lastUpdated.toLocaleTimeString()}
         </div>
       </div>
       
