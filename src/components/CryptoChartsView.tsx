@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart } from 'lucide-react';
@@ -23,6 +24,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   });
   const [previousPrices, setPreviousPrices] = useState<{[key: string]: number}>({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const [liveChartKey, setLiveChartKey] = useState<string>('initial');
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -113,7 +115,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleSymbolSelect = (symbol: string) => {
-    setActiveSymbol(symbol === activeSymbol ? null : symbol);
+    if (symbol === activeSymbol) {
+      setActiveSymbol(null);
+    } else {
+      // Force LiveChart to remount by changing its key
+      setActiveSymbol(symbol);
+      setLiveChartKey(`${symbol}-${Date.now()}`);
+    }
   };
 
   return (
@@ -203,6 +211,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               </div>
             }>
               <LiveChart 
+                key={liveChartKey}
                 symbol={activeSymbol} 
                 onClose={() => setActiveSymbol(null)} 
               />

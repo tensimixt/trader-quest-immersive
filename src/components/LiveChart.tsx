@@ -69,11 +69,15 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const prevPriceRef = useRef<number | null>(null);
   const newDataPointsTimestampsRef = useRef<Set<number>>(new Set());
   const isPriceDecreasingRef = useRef<boolean>(false);
+  // Add a ref to track the current symbol for cleanup/reconnect
+  const currentSymbolRef = useRef<string>(symbol);
 
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
       setIsUpdating(true);
+      
+      console.log(`Fetching data for ${symbol}`);
       
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
         body: { symbol, history: 'true', interval }
@@ -136,118 +140,168 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   };
 
   const connectWebSocket = () => {
+    // Close any existing connection
     if (wsRef.current) {
       wsRef.current.close();
+      wsRef.current = null;
     }
 
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
+    // Get the current symbol from the props or ref
+    const currentSymbol = symbol.toLowerCase();
     
-    ws.onopen = () => {
-      console.log(`WebSocket connected for ${symbol}`);
-    };
+    console.log(`Connecting WebSocket for ${currentSymbol} with interval ${interval}`);
     
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+    try {
+      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${currentSymbol}@kline_${interval}`);
       
-      if (message.k) {
-        const kline = message.k;
-        const timestamp = kline.t;
-        const newPrice = parseFloat(kline.c);
-        
-        if (prevPriceRef.current !== null) {
-          if (newPrice > prevPriceRef.current) {
-            setPriceChangeAnimation('increase');
-            isPriceDecreasingRef.current = false;
-          } else if (newPrice < prevPriceRef.current) {
-            setPriceChangeAnimation('decrease');
-            isPriceDecreasingRef.current = true;
-          }
-          
-          setTimeout(() => setPriceChangeAnimation(null), 1000);
-        }
-        
-        prevPriceRef.current = newPrice;
-        setCurrentPrice(newPrice);
-        setIsUpdating(true);
-        setLastUpdated(new Date());
-        
-        newDataPointsTimestampsRef.current.add(timestamp);
-        
-        const thirtySecondsAgo = Date.now() - 30000;
-        for (const ts of newDataPointsTimestampsRef.current) {
-          if (ts < thirtySecondsAgo) {
-            newDataPointsTimestampsRef.current.delete(ts);
-          }
-        }
-        
-        const newKline: KlineData = {
-          timestamp: timestamp,
-          open: parseFloat(kline.o),
-          high: parseFloat(kline.h),
-          low: parseFloat(kline.l),
-          close: parseFloat(kline.c),
-          volume: parseFloat(kline.v),
-          isNew: true
-        };
-        
-        setLastDataPoint(newKline);
-        dataMapRef.current.set(timestamp, newKline);
-        
-        const now = Date.now();
-        if (now - lastFullRefreshRef.current > 5 * 60 * 1000) {
-          console.log("Performing full data refresh");
-          fetchCryptoData();
+      ws.onopen = () => {
+        console.log(`WebSocket connected for ${currentSymbol}`);
+      };
+      
+      ws.onmessage = (event) => {
+        // Only process messages if this is still the current symbol
+        if (currentSymbolRef.current !== symbol) {
+          console.log(`Ignoring message for ${currentSymbol} as current symbol is now ${currentSymbolRef.current}`);
           return;
         }
         
-        setData(prevData => {
-          const updatedData = Array.from(dataMapRef.current.values())
-            .sort((a, b) => a.timestamp - b.timestamp)
-            .map(point => ({
-              ...point,
-              isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
-            }));
+        const message = JSON.parse(event.data);
+        
+        if (message.k) {
+          const kline = message.k;
+          const timestamp = kline.t;
+          const newPrice = parseFloat(kline.c);
           
-          if (updatedData.length > 30) {
-            return updatedData.slice(updatedData.length - 30);
+          if (prevPriceRef.current !== null) {
+            if (newPrice > prevPriceRef.current) {
+              setPriceChangeAnimation('increase');
+              isPriceDecreasingRef.current = false;
+            } else if (newPrice < prevPriceRef.current) {
+              setPriceChangeAnimation('decrease');
+              isPriceDecreasingRef.current = true;
+            }
+            
+            setTimeout(() => setPriceChangeAnimation(null), 1000);
           }
           
-          return updatedData;
-        });
+          prevPriceRef.current = newPrice;
+          setCurrentPrice(newPrice);
+          setIsUpdating(true);
+          setLastUpdated(new Date());
+          
+          newDataPointsTimestampsRef.current.add(timestamp);
+          
+          const thirtySecondsAgo = Date.now() - 30000;
+          for (const ts of newDataPointsTimestampsRef.current) {
+            if (ts < thirtySecondsAgo) {
+              newDataPointsTimestampsRef.current.delete(ts);
+            }
+          }
+          
+          const newKline: KlineData = {
+            timestamp: timestamp,
+            open: parseFloat(kline.o),
+            high: parseFloat(kline.h),
+            low: parseFloat(kline.l),
+            close: parseFloat(kline.c),
+            volume: parseFloat(kline.v),
+            isNew: true
+          };
+          
+          setLastDataPoint(newKline);
+          dataMapRef.current.set(timestamp, newKline);
+          
+          const now = Date.now();
+          if (now - lastFullRefreshRef.current > 5 * 60 * 1000) {
+            console.log("Performing full data refresh");
+            fetchCryptoData();
+            return;
+          }
+          
+          setData(prevData => {
+            const updatedData = Array.from(dataMapRef.current.values())
+              .sort((a, b) => a.timestamp - b.timestamp)
+              .map(point => ({
+                ...point,
+                isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
+              }));
+            
+            if (updatedData.length > 30) {
+              return updatedData.slice(updatedData.length - 30);
+            }
+            
+            return updatedData;
+          });
+          
+          setTimeout(() => setIsUpdating(false), 500);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast.error('Live connection error. Trying to reconnect...');
         
-        setTimeout(() => setIsUpdating(false), 500);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      toast.error('Live connection error. Trying to reconnect...');
-      setTimeout(connectWebSocket, 5000);
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-    
-    wsRef.current = ws;
+        // Only reconnect if this is still the current symbol
+        if (currentSymbolRef.current === symbol) {
+          setTimeout(connectWebSocket, 5000);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+      
+      wsRef.current = ws;
+    } catch (error) {
+      console.error('Error connecting to WebSocket:', error);
+      toast.error('Connection error. Please try again.');
+    }
   };
 
+  // Clean up function to properly handle WebSocket disconnection
+  const cleanupConnections = () => {
+    if (wsRef.current) {
+      console.log(`Closing WebSocket for ${currentSymbolRef.current}`);
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
+    if (refreshIntervalRef.current !== null) {
+      window.clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  };
+
+  // Handle symbol changes
   useEffect(() => {
+    console.log(`Symbol changed to ${symbol}, previous was ${currentSymbolRef.current}`);
+    
+    // Update refs and clean up previous connections
+    cleanupConnections();
+    
+    // Reset state for new symbol
+    setData([]);
+    setCurrentPrice(null);
+    setLastDataPoint(null);
+    prevPriceRef.current = null;
+    dataMapRef.current = new Map();
+    newDataPointsTimestampsRef.current = new Set();
+    
+    // Update the current symbol ref
+    currentSymbolRef.current = symbol;
+    
+    // Fetch new data and connect WebSocket
     fetchCryptoData();
     connectWebSocket();
     
+    // Set up refresh interval
     refreshIntervalRef.current = window.setInterval(() => {
-      fetchCryptoData();
+      if (currentSymbolRef.current === symbol) {
+        fetchCryptoData();
+      }
     }, 5 * 60 * 1000);
     
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (refreshIntervalRef.current !== null) {
-        window.clearInterval(refreshIntervalRef.current);
-      }
-    };
+    return cleanupConnections;
   }, [symbol, interval]);
 
   const formatPrice = (price: number) => {
