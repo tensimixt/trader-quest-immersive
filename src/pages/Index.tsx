@@ -411,6 +411,20 @@ const Index = () => {
     setShowCryptoCharts(!showCryptoCharts);
   };
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (!isMobile && activeTab === "market_intel") {
+        setActiveTab("chat");
+      }
+    };
+
+    const isMobile = window.innerWidth < 1024;
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile, activeTab]);
+
   if (isCheckingVerification) {
     return (
       <motion.div 
