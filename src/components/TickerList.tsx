@@ -11,6 +11,7 @@ type TickerData = {
   priceChangePercent: string;
   lastPrice: string;
   volume: string;
+  quoteVolume?: string; // Adding quoteVolume which is in USDT
 };
 
 const TickerList = ({ onClose }: { onClose: () => void }) => {
@@ -121,7 +122,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                   <th className="text-left py-2">Symbol</th>
                   <th className="text-right py-2">Price</th>
                   <th className="text-right py-2">24h Change</th>
-                  <th className="text-right py-2">Volume</th>
+                  <th className="text-right py-2">Volume (USDT)</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,9 +147,11 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                       </td>
                       <td className="py-3 text-right font-mono">
                         {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD',
                           notation: 'compact',
                           maximumFractionDigits: 2
-                        }).format(parseFloat(ticker.volume))}
+                        }).format(ticker.quoteVolume ? parseFloat(ticker.quoteVolume) : parseFloat(ticker.volume) * parseFloat(ticker.lastPrice))}
                       </td>
                     </tr>
                   ))

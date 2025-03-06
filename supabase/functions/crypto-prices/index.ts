@@ -52,17 +52,18 @@ async function fetch24hTickers() {
     // Only include USDT pairs for simplicity and sort by volume
     const filteredData = data
       .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
-      .sort((a: any, b: any) => parseFloat(b.volume) - parseFloat(a.volume));
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
     
     console.log(`Fetched ${filteredData.length} USDT pairs from Binance`);
     
-    // Don't limit to top 50 anymore, return all USDT pairs
+    // Return all USDT pairs with enhanced volume data
     return filteredData.map((ticker: any) => ({
       symbol: ticker.symbol,
       priceChange: ticker.priceChange,
       priceChangePercent: ticker.priceChangePercent,
       lastPrice: ticker.lastPrice,
       volume: ticker.volume,
+      quoteVolume: ticker.quoteVolume, // This is the USD equivalent volume
     }));
   } catch (error) {
     console.error('Error fetching 24h tickers:', error);
