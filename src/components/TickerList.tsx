@@ -58,8 +58,10 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     // Get the Supabase URL for the function
-    const url = supabase.functions.url('crypto-prices').replace('https:', 'wss:');
-    const ws = new WebSocket(url);
+    const functionUrl = supabase.functions.url('crypto-prices');
+    // Convert from https: to wss: for WebSocket connection
+    const wsUrl = functionUrl.replace('https:', 'wss:');
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('WebSocket connected');
