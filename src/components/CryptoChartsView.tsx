@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -35,8 +34,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       setIsLoading(true);
       
       // Get the base URL for Supabase functions
-      const { protocol, hostname } = new URL(supabase.functions.invoke('crypto-prices').url);
+      const { protocol, hostname } = new URL(window.location.href);
       const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+      
+      // Construct the WebSocket URL for the Supabase Edge Function
       const wsUrl = `${wsProtocol}//${hostname}/functions/v1/crypto-prices`;
       
       console.log(`Connecting to WebSocket at: ${wsUrl}`);

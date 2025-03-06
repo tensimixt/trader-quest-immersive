@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -64,6 +65,9 @@ async function fetch24hTickers() {
       volume: ticker.volume,
       quoteVolume: ticker.quoteVolume, // This is the USD equivalent volume
     }));
+  } catch (error) {
+    console.error("Error fetching 24h tickers:", error);
+    return [];
   }
 }
 
