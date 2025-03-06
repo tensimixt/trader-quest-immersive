@@ -168,14 +168,16 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    // Fix: Pass just the reference to the function with no arguments
-    const refreshInterval = setInterval(fetchCryptoData, 5 * 60 * 1000);
+    // Fix: Create the interval correctly - setInterval returns a number (the interval ID)
+    const refreshInterval = setInterval(() => {
+      fetchCryptoData();
+    }, 5 * 60 * 1000);
     
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
-      // Fix: Clear the interval with the ID stored in refreshInterval
+      // Now we correctly pass the number to clearInterval
       clearInterval(refreshInterval);
     };
   }, [symbol, interval]);
