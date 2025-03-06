@@ -490,19 +490,19 @@ const Index = () => {
             <div className="glass-card rounded-2xl overflow-hidden relative p-4 lg:p-6 flex-1 flex flex-col h-full">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" />
               
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-                  {tabs.map(tab => !tab.mobileOnly || (tab.mobileOnly && window.innerWidth < 1024) ? (
+              <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                <TabsList className="flex flex-wrap bg-transparent p-0 gap-2">
+                  {tabs.map(tab => (!tab.mobileOnly || (tab.mobileOnly && window.innerWidth < 1024)) && (
                     <TabsTrigger 
                       key={tab.value}
                       value={tab.value}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors"
                     >
                       {tab.icon}
                       {tab.label}
                     </TabsTrigger>
-                  ) : null)}
-                </div>
+                  ))}
+                </TabsList>
 
                 <TabsContent value="chat" className="flex-1 relative mt-0">
                   <ChatSection
