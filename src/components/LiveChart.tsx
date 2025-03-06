@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -67,6 +68,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const refreshIntervalRef = useRef<number | null>(null);
   const prevPriceRef = useRef<number | null>(null);
   const newDataPointsTimestampsRef = useRef<Set<number>>(new Set());
+  const isPriceDecreasingRef = useRef<boolean>(false);
 
   const fetchCryptoData = async () => {
     try {
@@ -85,8 +87,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         if (prevPriceRef.current !== null) {
           if (newPrice > prevPriceRef.current) {
             setPriceChangeAnimation('increase');
+            isPriceDecreasingRef.current = false;
           } else if (newPrice < prevPriceRef.current) {
             setPriceChangeAnimation('decrease');
+            isPriceDecreasingRef.current = true;
           }
           
           setTimeout(() => setPriceChangeAnimation(null), 1000);
@@ -153,8 +157,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         if (prevPriceRef.current !== null) {
           if (newPrice > prevPriceRef.current) {
             setPriceChangeAnimation('increase');
+            isPriceDecreasingRef.current = false;
           } else if (newPrice < prevPriceRef.current) {
             setPriceChangeAnimation('decrease');
+            isPriceDecreasingRef.current = true;
           }
           
           setTimeout(() => setPriceChangeAnimation(null), 1000);
@@ -269,7 +275,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
   const ChartContent = ({ height }: { height: number }) => (
-    <div style={{ height }} className={`bg-black/40 rounded-lg p-2 ${isUpdating ? 'ring-2 ring-emerald-500 transition-all duration-300' : ''}`}>
+    <div style={{ height }} className={`bg-black/40 rounded-lg p-2 ${isUpdating ? 
+      isPriceDecreasingRef.current ? 'ring-2 ring-red-400 transition-all duration-300' : 'ring-2 ring-emerald-500 transition-all duration-300' 
+      : ''}`}>
       <div className="mb-2 flex items-center justify-between px-2">
         <div className="text-xs text-emerald-400/70 font-mono">
           Timeframe: {interval}
@@ -328,8 +336,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               <Line 
                 type="monotone" 
                 dataKey={(dataPoint) => dataPoint.isNew ? dataPoint.close : null}
-                stroke="#8B5CF6"
-                dot={{ r: 3, fill: '#8B5CF6' }}
+                stroke={isPriceDecreasingRef.current ? "#ea384c" : "#8B5CF6"}
+                dot={{ r: 3, fill: isPriceDecreasingRef.current ? "#ea384c" : "#8B5CF6" }}
                 strokeWidth={3}
                 connectNulls
                 isAnimationActive={true}
@@ -337,7 +345,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               />
             </LineChart>
           </ResponsiveContainer>
-          {isUpdating && (
+          {isLoading && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
               <div className="bg-black/70 rounded-full p-3 animate-pulse">
                 <RefreshCw size={24} className="text-emerald-400 animate-spin" />
@@ -457,6 +465,12 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           <div className="w-3 h-3 rounded-full bg-purple-500" />
           <span className="text-xs text-emerald-400/70 font-mono">New data (30s)</span>
         </div>
+        {isPriceDecreasingRef.current && (
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 rounded-full bg-red-400" />
+            <span className="text-xs text-red-400/70 font-mono">Decreasing</span>
+          </div>
+        )}
       </div>
     </motion.div>
   );
