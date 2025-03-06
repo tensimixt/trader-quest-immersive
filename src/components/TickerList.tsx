@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
@@ -24,7 +23,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   const tickersMapRef = useRef<Map<string, TickerData>>(new Map());
   const updatedTickersRef = useRef<Set<string>>(new Set());
 
-  // Function to fetch tickers using HTTP (fallback or initial load)
   const fetchTickers = async () => {
     setIsLoading(true);
     try {
@@ -34,7 +32,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
 
       if (error) throw error;
       
-      // Store tickers in the map for future reference
       data.forEach((ticker: TickerData) => {
         tickersMapRef.current.set(ticker.symbol, ticker);
       });
@@ -50,112 +47,102 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  // Connect to WebSocket
   const connectWebSocket = () => {
-    // Close existing connection if any
     if (webSocketRef.current && webSocketRef.current.readyState !== WebSocket.CLOSED) {
       webSocketRef.current.close();
     }
 
-    // Create the WebSocket URL properly
-    // We need to convert the Edge Function URL to WebSocket URL
-    const functionUrl = `${supabase.functions.url}/crypto-prices`;
-    const wsUrl = functionUrl.replace('https:', 'wss:');
-    
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      setIsWebSocketConnected(true);
-      toast.success('Live ticker updates connected');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        
-        if (message.type === 'initial' || message.type === 'refresh') {
-          // Full refresh of all tickers
-          const newTickers = message.data as TickerData[];
-          
-          // Update our map of tickers
-          tickersMapRef.current.clear();
-          newTickers.forEach((ticker) => {
-            tickersMapRef.current.set(ticker.symbol, ticker);
-          });
-          
-          // Reset highlight state
-          updatedTickersRef.current.clear();
-          
-          // Update state with sorted tickers
-          setTickers(newTickers);
-          setLastUpdateTime(new Date());
-          console.log(`Received ${newTickers.length} tickers via WebSocket (${message.type})`);
-        } 
-        else if (message.type === 'update') {
-          // Single ticker update
-          const updatedTicker = message.data as TickerData;
-          
-          // Update our map
-          tickersMapRef.current.set(updatedTicker.symbol, updatedTicker);
-          
-          // Mark this ticker as recently updated for highlighting
-          updatedTickersRef.current.add(updatedTicker.symbol);
-          
-          // After 2 seconds, remove the highlight
-          setTimeout(() => {
-            updatedTickersRef.current.delete(updatedTicker.symbol);
-          }, 2000);
-          
-          // Convert the map to an array and sort by volume
-          const updatedTickers = Array.from(tickersMapRef.current.values())
-            .sort((a, b) => {
-              const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
-              const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
-              return bVolume - aVolume;
-            });
-          
-          setTickers(updatedTickers);
-          setLastUpdateTime(new Date());
-        }
-        else if (message.type === 'error') {
-          console.error('WebSocket error message:', message.message);
-          toast.error(`WebSocket error: ${message.message}`);
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      setIsWebSocketConnected(false);
+    try {
+      const baseUrl = supabase.functions.url;
+      const wsUrl = baseUrl.replace('https:', 'wss:') + '/crypto-prices';
       
-      // Try to reconnect after a delay
-      setTimeout(() => {
-        if (webSocketRef.current === ws) { // Only reconnect if this is still the current connection
-          connectWebSocket();
+      console.log('Connecting to WebSocket URL:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected successfully');
+        setIsWebSocketConnected(true);
+        toast.success('Live ticker updates connected');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === 'initial' || message.type === 'refresh') {
+            const newTickers = message.data as TickerData[];
+            
+            tickersMapRef.current.clear();
+            newTickers.forEach((ticker) => {
+              tickersMapRef.current.set(ticker.symbol, ticker);
+            });
+            
+            updatedTickersRef.current.clear();
+            
+            setTickers(newTickers);
+            setLastUpdateTime(new Date());
+            console.log(`Received ${newTickers.length} tickers via WebSocket (${message.type})`);
+          } 
+          else if (message.type === 'update') {
+            const updatedTicker = message.data as TickerData;
+            
+            tickersMapRef.current.set(updatedTicker.symbol, updatedTicker);
+            
+            updatedTickersRef.current.add(updatedTicker.symbol);
+            
+            setTimeout(() => {
+              updatedTickersRef.current.delete(updatedTicker.symbol);
+            }, 2000);
+            
+            const updatedTickers = Array.from(tickersMapRef.current.values())
+              .sort((a, b) => {
+                const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
+                const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
+                return bVolume - aVolume;
+              });
+            
+            setTickers(updatedTickers);
+            setLastUpdateTime(new Date());
+          }
+          else if (message.type === 'error') {
+            console.error('WebSocket error message:', message.message);
+            toast.error(`WebSocket error: ${message.message}`);
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
         }
-      }, 5000);
-    };
+      };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      toast.error('Connection error, trying to reconnect...');
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setIsWebSocketConnected(false);
+        
+        setTimeout(() => {
+          if (webSocketRef.current === ws) {
+            connectWebSocket();
+          }
+        }, 5000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast.error('Connection error, trying to reconnect...');
+        setIsWebSocketConnected(false);
+      };
+
+      webSocketRef.current = ws;
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
+      toast.error('Failed to establish WebSocket connection');
       setIsWebSocketConnected(false);
-    };
-
-    webSocketRef.current = ws;
+    }
   };
 
   useEffect(() => {
-    // Initial load via HTTP
     fetchTickers();
-    
-    // Then connect to WebSocket for live updates
     connectWebSocket();
     
-    // Cleanup function
     return () => {
       if (webSocketRef.current) {
         webSocketRef.current.close();
@@ -167,7 +154,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   const formatPrice = (price: string): string => {
     const numericPrice = parseFloat(price);
     
-    // For very small numbers (less than 0.01), use more decimal places
     if (numericPrice < 0.01) {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -177,7 +163,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       }).format(numericPrice);
     }
     
-    // For larger numbers, use standard formatting
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
