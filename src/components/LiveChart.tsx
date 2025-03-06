@@ -29,6 +29,19 @@ interface KlineData {
   volume: number;
 }
 
+const getSymbolName = (symbol: string): string => {
+  switch (symbol) {
+    case 'BTCUSDT':
+      return 'Bitcoin';
+    case 'ETHUSDT':
+      return 'Ethereum';
+    case 'BNBUSDT':
+      return 'Binance Coin';
+    default:
+      return symbol;
+  }
+};
+
 const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [data, setData] = useState<KlineData[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
