@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Send, History, ArrowLeft,
-  MessageCircle, Activity, Radio, Search, Loader
+  MessageCircle, Activity, Radio, Search, Loader,
+  CreditCard, Bitcoin
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +17,7 @@ import PredictionCard from '@/components/PredictionCard';
 import PerformanceChart from '@/components/PerformanceChart';
 import ChatSection from '@/components/ChatSection';
 import LeaderboardSection from '@/components/LeaderboardSection';
+import CryptoChartsView from '@/components/CryptoChartsView';
 
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
@@ -59,6 +61,7 @@ const Index = () => {
   }>({ key: null, direction: 'asc' });
 
   const [visibleCards, setVisibleCards] = useState<Array<any>>([]);
+  const [showCryptoCharts, setShowCryptoCharts] = useState(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -112,19 +115,16 @@ const Index = () => {
   }, [publicKey, connected]);
 
   useEffect(() => {
-    // Initialize with first 2 cards
     setVisibleCards(marketCalls.slice(0, 2));
 
-    // Add new cards periodically
     const interval = setInterval(() => {
       setVisibleCards(current => {
         const nextIndex = current.length;
         if (nextIndex >= marketCalls.length) return current;
         
-        // Add next card from marketCalls to the beginning of the array
         return [marketCalls[nextIndex], ...current];
       });
-    }, 15000); // Add new card every 15 seconds
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -166,15 +166,12 @@ const Index = () => {
     const isHsakaQuery = query.includes('hsaka');
     const year = '2024';
 
-    // Simulate some processing time
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (isHsakaQuery) {
       setIsHistoryView(true);
       
-      // Check if the query is asking for both win rate and calls
       if (isWinRateQuery && isCallsQuery) {
-        // Handle request for both win rate and calls
         const performance = generatePerformanceData(marketCalls, year);
         setPerformanceData(performance);
         
@@ -211,7 +208,7 @@ const Index = () => {
       else if (isWinRateQuery) {
         const performance = generatePerformanceData(marketCalls, year);
         setPerformanceData(performance);
-        setFilteredHistory([]); // Clear the calls when showing win rate
+        setFilteredHistory([]);
 
         setChatHistory(prev => [...prev, { 
           message: `Found Hsaka's performance data for ${year}. Overall win rate is ${performance.overall}%. <span class="text-emerald-400 cursor-pointer hover:underline" data-message-id="${Date.now()}">Click here</span> to view the monthly breakdown.`,
@@ -241,7 +238,7 @@ const Index = () => {
           timestamp: call.timestamp,
           analysis: call.analysis
         }));
-
+        
         setFilteredHistory(filteredCalls);
         setPerformanceData(null);
 
@@ -274,14 +271,11 @@ const Index = () => {
   };
 
   const handleViewChart = () => {
-    console.log("handleViewChart called in Index.tsx");
     setIsHistoryView(true);
     
-    // Check the last chat message to determine what to show
     const lastContextualMessage = [...chatHistory].reverse().find(msg => msg.contextData);
     
     if (lastContextualMessage?.contextData?.showCalls && lastContextualMessage?.contextData?.showChart) {
-      // If the last message asks for both, show both chart and calls
       const filteredCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
       ).map(call => ({
@@ -302,7 +296,6 @@ const Index = () => {
         setPerformanceData(performance);
       }
     } else if (lastContextualMessage?.contextData?.showCalls) {
-      // If the last message is about calls, show calls
       const filteredCalls = marketCalls.filter(call => 
         call.traderProfile.toLowerCase() === 'hsaka'
       ).map(call => ({
@@ -318,7 +311,6 @@ const Index = () => {
       setFilteredHistory(filteredCalls);
       setPerformanceData(null);
     } else if (lastContextualMessage?.contextData?.showChart) {
-      // If the last message is about charts, show performance data
       if (!performanceData) {
         const year = '2024';
         const performance = generatePerformanceData(marketCalls, year);
@@ -327,7 +319,6 @@ const Index = () => {
       
       setFilteredHistory([]);
     } else {
-      // Default behavior if can't determine from context
       const year = '2024';
       const performance = generatePerformanceData(marketCalls, year);
       setPerformanceData(performance);
@@ -407,6 +398,18 @@ const Index = () => {
       }
     };
   }, [chatHistory]);
+
+  const tabs = [
+    { value: "chat", icon: <MessageCircle className="w-4 h-4 mr-2" />, label: "Chat" },
+    { value: "codec", icon: <Radio className="w-4 h-4 mr-2" />, label: "CODEC" },
+    { value: "leaderboard", icon: <Activity className="w-4 h-4 mr-2" />, label: "Leaderboard" },
+    { value: "crypto_charts", icon: <Bitcoin className="w-4 h-4 mr-2" />, label: "Crypto" },
+    { value: "market_intel", icon: <Network className="w-4 h-4 mr-2" />, label: "Intel", mobileOnly: true }
+  ];
+
+  const toggleCryptoCharts = () => {
+    setShowCryptoCharts(!showCryptoCharts);
+  };
 
   if (isCheckingVerification) {
     return (
@@ -489,36 +492,16 @@ const Index = () => {
               
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-                  <TabsList className="bg-black/40 border border-emerald-500/20 p-1 rounded-xl w-full sm:w-auto">
+                  {tabs.map(tab => !tab.mobileOnly || (tab.mobileOnly && window.innerWidth < 1024) ? (
                     <TabsTrigger 
-                      value="chat"
+                      key={tab.value}
+                      value={tab.value}
                       className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
                     >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Chat
+                      {tab.icon}
+                      {tab.label}
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="codec"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
-                    >
-                      <Radio className="w-4 h-4 mr-2" />
-                      CODEC
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="leaderboard"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none"
-                    >
-                      <Activity className="w-4 h-4 mr-2" />
-                      Leaderboard
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="market_intel"
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 transition-colors flex-1 sm:flex-none lg:hidden"
-                    >
-                      <Network className="w-4 h-4 mr-2" />
-                      Intel
-                    </TabsTrigger>
-                  </TabsList>
+                  ) : null)}
                 </div>
 
                 <TabsContent value="chat" className="flex-1 relative mt-0">
@@ -553,6 +536,10 @@ const Index = () => {
                     onSort={handleSort}
                     sortConfig={sortConfig}
                   />
+                </TabsContent>
+
+                <TabsContent value="crypto_charts" className="flex-1 relative mt-0">
+                  <CryptoChartsView onClose={() => setActiveTab("chat")} />
                 </TabsContent>
 
                 <TabsContent value="market_intel" className="flex-1 relative mt-0 lg:hidden">
@@ -612,7 +599,7 @@ const Index = () => {
             <div className="h-full flex flex-col max-h-[calc(100vh-8rem)]">
               <AnimatePresence mode="wait">
                 <motion.div 
-                  key={isHistoryView ? 'history' : 'intel'}
+                  key={isHistoryView ? 'history' : (showCryptoCharts ? 'crypto' : 'intel')}
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
@@ -633,6 +620,14 @@ const Index = () => {
                             <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                           </h2>
                         </>
+                      ) : showCryptoCharts ? (
+                        <>
+                          <Bitcoin className="w-5 h-5 text-yellow-400" />
+                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            CRYPTO_MARKETS
+                            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                          </h2>
+                        </>
                       ) : (
                         <>
                           <Eye className="w-5 h-5 text-emerald-400" />
@@ -643,21 +638,41 @@ const Index = () => {
                         </>
                       )}
                     </div>
-                    {isHistoryView && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsHistoryView(false)}
-                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Intel
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {!showCryptoCharts && !isHistoryView && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={toggleCryptoCharts}
+                          className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
+                        >
+                          <Bitcoin className="w-4 h-4 mr-2" />
+                          Crypto Markets
+                        </Button>
+                      )}
+                      {(isHistoryView || showCryptoCharts) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setIsHistoryView(false);
+                            setShowCryptoCharts(false);
+                          }}
+                          className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back to Intel
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-                    {isHistoryView && performanceData && (
+                    {showCryptoCharts && (
+                      <CryptoChartsView onClose={() => setShowCryptoCharts(false)} />
+                    )}
+                    
+                    {isHistoryView && performanceData && !showCryptoCharts && (
                       <motion.div
                         ref={chartRef}
                         initial={{ opacity: 0, y: 20 }}
@@ -668,7 +683,8 @@ const Index = () => {
                         <PerformanceChart monthlyData={performanceData.monthlyData} />
                       </motion.div>
                     )}
-                    {isHistoryView && filteredHistory.length > 0 && (
+                    
+                    {isHistoryView && filteredHistory.length > 0 && !showCryptoCharts && (
                       <AnimatePresence mode="popLayout">
                         {filteredHistory.map((prediction, index) => (
                           <motion.div
@@ -708,7 +724,8 @@ const Index = () => {
                         ))}
                       </AnimatePresence>
                     )}
-                    {!isHistoryView && (
+                    
+                    {!isHistoryView && !showCryptoCharts && (
                       <AnimatePresence mode="popLayout">
                         {visibleCards.map((prediction, index) => (
                           <motion.div

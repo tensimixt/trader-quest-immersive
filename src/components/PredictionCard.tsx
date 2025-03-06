@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield, LineChart } from 'lucide-react';
 import { format } from 'date-fns-tz';
-import { parseISO } from 'date-fns';
+import { parseISO } from 'date-fns'; // Fix import from date-fns instead of date-fns-tz
 import LiveChart from './LiveChart';
 
 interface PredictionCardProps {
@@ -43,6 +42,7 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
   };
 
   return (
+    
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
