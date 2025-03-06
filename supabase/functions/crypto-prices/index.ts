@@ -72,6 +72,104 @@ async function fetch24hTickers() {
 }
 
 serve(async (req) => {
+  // Check if WebSocket upgrade is requested
+  const upgradeHeader = req.headers.get('upgrade') || '';
+  
+  if (upgradeHeader.toLowerCase() === 'websocket') {
+    // Handle WebSocket connection
+    console.log('WebSocket connection request received');
+    
+    try {
+      const { socket, response } = Deno.upgradeWebSocket(req);
+      
+      // Set up event handlers for WebSocket
+      socket.onopen = () => {
+        console.log('WebSocket connection established');
+        
+        // Immediately send initial data to client
+        fetch24hTickers().then(tickers => {
+          socket.send(JSON.stringify({
+            type: 'initial',
+            data: tickers
+          }));
+        });
+        
+        // Set up connection to Binance WebSocket for combined streams
+        const topSymbols = ['btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt'];
+        const streams = topSymbols.map(symbol => `${symbol}@ticker`);
+        const binanceWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams.join('/')}`);
+        
+        binanceWs.onmessage = (event) => {
+          try {
+            const tickerData = JSON.parse(event.data);
+            
+            // Format ticker data to match our API format
+            const ticker = {
+              symbol: tickerData.s,
+              lastPrice: tickerData.c,
+              priceChange: tickerData.p,
+              priceChangePercent: tickerData.P,
+              volume: tickerData.v,
+              quoteVolume: tickerData.q
+            };
+            
+            // Send update to client
+            socket.send(JSON.stringify({
+              type: 'update',
+              data: ticker
+            }));
+          } catch (e) {
+            console.error('Error processing Binance WebSocket message:', e);
+          }
+        };
+        
+        binanceWs.onerror = (error) => {
+          console.error('Binance WebSocket error:', error);
+          socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Binance connection error'
+          }));
+        };
+        
+        // Periodically refresh the full ticker list
+        const intervalId = setInterval(() => {
+          console.log('Refreshing full ticker list');
+          fetch24hTickers().then(tickers => {
+            socket.send(JSON.stringify({
+              type: 'refresh',
+              data: tickers
+            }));
+          });
+        }, 60000); // Every minute
+        
+        // Clean up WebSocket connections when client disconnects
+        socket.onclose = () => {
+          console.log('Client WebSocket closed');
+          binanceWs.close();
+          clearInterval(intervalId);
+        };
+        
+        socket.onerror = (error) => {
+          console.error('Client WebSocket error:', error);
+          binanceWs.close();
+          clearInterval(intervalId);
+        };
+      };
+      
+      return response;
+    } catch (error) {
+      console.error('WebSocket upgrade error:', error);
+      return new Response(JSON.stringify({ error: 'WebSocket upgrade failed' }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+  }
+
+  // Handle regular HTTP requests as before
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
