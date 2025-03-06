@@ -44,6 +44,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     try {
       console.log('Connecting to WebSocket...');
       const wsUrl = getEdgeFunctionWebSocketUrl('crypto-prices');
+      console.log('WebSocket URL:', wsUrl);
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
@@ -51,6 +52,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       ws.onopen = () => {
         console.log('WebSocket connection established');
         setWsConnected(true);
+        toast.success('Connected to live price updates');
         reconnectAttempts.current = 0;
       };
       
@@ -135,6 +137,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
+          toast.info(`Connection lost. Reconnecting in ${delay/1000}s...`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             if (document.visibilityState === 'visible') {
@@ -181,6 +184,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       setPrices(newPrices);
       setChanges(newChanges);
       if (!isInitialized) setIsInitialized(true);
+      
+      toast.success('Prices updated');
     } catch (error) {
       console.error('Failed to fetch crypto prices:', error);
       toast.error('Failed to fetch crypto prices');
@@ -190,6 +195,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
+    // Initial connection with a short delay on mobile
     const timeoutId = setTimeout(() => {
       connectWebSocket();
     }, isMobile ? 300 : 0);
@@ -201,9 +207,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !webSocketRef.current) {
-        console.log('Page became visible, reconnecting WebSocket');
-        connectWebSocket();
+      if (document.visibilityState === 'visible') {
+        if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
+          console.log('Page became visible, reconnecting WebSocket');
+          connectWebSocket();
+        }
       }
     };
     
@@ -312,10 +320,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             <List size={16} />
           </button>
           <button 
-            onClick={() => wsConnected ? connectWebSocket() : refreshPrices()} 
+            onClick={connectWebSocket} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
-            title={wsConnected ? "Reconnect WebSocket" : "Refresh prices"}
+            title={wsConnected ? "Reconnect WebSocket" : "Connect"}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>
