@@ -17,9 +17,10 @@ async function fetchBinancePrice(symbol: string) {
   }
 }
 
-async function fetchBinanceKlines(symbol: string, interval = "1m", limit = 30) {
+async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) {
   try {
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+    console.log(`Fetching klines from: ${url}`);
     const response = await fetch(url);
     const data = await response.json();
     
@@ -49,6 +50,7 @@ serve(async (req) => {
     const url = new URL(req.url);
     let symbol = url.searchParams.get('symbol');
     let getHistory = url.searchParams.get('history') === 'true';
+    let interval = url.searchParams.get('interval') || '15m';
     
     // If there's a request body, check for parameters there as well
     const contentType = req.headers.get('content-type') || '';
@@ -58,6 +60,7 @@ serve(async (req) => {
         // Body parameters take precedence over URL parameters
         symbol = body.symbol || symbol;
         getHistory = (body.history === 'true' || body.history === true) || getHistory;
+        interval = body.interval || interval;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
       }
@@ -69,7 +72,7 @@ serve(async (req) => {
       
       let history = [];
       if (getHistory) {
-        history = await fetchBinanceKlines(symbol);
+        history = await fetchBinanceKlines(symbol, interval);
       }
       
       return new Response(JSON.stringify({ symbol, price, history }), {

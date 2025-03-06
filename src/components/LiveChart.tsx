@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { RefreshCw, X, Maximize2 } from 'lucide-react';
@@ -42,6 +42,12 @@ const getSymbolName = (symbol: string): string => {
   }
 };
 
+const formatDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
+    ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
 const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [data, setData] = useState<KlineData[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
@@ -49,12 +55,14 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [interval, setInterval] = useState<string>('15m');
+  const wsRef = useRef<WebSocket | null>(null);
 
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
-        body: { symbol, history: 'true' }
+        body: { symbol, history: 'true', interval }
       });
       
       if (fetchError) throw fetchError;
@@ -78,13 +86,76 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }
   };
 
+  const connectWebSocket = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
+    
+    ws.onopen = () => {
+      console.log(`WebSocket connected for ${symbol}`);
+    };
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      
+      if (message.k) {
+        const kline = message.k;
+        
+        setCurrentPrice(parseFloat(kline.c));
+        setLastUpdated(new Date());
+        
+        setData(prevData => {
+          const newKline: KlineData = {
+            timestamp: kline.t,
+            open: parseFloat(kline.o),
+            high: parseFloat(kline.h),
+            low: parseFloat(kline.l),
+            close: parseFloat(kline.c),
+            volume: parseFloat(kline.v)
+          };
+          
+          const updatedData = [...prevData];
+          const lastIndex = updatedData.findIndex(d => d.timestamp === kline.t);
+          
+          if (lastIndex >= 0) {
+            updatedData[lastIndex] = newKline;
+          } else {
+            if (updatedData.length >= 30) {
+              updatedData.shift();
+            }
+            updatedData.push(newKline);
+          }
+          
+          return updatedData;
+        });
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      toast.error('Live connection error. Trying to reconnect...');
+      setTimeout(connectWebSocket, 5000);
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+    
+    wsRef.current = ws;
+  };
+
   useEffect(() => {
     fetchCryptoData();
+    connectWebSocket();
     
-    const interval = setInterval(fetchCryptoData, 30000);
-    
-    return () => clearInterval(interval);
-  }, [symbol]);
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [symbol, interval]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -112,6 +183,16 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
 
   const ChartContent = ({ height }: { height: number }) => (
     <div style={{ height }} className="bg-black/40 rounded-lg p-2">
+      <div className="mb-2 flex items-center justify-between px-2">
+        <div className="text-xs text-emerald-400/70 font-mono">
+          Timeframe: 15 minutes
+        </div>
+        <div className="text-xs text-emerald-400/70 font-mono">
+          {data.length > 0 ? 
+            `${formatDate(data[0].timestamp)} - ${formatDate(data[data.length - 1].timestamp)}` : 
+            'No data'}
+        </div>
+      </div>
       {error ? (
         <div className="h-full flex items-center justify-center text-red-400 font-mono">
           {error}
@@ -191,7 +272,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[90vw] sm:max-h-[90vh] bg-black/95 border-emerald-500/20">
-              <ChartContent height={600} />
+              <div className="pt-6">
+                <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">{getSymbolName(symbol)} - 15min Chart</h3>
+                <ChartContent height={600} />
+              </div>
             </DialogContent>
           </Dialog>
           <button 
