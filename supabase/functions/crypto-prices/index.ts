@@ -45,9 +45,23 @@ serve(async (req) => {
   }
 
   try {
+    // Handle both URL parameters and body parameters
     const url = new URL(req.url);
-    const symbol = url.searchParams.get('symbol');
-    const getHistory = url.searchParams.get('history') === 'true';
+    let symbol = url.searchParams.get('symbol');
+    let getHistory = url.searchParams.get('history') === 'true';
+    
+    // If there's a request body, check for parameters there as well
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const body = await req.json();
+        // Body parameters take precedence over URL parameters
+        symbol = body.symbol || symbol;
+        getHistory = (body.history === 'true' || body.history === true) || getHistory;
+      } catch (e) {
+        console.error("Error parsing JSON body:", e);
+      }
+    }
     
     if (symbol) {
       // Single symbol request with optional history

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -35,8 +36,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
+      // According to Supabase SDK, we should pass parameters in the body property
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
-        params: { symbol, history: 'true' }
+        body: { symbol, history: 'true' }
       });
       
       if (fetchError) throw fetchError;
