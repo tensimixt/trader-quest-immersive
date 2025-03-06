@@ -1,10 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import { RefreshCw, X, Maximize2, Minimize2 } from 'lucide-react';
+import { RefreshCw, X, Maximize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface LiveChartProps {
   symbol: string;
@@ -29,14 +33,13 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [data, setData] = useState<KlineData[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
-      // According to Supabase SDK, we should pass parameters in the body property
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
         body: { symbol, history: 'true' }
       });
@@ -65,7 +68,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   useEffect(() => {
     fetchCryptoData();
     
-    const interval = setInterval(fetchCryptoData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchCryptoData, 30000);
     
     return () => clearInterval(interval);
   }, [symbol]);
@@ -94,25 +97,67 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const priceChange = getPriceChange();
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
-  const chartHeight = isExpanded ? 400 : 200;
-  
-  const getSymbolName = (ticker: string) => {
-    switch (ticker) {
-      case 'BTCUSDT': return 'Bitcoin';
-      case 'ETHUSDT': return 'Ethereum';
-      case 'BNBUSDT': return 'Binance Coin';
-      default: return ticker;
-    }
-  };
-  
+  const ChartContent = ({ height }: { height: number }) => (
+    <div style={{ height }} className="bg-black/40 rounded-lg p-2">
+      {error ? (
+        <div className="h-full flex items-center justify-center text-red-400 font-mono">
+          {error}
+        </div>
+      ) : data.length > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={data}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
+            <XAxis 
+              dataKey="timestamp" 
+              tickFormatter={formatTime}
+              stroke="#10B981" 
+              tick={{ fill: '#10B981', fontSize: 10 }}
+              axisLine={{ stroke: '#10B981', strokeWidth: 1 }}
+            />
+            <YAxis 
+              domain={['auto', 'auto']}
+              stroke="#10B981"
+              tick={{ fill: '#10B981', fontSize: 10 }}
+              tickFormatter={(value) => value.toFixed(0)}
+              width={40}
+            />
+            <Tooltip 
+              formatter={(value: number) => [formatPrice(value), 'Price']}
+              labelFormatter={formatTime}
+              contentStyle={{ 
+                backgroundColor: 'rgba(0,0,0,0.9)', 
+                border: '1px solid #10B981',
+                borderRadius: '8px',
+                color: '#10B981'
+              }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="close" 
+              stroke="#10B981" 
+              dot={false}
+              strokeWidth={2}
+              activeDot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#10B981' }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-full flex items-center justify-center text-emerald-400/50 font-mono">
+          {isLoading ? 'Loading data...' : 'No data available'}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className={`live-chart glass-card rounded-xl border border-emerald-500/20 p-4 ${
-        isExpanded ? 'fixed inset-4 z-50 overflow-auto' : 'relative'
-      }`}
+      className="live-chart glass-card rounded-xl border border-emerald-500/20 p-4 relative"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
     >
       <div className="flex items-center justify-between mb-4">
@@ -124,12 +169,18 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <button 
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-          >
-            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <button 
+                className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+              >
+                <Maximize2 size={16} />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[90vw] sm:max-h-[90vh] bg-black/95 border-emerald-500/20">
+              <ChartContent height={600} />
+            </DialogContent>
+          </Dialog>
           <button 
             onClick={fetchCryptoData} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
@@ -160,58 +211,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
       </div>
       
-      <div style={{ height: chartHeight }} className="bg-black/40 rounded-lg p-2">
-        {error ? (
-          <div className="h-full flex items-center justify-center text-red-400 font-mono">
-            {error}
-          </div>
-        ) : data.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={data}
-              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
-              <XAxis 
-                dataKey="timestamp" 
-                tickFormatter={formatTime}
-                stroke="#10B981" 
-                tick={{ fill: '#10B981', fontSize: 10 }}
-                axisLine={{ stroke: '#10B981', strokeWidth: 1 }}
-              />
-              <YAxis 
-                domain={['auto', 'auto']}
-                stroke="#10B981"
-                tick={{ fill: '#10B981', fontSize: 10 }}
-                tickFormatter={(value) => value.toFixed(0)}
-                width={40}
-              />
-              <Tooltip 
-                formatter={(value: number) => [formatPrice(value), 'Price']}
-                labelFormatter={formatTime}
-                contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.9)', 
-                  border: '1px solid #10B981',
-                  borderRadius: '8px',
-                  color: '#10B981'
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="close" 
-                stroke="#10B981" 
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#10B981' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-full flex items-center justify-center text-emerald-400/50 font-mono">
-            {isLoading ? 'Loading data...' : 'No data available'}
-          </div>
-        )}
-      </div>
+      <ChartContent height={200} />
     </motion.div>
   );
 };
