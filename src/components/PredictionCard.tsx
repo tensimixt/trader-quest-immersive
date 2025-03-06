@@ -1,9 +1,10 @@
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield, LineChart } from 'lucide-react';
 import { format } from 'date-fns-tz';
 import { parseISO } from 'date-fns';
+import LiveChart from './LiveChart';
 
 interface PredictionCardProps {
   symbol: string;
@@ -14,6 +15,8 @@ interface PredictionCardProps {
 }
 
 const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
+  const [showLiveChart, setShowLiveChart] = useState(false);
+
   // Safely format the timestamp
   const getFormattedTimestamp = () => {
     try {
@@ -34,6 +37,10 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
   };
 
   const formattedTimestamp = getFormattedTimestamp();
+
+  const toggleLiveChart = () => {
+    setShowLiveChart(!showLiveChart);
+  };
 
   return (
     <motion.div
@@ -87,6 +94,29 @@ const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText 
           </div>
         )}
       </div>
+
+      {/* Live Chart Button */}
+      <div className="mb-6">
+        <button 
+          onClick={toggleLiveChart}
+          className="w-full p-2 rounded-lg bg-black/40 border border-emerald-500/20 text-emerald-400 font-mono text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 transition-colors"
+        >
+          <LineChart className="w-4 h-4" />
+          {showLiveChart ? "HIDE_LIVE_CHART" : "SHOW_LIVE_CHART"}
+        </button>
+      </div>
+
+      {/* Live Chart */}
+      <AnimatePresence>
+        {showLiveChart && (
+          <div className="mb-6">
+            <LiveChart 
+              symbol={symbol} 
+              onClose={() => setShowLiveChart(false)} 
+            />
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Analysis Section */}
       <div className="mb-6 p-4 rounded-lg bg-black/40 border border-emerald-500/20">
