@@ -1,12 +1,14 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart } from 'lucide-react';
-import LiveChart from './LiveChart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const LiveChart = lazy(() => import('./LiveChart'));
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
+  const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(false);
   const [activeSymbol, setActiveSymbol] = useState<string | null>(null);
   const [prices, setPrices] = useState<{[key: string]: number}>({
@@ -20,6 +22,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     'BNBUSDT': 0,
   });
   const [previousPrices, setPreviousPrices] = useState<{[key: string]: number}>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -28,7 +31,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       if (pricesError) throw pricesError;
 
-      // Save previous prices to calculate changes
       setPreviousPrices({...prices});
       
       const newPrices = pricesData.reduce((acc, curr) => ({
@@ -36,7 +38,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         [curr.symbol]: curr.price
       }), {});
       
-      // Calculate price changes
       const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
         const previousPrice = previousPrices[symbol] || prices[symbol];
         if (!previousPrice) return {...acc, [symbol]: 0};
@@ -47,6 +48,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       setPrices(newPrices);
       setChanges(newChanges);
+      if (!isInitialized) setIsInitialized(true);
     } catch (error) {
       console.error('Failed to fetch crypto prices:', error);
       toast.error('Failed to fetch crypto prices');
@@ -56,10 +58,20 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
-    refreshPrices();
-    const interval = setInterval(refreshPrices, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+    const timeoutId = setTimeout(() => {
+      refreshPrices();
+    }, isMobile ? 300 : 0);
+    
+    let interval: NodeJS.Timeout;
+    if (isInitialized) {
+      interval = setInterval(refreshPrices, 30000); // Refresh every 30 seconds
+    }
+    
+    return () => {
+      clearTimeout(timeoutId);
+      if (interval) clearInterval(interval);
+    };
+  }, [isMobile, isInitialized]);
 
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', {
@@ -112,7 +124,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       className="crypto-charts-view glass-card rounded-xl border border-emerald-500/20 p-4 relative"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <h3 className="text-lg font-bold text-white font-mono tracking-wider">MARKETS</h3>
@@ -138,8 +149,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         </div>
       </div>
       
-      {/* Crypto Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-4 mb-6`}>
         {['BTCUSDT', 'ETHUSDT', 'BNBUSDT'].map((symbol) => (
           <motion.div
             key={symbol}
@@ -147,8 +157,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
             } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors`}
             onClick={() => handleSymbolSelect(symbol)}
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: isMobile ? 1 : 1.02 }}
             whileTap={{ scale: 0.98 }}
+            transition={{ duration: isMobile ? 0.1 : 0.3 }}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
@@ -178,19 +189,24 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         ))}
       </div>
       
-      {/* Active Symbol Chart */}
       <AnimatePresence>
         {activeSymbol && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: isMobile ? 0.2 : 0.3 }}
           >
-            <LiveChart 
-              symbol={activeSymbol} 
-              onClose={() => setActiveSymbol(null)} 
-            />
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
+                <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            }>
+              <LiveChart 
+                symbol={activeSymbol} 
+                onClose={() => setActiveSymbol(null)} 
+              />
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>
