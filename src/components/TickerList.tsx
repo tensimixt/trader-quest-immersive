@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
@@ -53,8 +54,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      const baseUrl = supabase.functions.url;
-      const wsUrl = baseUrl.replace('https:', 'wss:') + '/crypto-prices';
+      // Instead of directly accessing the protected 'url' property, use the proper method to construct the URL
+      const wsUrl = supabase.functions.createUrl('crypto-prices').replace('https:', 'wss:');
       
       console.log('Connecting to WebSocket URL:', wsUrl);
       
