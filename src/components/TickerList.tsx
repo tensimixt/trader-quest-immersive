@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getEdgeFunctionWebSocketUrl } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type TickerData = {
@@ -54,8 +54,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      // Correctly create the WebSocket URL using Supabase URL
-      const wsUrl = `wss://${supabase.functions.url.host}/functions/v1/crypto-prices`;
+      // Use the helper function to create the WebSocket URL
+      const wsUrl = getEdgeFunctionWebSocketUrl('crypto-prices');
       
       console.log('Connecting to WebSocket URL:', wsUrl);
       

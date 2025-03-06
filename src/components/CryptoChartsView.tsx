@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getEdgeFunctionWebSocketUrl } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -42,8 +43,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     
     try {
       console.log('Connecting to WebSocket...');
-      const supabaseUrl = supabase.functions.getURL('crypto-prices');
-      const wsUrl = supabaseUrl.replace('https://', 'wss://');
+      const wsUrl = getEdgeFunctionWebSocketUrl('crypto-prices');
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
