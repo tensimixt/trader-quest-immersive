@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -11,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WalletAuthButton } from '@/components/WalletAuthButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { AppHeader } from '@/components/AppHeader';
 import PredictionCard from '@/components/PredictionCard';
@@ -30,6 +32,7 @@ import { generatePerformanceData } from '@/utils/performanceUtils';
 const Index = () => {
   const { toast } = useToast();
   const { publicKey, connected } = useWallet();
+  const isMobile = useIsMobile();
   const [isVerified, setIsVerified] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
@@ -418,7 +421,6 @@ const Index = () => {
       }
     };
 
-    const isMobile = window.innerWidth < 1024;
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
