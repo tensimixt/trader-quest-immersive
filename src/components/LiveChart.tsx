@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -61,6 +60,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
+  const refreshIntervalRef = useRef<number | null>(null);
 
   const fetchCryptoData = async () => {
     try {
@@ -168,8 +168,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    // Fix: Create the interval correctly - setInterval returns a number (the interval ID)
-    const refreshInterval = setInterval(() => {
+    refreshIntervalRef.current = window.setInterval(() => {
       fetchCryptoData();
     }, 5 * 60 * 1000);
     
@@ -177,8 +176,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       if (wsRef.current) {
         wsRef.current.close();
       }
-      // Now we correctly pass the number to clearInterval
-      clearInterval(refreshInterval);
+      if (refreshIntervalRef.current !== null) {
+        window.clearInterval(refreshIntervalRef.current);
+      }
     };
   }, [symbol, interval]);
 
