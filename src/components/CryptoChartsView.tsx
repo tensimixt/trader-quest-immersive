@@ -1,17 +1,19 @@
-
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart } from 'lucide-react';
+import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
 
 const LiveChart = lazy(() => import('./LiveChart'));
+const BinanceTickersList = lazy(() => import('./BinanceTickersList'));
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(false);
   const [activeSymbol, setActiveSymbol] = useState<string | null>(null);
+  const [showTickersList, setShowTickersList] = useState(false);
   const [prices, setPrices] = useState<{[key: string]: number}>({
     'BTCUSDT': 0,
     'ETHUSDT': 0,
@@ -118,9 +120,16 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     if (symbol === activeSymbol) {
       setActiveSymbol(null);
     } else {
-      // Force LiveChart to remount by changing its key
       setActiveSymbol(symbol);
       setLiveChartKey(`${symbol}-${Date.now()}`);
+    }
+  };
+
+  const toggleTickersList = () => {
+    setShowTickersList(!showTickersList);
+    
+    if (!showTickersList && activeSymbol) {
+      setActiveSymbol(null);
     }
   };
 
@@ -141,6 +150,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <button 
+            onClick={toggleTickersList} 
+            className={`p-1.5 rounded-lg ${showTickersList ? 'bg-emerald-500/30' : 'bg-black/40'} text-emerald-400 hover:bg-emerald-500/20 transition-colors`}
+            title="Show 24hr tickers"
+          >
+            <List size={16} />
+          </button>
           <button 
             onClick={refreshPrices} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
@@ -198,7 +214,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       </div>
       
       <AnimatePresence>
-        {activeSymbol && (
+        {activeSymbol && !showTickersList && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -217,6 +233,16 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               />
             </Suspense>
           </motion.div>
+        )}
+
+        {showTickersList && (
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg mt-4">
+              <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+            </div>
+          }>
+            <BinanceTickersList onClose={() => setShowTickersList(false)} />
+          </Suspense>
         )}
       </AnimatePresence>
     </motion.div>
