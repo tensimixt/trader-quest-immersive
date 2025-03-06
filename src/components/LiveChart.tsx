@@ -28,6 +28,7 @@ interface KlineData {
   low: number;
   close: number;
   volume: number;
+  isNew?: boolean;
 }
 
 const getSymbolName = (symbol: string): string => {
@@ -65,6 +66,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
   const refreshIntervalRef = useRef<number | null>(null);
   const prevPriceRef = useRef<number | null>(null);
+  const newDataPointsTimestampsRef = useRef<Set<number>>(new Set());
 
   const fetchCryptoData = async () => {
     try {
@@ -95,6 +97,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       }
       
       if (responseData.history && responseData.history.length > 0) {
+        newDataPointsTimestampsRef.current = new Set();
+        
         const newDataMap = new Map<number, KlineData>();
         responseData.history.forEach((kline: KlineData) => {
           newDataMap.set(kline.timestamp, kline);
@@ -161,13 +165,23 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         setIsUpdating(true);
         setLastUpdated(new Date());
         
+        newDataPointsTimestampsRef.current.add(timestamp);
+        
+        const thirtySecondsAgo = Date.now() - 30000;
+        for (const ts of newDataPointsTimestampsRef.current) {
+          if (ts < thirtySecondsAgo) {
+            newDataPointsTimestampsRef.current.delete(ts);
+          }
+        }
+        
         const newKline: KlineData = {
           timestamp: timestamp,
           open: parseFloat(kline.o),
           high: parseFloat(kline.h),
           low: parseFloat(kline.l),
           close: parseFloat(kline.c),
-          volume: parseFloat(kline.v)
+          volume: parseFloat(kline.v),
+          isNew: true
         };
         
         setLastDataPoint(newKline);
@@ -182,7 +196,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         
         setData(prevData => {
           const updatedData = Array.from(dataMapRef.current.values())
-            .sort((a, b) => a.timestamp - b.timestamp);
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(point => ({
+              ...point,
+              isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
+            }));
           
           if (updatedData.length > 30) {
             return updatedData.slice(updatedData.length - 30);
@@ -305,7 +323,17 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
                 dot={false}
                 strokeWidth={2}
                 activeDot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#10B981' }}
+                isAnimationActive={false}
+              />
+              <Line 
+                type="monotone" 
+                dataKey={(dataPoint) => dataPoint.isNew ? dataPoint.close : null}
+                stroke="#8B5CF6"
+                dot={{ r: 3, fill: '#8B5CF6' }}
+                strokeWidth={3}
+                connectNulls
                 isAnimationActive={true}
+                animationDuration={500}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -419,6 +447,17 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           <div>Low: <span className="text-white">{formatPrice(lastDataPoint.low)}</span></div>
         </div>
       )}
+      
+      <div className="mt-3 flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span className="text-xs text-emerald-400/70 font-mono">Existing data</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 rounded-full bg-purple-500" />
+          <span className="text-xs text-emerald-400/70 font-mono">New data (30s)</span>
+        </div>
+      </div>
     </motion.div>
   );
 };
