@@ -1,8 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown } from 'lucide-react';
 import LiveChart from './LiveChart';
+import { supabase } from '@/integrations/supabase/client';
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,20 +21,20 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const refreshPrices = async () => {
     setIsLoading(true);
     try {
-      // In a real application, this would fetch from Binance API
-      // For demo, we'll use simulated data
-      const newPrices = {
-        'BTCUSDT': 65000 + (Math.random() * 2000 - 1000),
-        'ETHUSDT': 3500 + (Math.random() * 200 - 100),
-        'BNBUSDT': 550 + (Math.random() * 50 - 25),
-      };
+      const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
+      
+      if (pricesError) throw pricesError;
+
+      const newPrices = pricesData.reduce((acc, curr) => ({
+        ...acc,
+        [curr.symbol]: curr.price
+      }), {});
       
       // Calculate price changes
-      const newChanges = {
-        'BTCUSDT': ((newPrices['BTCUSDT'] - prices['BTCUSDT']) / prices['BTCUSDT']) * 100,
-        'ETHUSDT': ((newPrices['ETHUSDT'] - prices['ETHUSDT']) / prices['ETHUSDT']) * 100,
-        'BNBUSDT': ((newPrices['BNBUSDT'] - prices['BNBUSDT']) / prices['BNBUSDT']) * 100,
-      };
+      const newChanges = Object.keys(newPrices).reduce((acc, symbol) => ({
+        ...acc,
+        [symbol]: prices[symbol] ? ((newPrices[symbol] - prices[symbol]) / prices[symbol]) * 100 : 0
+      }), {});
       
       setPrices(newPrices);
       setChanges(newChanges);
@@ -45,15 +45,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  // Initialize with some prices on first render
-  React.useEffect(() => {
-    setPrices({
-      'BTCUSDT': 65000 + (Math.random() * 2000 - 1000),
-      'ETHUSDT': 3500 + (Math.random() * 200 - 100),
-      'BNBUSDT': 550 + (Math.random() * 50 - 25),
-    });
-    
-    // Set up auto-refresh interval
+  useEffect(() => {
+    refreshPrices();
     const interval = setInterval(refreshPrices, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, []);

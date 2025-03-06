@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { RefreshCw, X, Maximize2, Minimize2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LiveChartProps {
   symbol: string;
@@ -23,41 +24,42 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
-      // In a real app, you would call a crypto API here
-      // For demo purposes, we'll generate random data
-      const now = new Date();
-      const basePrice = symbol === 'BTC/USD' ? 65000 : symbol === 'ETH/USD' ? 3500 : 450;
-      const randomFactor = 0.01; // 1% variance
+      const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
-      // Generate new data point
+      if (pricesError) throw pricesError;
+
+      const price = pricesData.find(p => p.symbol === symbol.replace('/', ''))?.price;
+      
+      if (!price) {
+        throw new Error('Price not found');
+      }
+
+      const now = new Date();
       const newDataPoint = {
         timestamp: now.toISOString(),
-        price: basePrice * (1 + (Math.random() * 2 - 1) * randomFactor)
+        price: price
       };
       
-      // Update the data, keeping a moving window of the last 20 points
       setData(prevData => {
         const newData = [...prevData, newDataPoint];
         return newData.slice(-20);
       });
       
       setLastUpdated(now);
-      setIsLoading(false);
+      setError(null);
     } catch (err) {
       console.error('Error fetching crypto data:', err);
       setError('Failed to fetch data. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // Initial data fetch
     fetchCryptoData();
     
-    // Set up interval for real-time updates
     const interval = setInterval(fetchCryptoData, 5000);
     
-    // Clean up interval on unmount
     return () => clearInterval(interval);
   }, [symbol]);
 
@@ -70,13 +72,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }).format(price);
   };
 
-  // For displaying the time in chart tooltip
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString();
   };
 
-  // Calculate price change percentage
   const getPriceChange = () => {
     if (data.length < 2) return 0;
     const firstPrice = data[0].price;
@@ -99,7 +99,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       }`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <h3 className="text-lg font-bold text-white font-mono tracking-wider">{symbol} LIVE</h3>
@@ -131,7 +130,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
       </div>
       
-      {/* Price Information */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <span className="text-2xl font-bold text-white font-mono">{formatPrice(currentPrice)}</span>
@@ -146,7 +144,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
       </div>
       
-      {/* Chart */}
       <div style={{ height: chartHeight }} className="bg-black/40 rounded-lg p-2">
         {error ? (
           <div className="h-full flex items-center justify-center text-red-400 font-mono">
