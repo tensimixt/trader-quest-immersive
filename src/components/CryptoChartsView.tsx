@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart } from 'lucide-react';
+import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const LiveChart = lazy(() => import('./LiveChart'));
+const TickerList = lazy(() => import('./TickerList'));
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const isMobile = useIsMobile();
@@ -25,6 +26,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [previousPrices, setPreviousPrices] = useState<{[key: string]: number}>({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
+  const [showTickerList, setShowTickerList] = useState(false);
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -142,6 +144,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         </div>
         <div className="flex items-center space-x-2">
           <button 
+            onClick={() => setShowTickerList(!showTickerList)} 
+            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            title="Show all tickers"
+          >
+            <List size={16} />
+          </button>
+          <button 
             onClick={refreshPrices} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
@@ -157,65 +166,92 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         </div>
       </div>
       
-      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-4 mb-6`}>
-        {['BTCUSDT', 'ETHUSDT', 'BNBUSDT'].map((symbol) => (
+      <AnimatePresence mode="wait">
+        {showTickerList ? (
           <motion.div
-            key={symbol}
-            className={`crypto-card p-4 rounded-lg border ${
-              activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
-            } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors`}
-            onClick={() => handleSymbolSelect(symbol)}
-            whileHover={{ scale: isMobile ? 1 : 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: isMobile ? 0.1 : 0.3 }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2">
-                <div className="text-emerald-400">
-                  {getIconForSymbol(symbol)}
-                </div>
-                <span className="font-mono text-sm text-emerald-400">{getNameForSymbol(symbol)}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                {isNaN(changes[symbol]) ? null : changes[symbol] >= 0 ? (
-                  <TrendingUp size={16} className="text-emerald-400" />
-                ) : (
-                  <TrendingDown size={16} className="text-red-400" />
-                )}
-              </div>
-            </div>
-            <div className="flex items-end justify-between">
-              <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
-              <span className={`text-sm font-mono ${
-                isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
-                changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
-              }`}>
-                {isNaN(changes[symbol]) ? '--' : formatChange(changes[symbol])}
-              </span>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-      
-      <AnimatePresence>
-        {activeSymbol && (
-          <motion.div
+            key="ticker-list"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: isMobile ? 0.2 : 0.3 }}
+            transition={{ duration: 0.3 }}
           >
             <Suspense fallback={
               <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
                 <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
               </div>
             }>
-              <LiveChart 
-                key={liveChartKey}
-                symbol={activeSymbol} 
-                onClose={() => setActiveSymbol(null)} 
-              />
+              <TickerList onClose={() => setShowTickerList(false)} />
             </Suspense>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="crypto-cards"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-4 mb-6`}>
+              {['BTCUSDT', 'ETHUSDT', 'BNBUSDT'].map((symbol) => (
+                <motion.div
+                  key={symbol}
+                  className={`crypto-card p-4 rounded-lg border ${
+                    activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
+                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors`}
+                  onClick={() => handleSymbolSelect(symbol)}
+                  whileHover={{ scale: isMobile ? 1 : 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: isMobile ? 0.1 : 0.3 }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="text-emerald-400">
+                        {getIconForSymbol(symbol)}
+                      </div>
+                      <span className="font-mono text-sm text-emerald-400">{getNameForSymbol(symbol)}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {isNaN(changes[symbol]) ? null : changes[symbol] >= 0 ? (
+                        <TrendingUp size={16} className="text-emerald-400" />
+                      ) : (
+                        <TrendingDown size={16} className="text-red-400" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
+                    <span className={`text-sm font-mono ${
+                      isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
+                      changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {isNaN(changes[symbol]) ? '--' : formatChange(changes[symbol])}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            
+            <AnimatePresence>
+              {activeSymbol && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: isMobile ? 0.2 : 0.3 }}
+                >
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
+                      <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+                    </div>
+                  }>
+                    <LiveChart 
+                      key={liveChartKey}
+                      symbol={activeSymbol} 
+                      onClose={() => setActiveSymbol(null)} 
+                    />
+                  </Suspense>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

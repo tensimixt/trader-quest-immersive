@@ -40,6 +40,32 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
   }
 }
 
+async function fetch24hTickers() {
+  try {
+    const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    
+    // Only include USDT pairs for simplicity and sort by volume
+    return data
+      .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
+      .sort((a: any, b: any) => parseFloat(b.volume) - parseFloat(a.volume))
+      .slice(0, 50) // Limit to top 50 by volume
+      .map((ticker: any) => ({
+        symbol: ticker.symbol,
+        priceChange: ticker.priceChange,
+        priceChangePercent: ticker.priceChangePercent,
+        lastPrice: ticker.lastPrice,
+        volume: ticker.volume,
+      }));
+  } catch (error) {
+    console.error('Error fetching 24h tickers:', error);
+    return [];
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -51,6 +77,7 @@ serve(async (req) => {
     let symbol = url.searchParams.get('symbol');
     let getHistory = url.searchParams.get('history') === 'true';
     let interval = url.searchParams.get('interval') || '15m';
+    let get24hTickers = url.searchParams.get('get24hTickers') === 'true';
     
     // If there's a request body, check for parameters there as well
     const contentType = req.headers.get('content-type') || '';
@@ -61,12 +88,22 @@ serve(async (req) => {
         symbol = body.symbol || symbol;
         getHistory = (body.history === 'true' || body.history === true) || getHistory;
         interval = body.interval || interval;
+        get24hTickers = (body.get24hTickers === 'true' || body.get24hTickers === true) || get24hTickers;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
       }
     }
     
-    if (symbol) {
+    if (get24hTickers) {
+      // Fetch 24-hour tickers for multiple symbols
+      const tickers = await fetch24hTickers();
+      return new Response(JSON.stringify(tickers), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else if (symbol) {
       // Single symbol request with optional history
       const price = await fetchBinancePrice(symbol);
       
