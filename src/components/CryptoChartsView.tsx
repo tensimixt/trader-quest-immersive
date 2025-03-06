@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart } from 'lucide-react';
 import LiveChart from './LiveChart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -115,7 +115,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <h3 className="text-lg font-bold text-white font-mono tracking-wider">CRYPTO_MARKETS</h3>
+          <h3 className="text-lg font-bold text-white font-mono tracking-wider">MARKETS</h3>
           <div className="flex items-center space-x-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs text-emerald-400/70 font-mono">LIVE</span>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, Network, Send, History, ArrowLeft,
   MessageCircle, Activity, Radio, Search, Loader,
-  CreditCard, Bitcoin
+  CreditCard, Bitcoin, BarChart
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -403,7 +403,7 @@ const Index = () => {
     { value: "chat", icon: <MessageCircle className="w-4 h-4 mr-2" />, label: "Chat" },
     { value: "codec", icon: <Radio className="w-4 h-4 mr-2" />, label: "CODEC" },
     { value: "leaderboard", icon: <Activity className="w-4 h-4 mr-2" />, label: "Leaderboard" },
-    { value: "crypto_charts", icon: <Bitcoin className="w-4 h-4 mr-2" />, label: "Crypto" },
+    { value: "crypto_charts", icon: <BarChart className="w-4 h-4 mr-2" />, label: "Markets" },
     { value: "market_intel", icon: <Network className="w-4 h-4 mr-2" />, label: "Intel", mobileOnly: true }
   ];
 
@@ -622,9 +622,9 @@ const Index = () => {
                         </>
                       ) : showCryptoCharts ? (
                         <>
-                          <Bitcoin className="w-5 h-5 text-yellow-400" />
+                          <BarChart className="w-5 h-5 text-yellow-400" />
                           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            CRYPTO_MARKETS
+                            MARKETS
                             <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
                           </h2>
                         </>
@@ -639,17 +639,6 @@ const Index = () => {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      {!showCryptoCharts && !isHistoryView && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={toggleCryptoCharts}
-                          className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
-                        >
-                          <Bitcoin className="w-4 h-4 mr-2" />
-                          Crypto Markets
-                        </Button>
-                      )}
                       {(isHistoryView || showCryptoCharts) && (
                         <Button
                           variant="ghost"
