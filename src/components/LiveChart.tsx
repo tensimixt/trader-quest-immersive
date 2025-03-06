@@ -57,14 +57,20 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [interval, setInterval] = useState<string>('15m');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
+  const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
   const refreshIntervalRef = useRef<number | null>(null);
+  const prevPriceRef = useRef<number | null>(null);
 
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
+      setIsUpdating(true);
+      
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
         body: { symbol, history: 'true', interval }
       });
@@ -72,7 +78,20 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       if (fetchError) throw fetchError;
       
       if (responseData.price) {
-        setCurrentPrice(responseData.price);
+        const newPrice = responseData.price;
+        
+        if (prevPriceRef.current !== null) {
+          if (newPrice > prevPriceRef.current) {
+            setPriceChangeAnimation('increase');
+          } else if (newPrice < prevPriceRef.current) {
+            setPriceChangeAnimation('decrease');
+          }
+          
+          setTimeout(() => setPriceChangeAnimation(null), 1000);
+        }
+        
+        prevPriceRef.current = newPrice;
+        setCurrentPrice(newPrice);
       }
       
       if (responseData.history && responseData.history.length > 0) {
@@ -84,18 +103,27 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         dataMapRef.current = newDataMap;
         
         const sortedData = Array.from(newDataMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+        
+        if (sortedData.length > 0) {
+          setLastDataPoint(sortedData[sortedData.length - 1]);
+        }
+        
         setData(sortedData);
       }
       
       setLastUpdated(new Date());
       lastFullRefreshRef.current = Date.now();
       setError(null);
+      
+      toast.success(`${getSymbolName(symbol)} data updated`);
     } catch (err) {
       console.error('Error fetching crypto data:', err);
       setError('Failed to fetch data. Please try again.');
       toast.error('Failed to load chart data');
     } finally {
       setIsLoading(false);
+      
+      setTimeout(() => setIsUpdating(false), 500);
     }
   };
 
@@ -116,8 +144,21 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       if (message.k) {
         const kline = message.k;
         const timestamp = kline.t;
+        const newPrice = parseFloat(kline.c);
         
-        setCurrentPrice(parseFloat(kline.c));
+        if (prevPriceRef.current !== null) {
+          if (newPrice > prevPriceRef.current) {
+            setPriceChangeAnimation('increase');
+          } else if (newPrice < prevPriceRef.current) {
+            setPriceChangeAnimation('decrease');
+          }
+          
+          setTimeout(() => setPriceChangeAnimation(null), 1000);
+        }
+        
+        prevPriceRef.current = newPrice;
+        setCurrentPrice(newPrice);
+        setIsUpdating(true);
         setLastUpdated(new Date());
         
         const newKline: KlineData = {
@@ -129,6 +170,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           volume: parseFloat(kline.v)
         };
         
+        setLastDataPoint(newKline);
         dataMapRef.current.set(timestamp, newKline);
         
         const now = Date.now();
@@ -148,6 +190,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           
           return updatedData;
         });
+        
+        setTimeout(() => setIsUpdating(false), 500);
       }
     };
     
@@ -207,7 +251,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
   const ChartContent = ({ height }: { height: number }) => (
-    <div style={{ height }} className="bg-black/40 rounded-lg p-2">
+    <div style={{ height }} className={`bg-black/40 rounded-lg p-2 ${isUpdating ? 'ring-2 ring-emerald-500 transition-all duration-300' : ''}`}>
       <div className="mb-2 flex items-center justify-between px-2">
         <div className="text-xs text-emerald-400/70 font-mono">
           Timeframe: {interval}
@@ -223,47 +267,56 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           {error}
         </div>
       ) : data.length > 0 ? (
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
-            <XAxis 
-              dataKey="timestamp" 
-              tickFormatter={formatTime}
-              stroke="#10B981" 
-              tick={{ fill: '#10B981', fontSize: 10 }}
-              axisLine={{ stroke: '#10B981', strokeWidth: 1 }}
-            />
-            <YAxis 
-              domain={['auto', 'auto']}
-              stroke="#10B981"
-              tick={{ fill: '#10B981', fontSize: 10 }}
-              tickFormatter={(value) => value.toFixed(0)}
-              width={40}
-            />
-            <Tooltip 
-              formatter={(value: number) => [formatPrice(value), 'Price']}
-              labelFormatter={formatTime}
-              contentStyle={{ 
-                backgroundColor: 'rgba(0,0,0,0.9)', 
-                border: '1px solid #10B981',
-                borderRadius: '8px',
-                color: '#10B981'
-              }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="close" 
-              stroke="#10B981" 
-              dot={false}
-              strokeWidth={2}
-              activeDot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#10B981' }}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
+              <XAxis 
+                dataKey="timestamp" 
+                tickFormatter={formatTime}
+                stroke="#10B981" 
+                tick={{ fill: '#10B981', fontSize: 10 }}
+                axisLine={{ stroke: '#10B981', strokeWidth: 1 }}
+              />
+              <YAxis 
+                domain={['auto', 'auto']}
+                stroke="#10B981"
+                tick={{ fill: '#10B981', fontSize: 10 }}
+                tickFormatter={(value) => value.toFixed(0)}
+                width={40}
+              />
+              <Tooltip 
+                formatter={(value: number) => [formatPrice(value), 'Price']}
+                labelFormatter={formatTime}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(0,0,0,0.9)', 
+                  border: '1px solid #10B981',
+                  borderRadius: '8px',
+                  color: '#10B981'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="close" 
+                stroke="#10B981" 
+                dot={false}
+                strokeWidth={2}
+                activeDot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#10B981' }}
+                isAnimationActive={true}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          {isUpdating && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <div className="bg-black/70 rounded-full p-3 animate-pulse">
+                <RefreshCw size={24} className="text-emerald-400 animate-spin" />
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="h-full flex items-center justify-center text-emerald-400/50 font-mono">
           {isLoading ? 'Loading data...' : 'No data available'}
@@ -284,7 +337,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         <div className="flex items-center space-x-3">
           <h3 className="text-lg font-bold text-white font-mono tracking-wider">{getSymbolName(symbol)} LIVE</h3>
           <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className={`w-2 h-2 rounded-full ${isUpdating ? 'bg-emerald-400 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
             <span className="text-xs text-emerald-400/70 font-mono">LIVE</span>
           </div>
         </div>
@@ -307,7 +360,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           </Dialog>
           <button 
             onClick={fetchCryptoData} 
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            className={`p-1.5 rounded-lg ${isLoading ? 'bg-emerald-500/30' : 'bg-black/40'} text-emerald-400 hover:bg-emerald-500/20 transition-colors`}
             disabled={isLoading}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
@@ -323,19 +376,49 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       
       <div className="flex items-center justify-between mb-4">
         <div>
-          <span className="text-2xl font-bold text-white font-mono">{formatPrice(price)}</span>
+          <motion.span 
+            className={`text-2xl font-bold font-mono ${
+              priceChangeAnimation === 'increase' 
+                ? 'text-emerald-400' 
+                : priceChangeAnimation === 'decrease' 
+                  ? 'text-red-400' 
+                  : 'text-white'
+            }`}
+            animate={priceChangeAnimation ? {
+              y: priceChangeAnimation === 'increase' ? [-5, 0] : [5, 0],
+              transition: { duration: 0.3 }
+            } : {}}
+          >
+            {formatPrice(price)}
+          </motion.span>
           <div className="flex items-center mt-1">
             <span className={`text-sm font-mono ${priceChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
             </span>
           </div>
         </div>
-        <div className="text-xs text-emerald-400/70 font-mono">
-          Last update: {lastUpdated.toLocaleTimeString()}
+        <div className="flex flex-col items-end">
+          <div className="text-xs text-emerald-400/70 font-mono">
+            Last update: {lastUpdated.toLocaleTimeString()}
+          </div>
+          {isUpdating && (
+            <div className="text-xs text-emerald-400 font-mono mt-1 animate-pulse">
+              Updating...
+            </div>
+          )}
         </div>
       </div>
       
       <ChartContent height={200} />
+      
+      {lastDataPoint && (
+        <div className="mt-2 text-xs font-mono grid grid-cols-2 gap-2 text-emerald-400/70">
+          <div>Open: <span className="text-white">{formatPrice(lastDataPoint.open)}</span></div>
+          <div>Close: <span className="text-white">{formatPrice(lastDataPoint.close)}</span></div>
+          <div>High: <span className="text-white">{formatPrice(lastDataPoint.high)}</span></div>
+          <div>Low: <span className="text-white">{formatPrice(lastDataPoint.low)}</span></div>
+        </div>
+      )}
     </motion.div>
   );
 };
