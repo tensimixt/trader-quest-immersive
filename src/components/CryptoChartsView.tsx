@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown } from 'lucide-react';
 import LiveChart from './LiveChart';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +19,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     'ETHUSDT': 0,
     'BNBUSDT': 0,
   });
+  const [previousPrices, setPreviousPrices] = useState<{[key: string]: number}>({});
 
   const refreshPrices = async () => {
     setIsLoading(true);
@@ -25,21 +28,28 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       if (pricesError) throw pricesError;
 
+      // Save previous prices to calculate changes
+      setPreviousPrices({...prices});
+      
       const newPrices = pricesData.reduce((acc, curr) => ({
         ...acc,
         [curr.symbol]: curr.price
       }), {});
       
       // Calculate price changes
-      const newChanges = Object.keys(newPrices).reduce((acc, symbol) => ({
-        ...acc,
-        [symbol]: prices[symbol] ? ((newPrices[symbol] - prices[symbol]) / prices[symbol]) * 100 : 0
-      }), {});
+      const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
+        const previousPrice = previousPrices[symbol] || prices[symbol];
+        if (!previousPrice) return {...acc, [symbol]: 0};
+        
+        const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
+        return {...acc, [symbol]: change};
+      }, {});
       
       setPrices(newPrices);
       setChanges(newChanges);
     } catch (error) {
       console.error('Failed to fetch crypto prices:', error);
+      toast.error('Failed to fetch crypto prices');
     } finally {
       setIsLoading(false);
     }

@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { RefreshCw, X, Maximize2, Minimize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface LiveChartProps {
   symbol: string;
@@ -10,12 +12,22 @@ interface LiveChartProps {
 }
 
 interface PriceData {
-  timestamp: string;
+  timestamp: number;
   price: number;
 }
 
+interface KlineData {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
-  const [data, setData] = useState<PriceData[]>([]);
+  const [data, setData] = useState<KlineData[]>([]);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -24,32 +36,28 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const fetchCryptoData = async () => {
     try {
       setIsLoading(true);
-      const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
-      
-      if (pricesError) throw pricesError;
-
-      const price = pricesData.find(p => p.symbol === symbol.replace('/', ''))?.price;
-      
-      if (!price) {
-        throw new Error('Price not found');
-      }
-
-      const now = new Date();
-      const newDataPoint = {
-        timestamp: now.toISOString(),
-        price: price
-      };
-      
-      setData(prevData => {
-        const newData = [...prevData, newDataPoint];
-        return newData.slice(-20);
+      const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
+        body: { symbol, history: true },
+        query: { symbol, history: 'true' }
       });
       
-      setLastUpdated(now);
+      if (fetchError) throw fetchError;
+      
+      if (responseData.price) {
+        setCurrentPrice(responseData.price);
+      }
+      
+      if (responseData.history && responseData.history.length > 0) {
+        // Transform data for chart
+        setData(responseData.history);
+      }
+      
+      setLastUpdated(new Date());
       setError(null);
     } catch (err) {
       console.error('Error fetching crypto data:', err);
       setError('Failed to fetch data. Please try again.');
+      toast.error('Failed to load chart data');
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +66,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   useEffect(() => {
     fetchCryptoData();
     
-    const interval = setInterval(fetchCryptoData, 5000);
+    const interval = setInterval(fetchCryptoData, 30000); // Refresh every 30 seconds
     
     return () => clearInterval(interval);
   }, [symbol]);
@@ -72,22 +80,31 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }).format(price);
   };
 
-  const formatTime = (timestamp: string) => {
+  const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString();
   };
 
   const getPriceChange = () => {
     if (data.length < 2) return 0;
-    const firstPrice = data[0].price;
-    const lastPrice = data[data.length - 1].price;
+    const firstPrice = data[0].close;
+    const lastPrice = data[data.length - 1].close;
     return ((lastPrice - firstPrice) / firstPrice) * 100;
   };
 
   const priceChange = getPriceChange();
-  const currentPrice = data.length > 0 ? data[data.length - 1].price : 0;
+  const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
   const chartHeight = isExpanded ? 400 : 200;
+  
+  const getSymbolName = (ticker: string) => {
+    switch (ticker) {
+      case 'BTCUSDT': return 'Bitcoin';
+      case 'ETHUSDT': return 'Ethereum';
+      case 'BNBUSDT': return 'Binance Coin';
+      default: return ticker;
+    }
+  };
   
   return (
     <motion.div
@@ -101,7 +118,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <h3 className="text-lg font-bold text-white font-mono tracking-wider">{symbol} LIVE</h3>
+          <h3 className="text-lg font-bold text-white font-mono tracking-wider">{getSymbolName(symbol)} LIVE</h3>
           <div className="flex items-center space-x-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs text-emerald-400/70 font-mono">LIVE</span>
@@ -132,7 +149,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       
       <div className="flex items-center justify-between mb-4">
         <div>
-          <span className="text-2xl font-bold text-white font-mono">{formatPrice(currentPrice)}</span>
+          <span className="text-2xl font-bold text-white font-mono">{formatPrice(price)}</span>
           <div className="flex items-center mt-1">
             <span className={`text-sm font-mono ${priceChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
@@ -182,7 +199,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               />
               <Line 
                 type="monotone" 
-                dataKey="price" 
+                dataKey="close" 
                 stroke="#10B981" 
                 dot={false}
                 strokeWidth={2}
@@ -192,7 +209,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center text-emerald-400/50 font-mono">
-            Loading data...
+            {isLoading ? 'Loading data...' : 'No data available'}
           </div>
         )}
       </div>
