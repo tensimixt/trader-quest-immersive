@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bitcoin, Ethereum, BarChart2, RefreshCw, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown } from 'lucide-react';
 import LiveChart from './LiveChart';
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
@@ -76,7 +76,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       case 'BTCUSDT':
         return <Bitcoin className="w-5 h-5" />;
       case 'ETHUSDT':
-        return <Ethereum className="w-5 h-5" />;
+        return <Coins className="w-5 h-5" />;
       case 'BNBUSDT':
         return <BarChart2 className="w-5 h-5" />;
       default:
