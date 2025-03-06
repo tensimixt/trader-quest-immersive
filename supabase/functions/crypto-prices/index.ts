@@ -42,6 +42,7 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
 
 async function fetch24hTickers() {
   try {
+    console.log('Fetching 24h tickers from Binance API');
     const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -49,17 +50,20 @@ async function fetch24hTickers() {
     const data = await response.json();
     
     // Only include USDT pairs for simplicity and sort by volume
-    return data
+    const filteredData = data
       .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
-      .sort((a: any, b: any) => parseFloat(b.volume) - parseFloat(a.volume))
-      .slice(0, 50) // Limit to top 50 by volume
-      .map((ticker: any) => ({
-        symbol: ticker.symbol,
-        priceChange: ticker.priceChange,
-        priceChangePercent: ticker.priceChangePercent,
-        lastPrice: ticker.lastPrice,
-        volume: ticker.volume,
-      }));
+      .sort((a: any, b: any) => parseFloat(b.volume) - parseFloat(a.volume));
+    
+    console.log(`Fetched ${filteredData.length} USDT pairs from Binance`);
+    
+    // Don't limit to top 50 anymore, return all USDT pairs
+    return filteredData.map((ticker: any) => ({
+      symbol: ticker.symbol,
+      priceChange: ticker.priceChange,
+      priceChangePercent: ticker.priceChangePercent,
+      lastPrice: ticker.lastPrice,
+      volume: ticker.volume,
+    }));
   } catch (error) {
     console.error('Error fetching 24h tickers:', error);
     return [];
