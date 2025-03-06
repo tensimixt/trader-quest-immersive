@@ -57,10 +57,11 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       webSocketRef.current.close();
     }
 
-    // Get the Supabase URL for the function
-    const functionUrl = supabase.functions.url('crypto-prices');
-    // Convert from https: to wss: for WebSocket connection
+    // Create the WebSocket URL properly
+    // We need to convert the Edge Function URL to WebSocket URL
+    const functionUrl = `${supabase.functions.url}/crypto-prices`;
     const wsUrl = functionUrl.replace('https:', 'wss:');
+    
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
