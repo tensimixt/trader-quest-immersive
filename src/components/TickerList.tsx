@@ -54,8 +54,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      // Instead of directly accessing the protected 'url' property, use the proper method to construct the URL
-      const wsUrl = supabase.functions.createUrl('crypto-prices').replace('https:', 'wss:');
+      // Correctly create the WebSocket URL using Supabase URL
+      const wsUrl = `wss://${supabase.functions.url.host}/functions/v1/crypto-prices`;
       
       console.log('Connecting to WebSocket URL:', wsUrl);
       
