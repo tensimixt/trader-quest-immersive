@@ -1,9 +1,16 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+// Default values for local development (these should be replaced with real values in production)
+const DEFAULT_SUPABASE_URL = 'https://placeholder-project.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'placeholder-key';
+
+// Get environment variables with fallbacks
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
+
+// Create Supabase client
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Constructs a WebSocket URL for connecting to a Supabase Edge Function
@@ -12,7 +19,6 @@ export const supabase = createClient(
  */
 export const getEdgeFunctionWebSocketUrl = (functionName: string): string => {
   // Extract the project ID from the Supabase URL
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1] || '';
   
   // Construct WebSocket URL
