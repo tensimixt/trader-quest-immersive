@@ -104,20 +104,35 @@
   animation: float 6s ease-in-out infinite;
 }
 
+@keyframes price-flash {
+  0% {
+    background-color: rgba(16, 185, 129, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-update {
+  animation: price-flash 2s ease-out;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-black/20 rounded-full;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-emerald-500/20 rounded-full transition-colors duration-200;
+  background: rgba(16, 185, 129, 0.5);
+  border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-emerald-500/40;
+  background: rgba(16, 185, 129, 0.7);
 }
 
 .custom-scrollbar {

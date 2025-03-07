@@ -131,6 +131,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           }
           
           if (data.type === 'price') {
+            console.log('Received price update:', data);
             setPrices(prevPrices => ({
               ...prevPrices,
               [data.symbol]: parseFloat(data.price)
@@ -141,6 +142,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               [data.symbol]: parseFloat(data.change)
             }));
             
+            // Flash animation effect on price update
+            const symbol = data.symbol;
+            document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.add('flash-update');
+            setTimeout(() => {
+              document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.remove('flash-update');
+            }, 2000);
+            
             return;
           }
           
@@ -150,8 +158,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             setIsInitialized(true);
             return;
           }
-          
-          console.log('WebSocket message received:', data.type);
           
           if (data.type === 'initial' || data.type === 'refresh') {
             const newPrices = data.data.reduce((acc: {[key: string]: number}, ticker: any) => {
@@ -479,6 +485,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               {['BTCUSDT', 'ETHUSDT', 'BNBUSDT'].map((symbol) => (
                 <motion.div
                   key={symbol}
+                  data-symbol={symbol}
                   className={`crypto-card p-4 rounded-lg border ${
                     activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
                   } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors`}

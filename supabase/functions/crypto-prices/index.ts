@@ -136,7 +136,7 @@ serve(async (req) => {
         const topSymbols = ['btcusdt', 'ethusdt', 'bnbusdt'];
         
         try {
-          // Connect to Binance WebSocket API instead of streams
+          // Connect to Binance WebSocket API
           const binanceWs = new WebSocket('wss://ws-api.binance.com:443/ws-api/v3');
           
           binanceWs.onopen = () => {
@@ -145,7 +145,6 @@ serve(async (req) => {
             // Subscribe to market mini tickers for our symbols
             for (const symbol of topSymbols) {
               // Setup interval to fetch prices every few seconds
-              // (since WebSocket API doesn't support streams directly)
               setInterval(() => {
                 if (binanceWs.readyState === WebSocket.OPEN) {
                   const requestId = crypto.randomUUID();
@@ -165,7 +164,7 @@ serve(async (req) => {
             try {
               const data = JSON.parse(event.data);
               
-              // Check if it's a ping message from Binance
+              // Check if it's a ticker response from Binance
               if (data.id && data.status === 200 && data.result) {
                 const ticker = data.result;
                 const symbol = ticker.symbol;
@@ -182,18 +181,21 @@ serve(async (req) => {
                 
                 // Send update to client
                 if (socket.readyState === WebSocket.OPEN) {
+                  // Send general ticker update for the ticker list
                   socket.send(JSON.stringify({
                     type: 'update',
                     data: formattedTicker
                   }));
                   
-                  // Also send simple price update for the main cards
+                  // Also send simplified price update for the main cards
                   socket.send(JSON.stringify({
                     type: 'price',
                     symbol: symbol,
                     price: ticker.lastPrice,
                     change: ticker.priceChangePercent
                   }));
+                  
+                  console.log(`Sent price update for ${symbol}: ${ticker.lastPrice}`);
                 }
               }
               
@@ -207,16 +209,6 @@ serve(async (req) => {
               }
             } catch (e) {
               console.error('Error processing Binance WebSocket message:', e);
-            }
-          };
-          
-          binanceWs.onerror = (error) => {
-            console.error('Binance WebSocket error:', error);
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'error',
-                message: 'Binance connection error'
-              }));
             }
           };
           
