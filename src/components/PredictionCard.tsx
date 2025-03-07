@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
-import classNames from 'tailwind-merge';
+import { twMerge } from 'tailwind-merge';
+import { cn } from '../lib/utils';
 
 // Define the prediction props
 type PredictionCardProps = {
@@ -33,7 +34,7 @@ const PredictionCard = ({
   const [showOrderBook, setShowOrderBook] = useState(false);
 
   // Styling based on prediction direction
-  const cardStyle = classNames(
+  const cardStyle = cn(
     "glass-card rounded-2xl p-4 border bg-black/30 backdrop-blur-sm text-white",
     prediction === 'up' 
       ? "border-emerald-500/30" 
