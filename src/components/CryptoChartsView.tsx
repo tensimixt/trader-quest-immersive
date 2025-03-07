@@ -32,7 +32,25 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const webSocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPingTimeRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
+
+  // Function to handle ping/pong for connection health
+  const setupPingPong = (ws: WebSocket) => {
+    // Clear existing interval if any
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+    }
+    
+    // Set up ping every 25 seconds
+    pingIntervalRef.current = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+        lastPingTimeRef.current = Date.now();
+      }
+    }, 25000);
+  };
 
   const connectWebSocket = () => {
     if (webSocketRef.current) {
@@ -40,6 +58,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     }
     
     setWsConnected(false);
+    setIsLoading(true);
     
     try {
       console.log('Connecting to WebSocket...');
@@ -52,13 +71,47 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       ws.onopen = () => {
         console.log('WebSocket connection established');
         setWsConnected(true);
+        setIsLoading(false);
         toast.success('Connected to live price updates');
         reconnectAttempts.current = 0;
+        
+        // Setup ping/pong
+        setupPingPong(ws);
       };
       
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          
+          // Handle ping from server
+          if (data.type === 'ping') {
+            ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+            return;
+          }
+          
+          // Handle single price update
+          if (data.type === 'price') {
+            setPrices(prevPrices => ({
+              ...prevPrices,
+              [data.symbol]: parseFloat(data.price)
+            }));
+            
+            setChanges(prevChanges => ({
+              ...prevChanges,
+              [data.symbol]: parseFloat(data.change)
+            }));
+            
+            return;
+          }
+          
+          // Handle initial prices
+          if (data.type === 'prices') {
+            setPrices(data.data);
+            setChanges(data.changes);
+            setIsInitialized(true);
+            return;
+          }
+          
           console.log('WebSocket message received:', data.type);
           
           if (data.type === 'initial' || data.type === 'refresh') {
@@ -73,7 +126,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             }, {});
             
             setPreviousPrices(prices);
-            setPrices(newPrices);
+            setPrices(prevPrices => ({
+              ...prevPrices,
+              ...newPrices
+            }));
             
             const newChanges = Object.keys(newPrices).reduce((acc: {[key: string]: number}, symbol) => {
               if (data.type === 'initial') {
@@ -91,7 +147,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               }
             }, {});
             
-            setChanges(newChanges);
+            setChanges(prevChanges => ({
+              ...prevChanges,
+              ...newChanges
+            }));
             if (!isInitialized) setIsInitialized(true);
           } else if (data.type === 'update') {
             const ticker = data.data;
@@ -125,12 +184,20 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setWsConnected(false);
+        setIsLoading(false);
         toast.error('WebSocket connection error');
       };
       
       ws.onclose = () => {
         console.log('WebSocket connection closed');
         setWsConnected(false);
+        setIsLoading(false);
+        
+        // Clear ping interval
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
         
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current += 1;
@@ -155,6 +222,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     } catch (error) {
       console.error('Error setting up WebSocket:', error);
       setWsConnected(false);
+      setIsLoading(false);
       refreshPrices();
     }
   };
@@ -229,6 +297,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
+      
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
     };
   }, []);
   
@@ -246,6 +319,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   }, [wsConnected, isInitialized]);
 
   const formatPrice = (price: number): string => {
+    if (isNaN(price) || price === 0) return "$0.00";
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -255,6 +330,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   const formatChange = (change: number): string => {
+    if (isNaN(change)) return "0.00%";
     return change > 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
   };
 
@@ -393,7 +469,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                       isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>
-                      {isNaN(changes[symbol]) ? '--' : formatChange(changes[symbol])}
+                      {formatChange(changes[symbol])}
                     </span>
                   </div>
                 </motion.div>
