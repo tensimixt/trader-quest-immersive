@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
-import { supabase, getEdgeFunctionWebSocketUrl, createManagedWebSocket } from '@/integrations/supabase/client';
+import { supabase, getEdgeFunctionWebSocketUrl } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -28,7 +29,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [showTickerList, setShowTickerList] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   
-  const webSocketRef = useRef<ReturnType<typeof createManagedWebSocket> | null>(null);
+  const webSocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
@@ -36,7 +37,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const connectWebSocket = () => {
     if (webSocketRef.current) {
       webSocketRef.current.close();
-      webSocketRef.current = null;
     }
     
     setWsConnected(false);
@@ -44,94 +44,114 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     try {
       console.log('Connecting to WebSocket...');
       const wsUrl = getEdgeFunctionWebSocketUrl('crypto-prices');
+      console.log('WebSocket URL:', wsUrl);
       
-      webSocketRef.current = createManagedWebSocket(
-        wsUrl,
-        (data) => {
-          try {
-            console.log('WebSocket message received:', data.type);
-            
-            if (data.type === 'initial' || data.type === 'refresh') {
-              const newPrices = data.data.reduce((acc: {[key: string]: number}, ticker: any) => {
-                if (ticker.symbol) {
-                  return {
-                    ...acc,
-                    [ticker.symbol]: parseFloat(ticker.lastPrice)
-                  };
-                }
-                return acc;
-              }, {});
-              
-              setPreviousPrices(prices);
-              setPrices(newPrices);
-              
-              const newChanges = Object.keys(newPrices).reduce((acc: {[key: string]: number}, symbol) => {
-                if (data.type === 'initial') {
-                  const ticker = data.data.find((t: any) => t.symbol === symbol);
-                  return {
-                    ...acc,
-                    [symbol]: ticker ? parseFloat(ticker.priceChangePercent) : 0
-                  };
-                } else {
-                  const previousPrice = previousPrices[symbol] || prices[symbol];
-                  if (!previousPrice) return {...acc, [symbol]: 0};
-                  
-                  const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
-                  return {...acc, [symbol]: change};
-                }
-              }, {});
-              
-              setChanges(newChanges);
-              if (!isInitialized) setIsInitialized(true);
-            } else if (data.type === 'update') {
-              const ticker = data.data;
-              
-              setPrices(prevPrices => {
-                const previousPrice = prevPrices[ticker.symbol] || 0;
-                
-                if (previousPrice > 0) {
-                  setPreviousPrices(prev => ({
-                    ...prev,
-                    [ticker.symbol]: previousPrice
-                  }));
-                }
-                
+      const ws = new WebSocket(wsUrl);
+      webSocketRef.current = ws;
+      
+      ws.onopen = () => {
+        console.log('WebSocket connection established');
+        setWsConnected(true);
+        toast.success('Connected to live price updates');
+        reconnectAttempts.current = 0;
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data.type);
+          
+          if (data.type === 'initial' || data.type === 'refresh') {
+            const newPrices = data.data.reduce((acc: {[key: string]: number}, ticker: any) => {
+              if (ticker.symbol) {
                 return {
-                  ...prevPrices,
+                  ...acc,
                   [ticker.symbol]: parseFloat(ticker.lastPrice)
                 };
-              });
-              
-              setChanges(prevChanges => ({
-                ...prevChanges,
-                [ticker.symbol]: parseFloat(ticker.priceChangePercent)
-              }));
-            } else if (data.type === 'ping') {
-              if (webSocketRef.current) {
-                webSocketRef.current.send({ type: 'pong', timestamp: Date.now() });
               }
-            } else if (data.type === 'pong') {
-              console.log('Received pong from server, connection is alive');
-            }
-          } catch (error) {
-            console.error('Error processing WebSocket message:', error);
+              return acc;
+            }, {});
+            
+            setPreviousPrices(prices);
+            setPrices(newPrices);
+            
+            const newChanges = Object.keys(newPrices).reduce((acc: {[key: string]: number}, symbol) => {
+              if (data.type === 'initial') {
+                const ticker = data.data.find((t: any) => t.symbol === symbol);
+                return {
+                  ...acc,
+                  [symbol]: ticker ? parseFloat(ticker.priceChangePercent) : 0
+                };
+              } else {
+                const previousPrice = previousPrices[symbol] || prices[symbol];
+                if (!previousPrice) return {...acc, [symbol]: 0};
+                
+                const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
+                return {...acc, [symbol]: change};
+              }
+            }, {});
+            
+            setChanges(newChanges);
+            if (!isInitialized) setIsInitialized(true);
+          } else if (data.type === 'update') {
+            const ticker = data.data;
+            
+            setPrices(prevPrices => {
+              const previousPrice = prevPrices[ticker.symbol] || 0;
+              
+              if (previousPrice > 0) {
+                setPreviousPrices(prev => ({
+                  ...prev,
+                  [ticker.symbol]: previousPrice
+                }));
+              }
+              
+              return {
+                ...prevPrices,
+                [ticker.symbol]: parseFloat(ticker.lastPrice)
+              };
+            });
+            
+            setChanges(prevChanges => ({
+              ...prevChanges,
+              [ticker.symbol]: parseFloat(ticker.priceChangePercent)
+            }));
           }
-        },
-        (error) => {
-          console.error('WebSocket error:', error);
-          setWsConnected(false);
-          toast.error('WebSocket connection error');
-        },
-        () => {
-          console.log('WebSocket connection closed');
-          setWsConnected(false);
-        },
-        () => {
-          console.log('WebSocket connection established');
-          setWsConnected(true);
-          reconnectAttempts.current = 0;
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
         }
-      );
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setWsConnected(false);
+        toast.error('WebSocket connection error');
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+        setWsConnected(false);
+        
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          reconnectAttempts.current += 1;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+          
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
+          toast.info(`Connection lost. Reconnecting in ${delay/1000}s...`);
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+              connectWebSocket();
+            }
+          }, delay);
+        } else {
+          console.log('Maximum reconnection attempts reached');
+          toast.error('Could not establish WebSocket connection', {
+            description: 'Falling back to regular updates'
+          });
+          refreshPrices();
+        }
+      };
     } catch (error) {
       console.error('Error setting up WebSocket:', error);
       setWsConnected(false);
@@ -164,6 +184,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       setPrices(newPrices);
       setChanges(newChanges);
       if (!isInitialized) setIsInitialized(true);
+      
+      toast.success('Prices updated');
     } catch (error) {
       console.error('Failed to fetch crypto prices:', error);
       toast.error('Failed to fetch crypto prices');
@@ -173,6 +195,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
+    // Initial connection with a short delay on mobile
     const timeoutId = setTimeout(() => {
       connectWebSocket();
     }, isMobile ? 300 : 0);
@@ -183,7 +206,20 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   }, [isMobile]);
   
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
+          console.log('Page became visible, reconnecting WebSocket');
+          connectWebSocket();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
       if (webSocketRef.current) {
         webSocketRef.current.close();
         webSocketRef.current = null;
@@ -284,10 +320,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             <List size={16} />
           </button>
           <button 
-            onClick={() => wsConnected ? connectWebSocket() : refreshPrices()} 
+            onClick={connectWebSocket} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
-            title={wsConnected ? "Reconnect WebSocket" : "Refresh prices"}
+            title={wsConnected ? "Reconnect WebSocket" : "Connect"}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>
