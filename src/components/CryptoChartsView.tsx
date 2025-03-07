@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -445,9 +444,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-end justify-between">
+                  <div className="flex flex-col">
                     <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
-                    <span className={`text-sm font-mono min-w-[80px] text-right ${
+                    <span className={`text-sm font-mono ${
                       isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>

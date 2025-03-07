@@ -189,7 +189,16 @@
   @apply relative overflow-hidden;
 }
 
-.crypto-card .text-right {
+/* Updated crypto card styles */
+.crypto-card .price-container {
+  @apply flex flex-col mb-1;
+}
+
+.crypto-card .price {
+  @apply text-lg font-bold text-white font-mono;
+}
+
+.crypto-card .price-change {
+  @apply text-sm font-mono mt-1;
   white-space: nowrap;
-  margin-left: 8px;
 }
