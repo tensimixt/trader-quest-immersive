@@ -1,10 +1,13 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Binance WebSocket base endpoint
+const BINANCE_WS_API = "wss://ws-api.binance.com:443/ws-api/v3";
+const BINANCE_STREAM_WS = "wss://stream.binance.com:9443/ws";
 
 async function fetchBinancePrice(symbol: string) {
   try {
@@ -71,6 +74,47 @@ async function fetch24hTickers() {
   }
 }
 
+// Function to handle ping/pong for Binance WebSocket
+function setupPingPong(ws: WebSocket) {
+  let pingInterval: number | null = null;
+  let pongTimeout: number | null = null;
+  
+  // Send unsolicited pong frames every 15 seconds to keep connection alive
+  pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ pong: {} }));
+    }
+  }, 15000);
+  
+  // Setup listener for ping messages
+  ws.addEventListener('message', (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      // If we receive a ping from server, immediately respond with pong
+      if (data.ping) {
+        ws.send(JSON.stringify({ pong: data.ping }));
+        
+        // Reset pong timeout whenever we receive a ping
+        if (pongTimeout) clearTimeout(pongTimeout);
+        
+        // If no pong is received within 50 seconds, close and reconnect
+        pongTimeout = setTimeout(() => {
+          console.log("No ping received for 50 seconds, closing connection");
+          ws.close();
+        }, 50000);
+      }
+    } catch (e) {
+      // Not all messages are JSON or have ping/pong structure
+    }
+  });
+  
+  // Cleanup function to clear intervals and timeouts
+  return () => {
+    if (pingInterval) clearInterval(pingInterval);
+    if (pongTimeout) clearTimeout(pongTimeout);
+  };
+}
+
 serve(async (req) => {
   // Check if WebSocket upgrade is requested
   const upgradeHeader = req.headers.get('upgrade') || '';
@@ -88,16 +132,21 @@ serve(async (req) => {
         
         // Immediately send initial data to client
         fetch24hTickers().then(tickers => {
-          socket.send(JSON.stringify({
-            type: 'initial',
-            data: tickers
-          }));
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'initial',
+              data: tickers
+            }));
+          }
         });
         
         // Set up connection to Binance WebSocket for combined streams
         const topSymbols = ['btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt'];
         const streams = topSymbols.map(symbol => `${symbol}@ticker`);
-        const binanceWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams.join('/')}`);
+        const binanceWs = new WebSocket(`${BINANCE_STREAM_WS}/${streams.join('/')}`);
+        
+        // Set up ping/pong handler for Binance WebSocket
+        const cleanupPingPong = setupPingPong(binanceWs);
         
         binanceWs.onmessage = (event) => {
           try {
@@ -113,11 +162,13 @@ serve(async (req) => {
               quoteVolume: tickerData.q
             };
             
-            // Send update to client
-            socket.send(JSON.stringify({
-              type: 'update',
-              data: ticker
-            }));
+            // Send update to client if socket is still open
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'update',
+                data: ticker
+              }));
+            }
           } catch (e) {
             console.error('Error processing Binance WebSocket message:', e);
           }
@@ -125,10 +176,12 @@ serve(async (req) => {
         
         binanceWs.onerror = (error) => {
           console.error('Binance WebSocket error:', error);
-          socket.send(JSON.stringify({
-            type: 'error',
-            message: 'Binance connection error'
-          }));
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Binance connection error'
+            }));
+          }
         };
         
         // Periodically refresh the full ticker list
@@ -147,12 +200,14 @@ serve(async (req) => {
         // Clean up WebSocket connections when client disconnects
         socket.onclose = () => {
           console.log('Client WebSocket closed');
+          cleanupPingPong();
           binanceWs.close();
           clearInterval(intervalId);
         };
         
         socket.onerror = (error) => {
           console.error('Client WebSocket error:', error);
+          cleanupPingPong();
           binanceWs.close();
           clearInterval(intervalId);
         };
