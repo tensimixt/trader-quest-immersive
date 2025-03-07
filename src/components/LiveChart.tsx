@@ -277,7 +277,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
-    }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
+    }, 5 * 60 * 1000) as NodeJS.Timeout;
     
     return cleanupConnections;
   }, [symbol, interval]);
