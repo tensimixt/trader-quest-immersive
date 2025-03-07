@@ -73,6 +73,14 @@ export const setupBinancePingPong = (ws: WebSocket): () => void => {
   };
 };
 
+/**
+ * Helper function to generate random request IDs for Binance WebSocket API
+ * @returns Random string ID
+ */
+export const generateRequestId = (): string => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
 // Binance WebSocket constants
 export const BINANCE_WS_API = "wss://ws-api.binance.com:443/ws-api/v3";
 export const BINANCE_STREAM_WS = "wss://stream.binance.com:9443/ws";

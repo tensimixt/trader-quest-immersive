@@ -1,179 +1,167 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp, BarChart2, User, DollarSign, Clock, Target, MessageSquare, Shield, LineChart } from 'lucide-react';
-import { format } from 'date-fns-tz';
-import { parseISO } from 'date-fns'; // Fix import from date-fns instead of date-fns-tz
-import LiveChart from './LiveChart';
 
-interface PredictionCardProps {
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { TrendingUp, TrendingDown, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
+import classNames from 'tailwind-merge';
+
+// Define the prediction props
+type PredictionCardProps = {
   symbol: string;
   prediction: 'up' | 'down';
   confidence: number;
   timestamp: string;
   traderText?: string;
-}
+  realtimePrice?: number;
+  realtimeChange?: number;
+  orderBookData?: {
+    bids: Array<{ price: number, quantity: number }>;
+    asks: Array<{ price: number, quantity: number }>;
+  };
+};
 
-const PredictionCard = ({ symbol, prediction, confidence, timestamp, traderText }: PredictionCardProps) => {
-  const [showLiveChart, setShowLiveChart] = useState(false);
+const PredictionCard = ({
+  symbol,
+  prediction,
+  confidence,
+  timestamp,
+  traderText,
+  realtimePrice,
+  realtimeChange,
+  orderBookData
+}: PredictionCardProps) => {
+  const [expanded, setExpanded] = useState(false);
+  const [showOrderBook, setShowOrderBook] = useState(false);
 
-  // Safely format the timestamp
-  const getFormattedTimestamp = () => {
-    try {
-      // Try to parse the timestamp string as an ISO date
-      const date = typeof timestamp === 'string' ? 
-        // If it contains "JST", it's already formatted
-        timestamp.includes('JST') ? 
-          timestamp : 
-          // Otherwise, try to parse and format it
-          format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' })
-        : '';
-      
-      return date;
-    } catch (error) {
-      console.error("Error formatting timestamp:", error, timestamp);
-      return timestamp || "Date unavailable";
-    }
+  // Styling based on prediction direction
+  const cardStyle = classNames(
+    "glass-card rounded-2xl p-4 border bg-black/30 backdrop-blur-sm text-white",
+    prediction === 'up' 
+      ? "border-emerald-500/30" 
+      : "border-red-500/30"
+  );
+
+  // Format price for display
+  const formatPrice = (price: number): string => {
+    if (isNaN(price)) return '--';
+    
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
   };
 
-  const formattedTimestamp = getFormattedTimestamp();
-
-  const toggleLiveChart = () => {
-    setShowLiveChart(!showLiveChart);
+  // Toggle expanded state
+  const toggleExpanded = () => {
+    setExpanded(!expanded);
+    // Reset order book visibility when collapsing
+    if (expanded) setShowOrderBook(false);
   };
 
   return (
-    
     <motion.div
+      className={cardStyle}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.5 }}
-      className="prediction-card relative overflow-hidden"
     >
-      {/* Animated background line */}
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 animate-pulse" />
-      
-      {/* Header Section */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="relative">
-            <User className="w-8 h-8 text-emerald-400" />
-            <div className="absolute -bottom-1 -right-1">
-              <Shield className="w-4 h-4 text-emerald-500" />
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded ${prediction === 'up' ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+            {prediction === 'up' ? (
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+            )}
+          </div>
+          <span className="text-sm font-bold">{symbol}</span>
+          {realtimePrice && (
+            <div className="flex items-center gap-1 ml-2">
+              <span className="text-sm font-mono">{formatPrice(realtimePrice)}</span>
+              {realtimeChange !== undefined && (
+                <span className={`text-xs font-mono ${realtimeChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {realtimeChange >= 0 ? '+' : ''}{realtimeChange.toFixed(2)}%
+                </span>
+              )}
             </div>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-emerald-400">TRADER.SYS</h4>
-            <p className="text-xs text-emerald-400/50 font-mono">[AUTHORIZED]</p>
-          </div>
+          )}
         </div>
-        <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-emerald-400/70" />
-          <span className="text-sm font-mono text-emerald-400/70">{formattedTimestamp}</span>
+        <div className="flex items-center gap-2">
+          {orderBookData && (
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setShowOrderBook(!showOrderBook); 
+              }}
+              className={`p-1 rounded hover:bg-gray-700/30 ${showOrderBook ? 'bg-gray-700/30' : ''}`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+          )}
+          <button 
+            onClick={toggleExpanded}
+            className="p-1 rounded hover:bg-gray-700/30"
+          >
+            {expanded ? (
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+            )}
+          </button>
         </div>
       </div>
-      
-      {/* Market Info Section */}
-      <div className="flex items-center justify-between mb-6">
+
+      <div className="flex justify-between mb-4">
         <div>
-          <h3 className="text-2xl font-bold text-white font-mono tracking-wider">{symbol}</h3>
-          <div className="flex items-center mt-1 space-x-2">
-            <BarChart2 className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm text-emerald-400 font-mono">SIGNAL_ACTIVE</span>
-          </div>
+          <p className="text-xs text-gray-400">Prediction</p>
+          <p className={`text-base font-semibold ${prediction === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
+            {prediction === 'up' ? 'Long' : 'Short'}
+          </p>
         </div>
-        {prediction === 'up' ? (
-          <div className="flex flex-col items-end">
-            <ArrowUpCircle className="w-10 h-10 text-emerald-500 animate-pulse" />
-            <span className="text-xs text-emerald-400 font-mono mt-1">LONG_POSITION</span>
-          </div>
-        ) : (
-          <div className="flex flex-col items-end">
-            <ArrowDownCircle className="w-10 h-10 text-red-500 animate-pulse" />
-            <span className="text-xs text-red-400 font-mono mt-1">SHORT_POSITION</span>
-          </div>
-        )}
+        <div className="text-right">
+          <p className="text-xs text-gray-400">Confidence</p>
+          <p className="text-base font-semibold text-amber-400">{confidence}%</p>
+        </div>
       </div>
 
-      {/* Live Chart Button */}
-      <div className="mb-6">
-        <button 
-          onClick={toggleLiveChart}
-          className="w-full p-2 rounded-lg bg-black/40 border border-emerald-500/20 text-emerald-400 font-mono text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 transition-colors"
+      {showOrderBook && orderBookData && (
+        <div className="bg-black/30 rounded p-2 my-2 text-xs border border-gray-800">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <h4 className="font-medium text-emerald-400 mb-1">Bids</h4>
+              {orderBookData.bids.map((bid, idx) => (
+                <div key={`bid-${idx}`} className="flex justify-between">
+                  <span className="text-emerald-400">{bid.price.toFixed(2)}</span>
+                  <span className="text-gray-400">{bid.quantity.toFixed(3)}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h4 className="font-medium text-red-400 mb-1">Asks</h4>
+              {orderBookData.asks.map((ask, idx) => (
+                <div key={`ask-${idx}`} className="flex justify-between">
+                  <span className="text-red-400">{ask.price.toFixed(2)}</span>
+                  <span className="text-gray-400">{ask.quantity.toFixed(3)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {expanded && traderText && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mt-2 text-sm text-gray-300 border-t border-gray-800 pt-2"
         >
-          <LineChart className="w-4 h-4" />
-          {showLiveChart ? "HIDE_LIVE_CHART" : "SHOW_LIVE_CHART"}
-        </button>
-      </div>
-
-      {/* Live Chart */}
-      <AnimatePresence>
-        {showLiveChart && (
-          <div className="mb-6">
-            <LiveChart 
-              symbol={symbol} 
-              onClose={() => setShowLiveChart(false)} 
-            />
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Analysis Section */}
-      <div className="mb-6 p-4 rounded-lg bg-black/40 border border-emerald-500/20">
-        <div className="flex items-center space-x-2 mb-2">
-          <MessageSquare className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm font-medium text-emerald-400 font-mono">ANALYSIS.LOG</span>
-        </div>
-        <p className="text-sm text-emerald-400/70 font-mono leading-relaxed">
-          {traderText}
-        </p>
-      </div>
-      
-      {/* Metrics Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Target className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm text-emerald-400/70 font-mono">CONFIDENCE_RATING</span>
-          </div>
-          <span className="text-lg font-bold text-emerald-400 font-mono">{confidence}%</span>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="w-full bg-black/40 rounded-full h-1.5 relative overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${confidence}%` }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className={`h-full rounded-full ${
-              prediction === 'up' ? 'bg-emerald-500' : 'bg-red-500'
-            }`}
-          />
-        </div>
-        
-        {/* Additional Metrics */}
-        <div className="grid grid-cols-2 gap-4 pt-2">
-          <div className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-emerald-500/10">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-emerald-400/70 font-mono">SIGNAL</span>
-            </div>
-            <span className="text-xs font-medium text-emerald-400 font-mono">
-              {confidence > 80 ? 'STRONG' : 'MODERATE'}
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-emerald-500/10">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-emerald-400/70 font-mono">ROI</span>
-            </div>
-            <span className={`text-xs font-medium font-mono ${prediction === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {prediction === 'up' ? '+' : '-'}${Math.floor(Math.random() * 1000)}
-            </span>
-          </div>
-        </div>
-      </div>
+          <p className="text-xs text-gray-400 mb-1">Analysis</p>
+          <p>{traderText}</p>
+          <p className="text-xs text-gray-500 mt-2">{timestamp}</p>
+        </motion.div>
+      )}
     </motion.div>
   );
 };

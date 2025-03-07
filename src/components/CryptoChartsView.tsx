@@ -2,7 +2,7 @@
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
-import { supabase, getEdgeFunctionWebSocketUrl } from '@/integrations/supabase/client';
+import { supabase, getEdgeFunctionWebSocketUrl, setupBinancePingPong } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -28,6 +28,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [orderBooks, setOrderBooks] = useState<{[key: string]: any}>({});
   
   const webSocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,6 +49,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
+      
+      // Set up ping/pong handling
+      const cleanupPingPong = setupBinancePingPong(ws);
       
       ws.onopen = () => {
         console.log('WebSocket connection established');
@@ -93,7 +97,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             
             setChanges(newChanges);
             if (!isInitialized) setIsInitialized(true);
-          } else if (data.type === 'update') {
+          } 
+          else if (data.type === 'update') {
             const ticker = data.data;
             
             setPrices(prevPrices => {
@@ -117,6 +122,26 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               [ticker.symbol]: parseFloat(ticker.priceChangePercent)
             }));
           }
+          else if (data.type === 'orderBook') {
+            // Handle order book updates
+            const orderBook = data.data;
+            
+            setOrderBooks(prev => ({
+              ...prev,
+              [orderBook.symbol]: {
+                bids: orderBook.bids,
+                asks: orderBook.asks,
+                lastUpdateId: orderBook.lastUpdateId,
+                lastUpdated: new Date()
+              }
+            }));
+            
+            console.log(`Updated order book for ${orderBook.symbol}`);
+          }
+          else if (data.type === 'error') {
+            console.error('WebSocket error message:', data.message);
+            toast.error(`WebSocket error: ${data.message}`);
+          }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
         }
@@ -126,11 +151,17 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         console.error('WebSocket error:', error);
         setWsConnected(false);
         toast.error('WebSocket connection error');
+        
+        // Clean up ping/pong handling
+        cleanupPingPong();
       };
       
       ws.onclose = () => {
         console.log('WebSocket connection closed');
         setWsConnected(false);
+        
+        // Clean up ping/pong handling
+        cleanupPingPong();
         
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current += 1;
@@ -168,12 +199,12 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 
       setPreviousPrices({...prices});
       
-      const newPrices = pricesData.reduce((acc, curr) => ({
+      const newPrices = pricesData.reduce((acc: any, curr: any) => ({
         ...acc,
         [curr.symbol]: curr.price
       }), {});
       
-      const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
+      const newChanges = Object.keys(newPrices).reduce((acc: any, symbol) => {
         const previousPrice = previousPrices[symbol] || prices[symbol];
         if (!previousPrice) return {...acc, [symbol]: 0};
         
@@ -396,6 +427,31 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                       {isNaN(changes[symbol]) ? '--' : formatChange(changes[symbol])}
                     </span>
                   </div>
+                  
+                  {orderBooks[symbol] && (
+                    <div className="mt-2 pt-2 border-t border-emerald-500/20">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-emerald-400/70 mb-1">Bids</div>
+                          {orderBooks[symbol].bids.slice(0, 3).map((bid: any, i: number) => (
+                            <div key={`bid-${i}`} className="flex justify-between">
+                              <span className="text-emerald-400">{bid.price.toFixed(1)}</span>
+                              <span className="text-gray-400">{bid.quantity.toFixed(4)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div>
+                          <div className="text-red-400/70 mb-1">Asks</div>
+                          {orderBooks[symbol].asks.slice(0, 3).map((ask: any, i: number) => (
+                            <div key={`ask-${i}`} className="flex justify-between">
+                              <span className="text-red-400">{ask.price.toFixed(1)}</span>
+                              <span className="text-gray-400">{ask.quantity.toFixed(4)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
