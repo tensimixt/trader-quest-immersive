@@ -251,7 +251,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }
     
     if (refreshIntervalRef.current !== null) {
-      clearInterval(refreshIntervalRef.current);
+      window.clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
   };
@@ -273,12 +273,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    // Fix for TS2352: First convert to unknown, then to NodeJS.Timeout
-    refreshIntervalRef.current = setInterval(() => {
+    refreshIntervalRef.current = window.setInterval(() => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
-    }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
+    }, 5 * 60 * 1000);
     
     return cleanupConnections;
   }, [symbol, interval]);
