@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -41,26 +40,6 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
   } catch (error) {
     console.error(`Error fetching ${symbol} klines:`, error);
     return [];
-  }
-}
-
-async function fetchOrderBook(symbol: string, limit = 5) {
-  try {
-    console.log(`Fetching order book for ${symbol} with limit ${limit}`);
-    const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=${limit}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    
-    return {
-      lastUpdateId: data.lastUpdateId,
-      bids: data.bids.map((bid: string[]) => ({ price: parseFloat(bid[0]), quantity: parseFloat(bid[1]) })),
-      asks: data.asks.map((ask: string[]) => ({ price: parseFloat(ask[0]), quantity: parseFloat(ask[1]) }))
-    };
-  } catch (error) {
-    console.error(`Error fetching ${symbol} order book:`, error);
-    return { lastUpdateId: 0, bids: [], asks: [] };
   }
 }
 
@@ -118,7 +97,7 @@ function setupPingPong(ws: WebSocket) {
         // Reset pong timeout whenever we receive a ping
         if (pongTimeout) clearTimeout(pongTimeout);
         
-        // If no ping is received within 50 seconds, close and reconnect
+        // If no pong is received within 50 seconds, close and reconnect
         pongTimeout = setTimeout(() => {
           console.log("No ping received for 50 seconds, closing connection");
           ws.close();
@@ -134,11 +113,6 @@ function setupPingPong(ws: WebSocket) {
     if (pingInterval) clearInterval(pingInterval);
     if (pongTimeout) clearTimeout(pongTimeout);
   };
-}
-
-// Generate a random ID for WebSocket requests
-function generateRequestId() {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
 serve(async (req) => {
@@ -171,31 +145,9 @@ serve(async (req) => {
         const streams = topSymbols.map(symbol => `${symbol}@ticker`);
         const binanceWs = new WebSocket(`${BINANCE_STREAM_WS}/${streams.join('/')}`);
         
-        // For order book updates, we'll use Binance WebSocket API
-        const binanceApiWs = new WebSocket(BINANCE_WS_API);
-        
-        // Set up ping/pong handler for Binance WebSockets
+        // Set up ping/pong handler for Binance WebSocket
         const cleanupPingPong = setupPingPong(binanceWs);
-        const cleanupApiPingPong = setupPingPong(binanceApiWs);
         
-        // When WebSocket API connection is open, subscribe to order book
-        binanceApiWs.onopen = () => {
-          console.log('Binance WebSocket API connection established');
-          
-          // Request order book for BTC/USDT
-          const orderBookRequest = {
-            id: generateRequestId(),
-            method: "depth",
-            params: {
-              symbol: "BTCUSDT",
-              limit: 5
-            }
-          };
-          
-          binanceApiWs.send(JSON.stringify(orderBookRequest));
-        };
-        
-        // Handle ticker stream messages
         binanceWs.onmessage = (event) => {
           try {
             const tickerData = JSON.parse(event.data);
@@ -222,58 +174,6 @@ serve(async (req) => {
           }
         };
         
-        // Handle WebSocket API messages (order book, etc.)
-        binanceApiWs.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            
-            // Handle successful responses
-            if (data.status === 200 && data.result) {
-              // Order book data
-              if (data.result.bids && data.result.asks) {
-                const orderBook = {
-                  symbol: "BTCUSDT", // We know which symbol we requested
-                  lastUpdateId: data.result.lastUpdateId,
-                  bids: data.result.bids.map((bid: string[]) => ({ 
-                    price: parseFloat(bid[0]), 
-                    quantity: parseFloat(bid[1]) 
-                  })),
-                  asks: data.result.asks.map((ask: string[]) => ({ 
-                    price: parseFloat(ask[0]), 
-                    quantity: parseFloat(ask[1]) 
-                  }))
-                };
-                
-                // Send order book data to client
-                if (socket.readyState === WebSocket.OPEN) {
-                  socket.send(JSON.stringify({
-                    type: 'orderBook',
-                    data: orderBook
-                  }));
-                }
-                
-                // Request updated order book after a delay
-                setTimeout(() => {
-                  if (binanceApiWs.readyState === WebSocket.OPEN) {
-                    const newRequest = {
-                      id: generateRequestId(),
-                      method: "depth",
-                      params: {
-                        symbol: "BTCUSDT",
-                        limit: 5
-                      }
-                    };
-                    binanceApiWs.send(JSON.stringify(newRequest));
-                  }
-                }, 5000); // Request updates every 5 seconds
-              }
-            }
-          } catch (e) {
-            console.error('Error processing Binance WebSocket API message:', e);
-          }
-        };
-        
-        // Error handlers for Binance WebSockets
         binanceWs.onerror = (error) => {
           console.error('Binance WebSocket error:', error);
           if (socket.readyState === WebSocket.OPEN) {
@@ -282,10 +182,6 @@ serve(async (req) => {
               message: 'Binance connection error'
             }));
           }
-        };
-        
-        binanceApiWs.onerror = (error) => {
-          console.error('Binance WebSocket API error:', error);
         };
         
         // Periodically refresh the full ticker list
@@ -305,18 +201,14 @@ serve(async (req) => {
         socket.onclose = () => {
           console.log('Client WebSocket closed');
           cleanupPingPong();
-          cleanupApiPingPong();
           binanceWs.close();
-          binanceApiWs.close();
           clearInterval(intervalId);
         };
         
         socket.onerror = (error) => {
           console.error('Client WebSocket error:', error);
           cleanupPingPong();
-          cleanupApiPingPong();
           binanceWs.close();
-          binanceApiWs.close();
           clearInterval(intervalId);
         };
       };
@@ -346,7 +238,6 @@ serve(async (req) => {
     let getHistory = url.searchParams.get('history') === 'true';
     let interval = url.searchParams.get('interval') || '15m';
     let get24hTickers = url.searchParams.get('get24hTickers') === 'true';
-    let getOrderBook = url.searchParams.get('orderBook') === 'true';
     
     // If there's a request body, check for parameters there as well
     const contentType = req.headers.get('content-type') || '';
@@ -358,7 +249,6 @@ serve(async (req) => {
         getHistory = (body.history === 'true' || body.history === true) || getHistory;
         interval = body.interval || interval;
         get24hTickers = (body.get24hTickers === 'true' || body.get24hTickers === true) || get24hTickers;
-        getOrderBook = (body.orderBook === 'true' || body.orderBook === true) || getOrderBook;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
       }
@@ -368,15 +258,6 @@ serve(async (req) => {
       // Fetch 24-hour tickers for multiple symbols
       const tickers = await fetch24hTickers();
       return new Response(JSON.stringify(tickers), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      });
-    } else if (getOrderBook && symbol) {
-      // Fetch order book for a specific symbol
-      const orderBook = await fetchOrderBook(symbol);
-      return new Response(JSON.stringify(orderBook), {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
