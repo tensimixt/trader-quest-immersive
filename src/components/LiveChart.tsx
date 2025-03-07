@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -273,11 +274,12 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
+    // Fix for TS2352: First convert to unknown, then to NodeJS.Timeout
     refreshIntervalRef.current = setInterval(() => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
-    }, 5 * 60 * 1000) as NodeJS.Timeout;
+    }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
     
     return cleanupConnections;
   }, [symbol, interval]);
