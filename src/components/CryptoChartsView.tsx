@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -36,14 +35,58 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const lastPingTimeRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
 
-  // Function to handle ping/pong for connection health
+  const fetchInitialPrices = async () => {
+    setIsLoading(true);
+    try {
+      const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
+      
+      if (pricesError) throw pricesError;
+
+      console.log('Initial prices fetched via HTTP:', pricesData);
+      
+      const newPrices = pricesData.reduce((acc, curr) => ({
+        ...acc,
+        [curr.symbol]: curr.price
+      }), {});
+      
+      setPrices(newPrices);
+      
+      // Also try to get 24h changes
+      try {
+        const { data: tickersData, error: tickersError } = await supabase.functions.invoke('crypto-prices', {
+          body: { get24hTickers: true }
+        });
+        
+        if (!tickersError && tickersData) {
+          const changeData = {};
+          tickersData.forEach(ticker => {
+            if (ticker.symbol && ticker.priceChangePercent) {
+              changeData[ticker.symbol] = parseFloat(ticker.priceChangePercent);
+            }
+          });
+          
+          setChanges(changeData);
+          console.log('Initial changes fetched:', changeData);
+        }
+      } catch (err) {
+        console.error('Failed to fetch ticker changes:', err);
+      }
+      
+      if (!isInitialized) setIsInitialized(true);
+      
+    } catch (error) {
+      console.error('Failed to fetch initial crypto prices:', error);
+      toast.error('Failed to load initial prices');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const setupPingPong = (ws: WebSocket) => {
-    // Clear existing interval if any
     if (pingIntervalRef.current) {
       clearInterval(pingIntervalRef.current);
     }
     
-    // Set up ping every 25 seconds
     pingIntervalRef.current = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
@@ -75,7 +118,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         toast.success('Connected to live price updates');
         reconnectAttempts.current = 0;
         
-        // Setup ping/pong
         setupPingPong(ws);
       };
       
@@ -83,13 +125,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         try {
           const data = JSON.parse(event.data);
           
-          // Handle ping from server
           if (data.type === 'ping') {
             ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
             return;
           }
           
-          // Handle single price update
           if (data.type === 'price') {
             setPrices(prevPrices => ({
               ...prevPrices,
@@ -104,7 +144,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             return;
           }
           
-          // Handle initial prices
           if (data.type === 'prices') {
             setPrices(data.data);
             setChanges(data.changes);
@@ -193,7 +232,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         setWsConnected(false);
         setIsLoading(false);
         
-        // Clear ping interval
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
           pingIntervalRef.current = null;
@@ -216,14 +254,14 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           toast.error('Could not establish WebSocket connection', {
             description: 'Falling back to regular updates'
           });
-          refreshPrices();
+          fetchInitialPrices();
         }
       };
     } catch (error) {
       console.error('Error setting up WebSocket:', error);
       setWsConnected(false);
       setIsLoading(false);
-      refreshPrices();
+      fetchInitialPrices();
     }
   };
 
@@ -263,14 +301,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
-    // Initial connection with a short delay on mobile
-    const timeoutId = setTimeout(() => {
-      connectWebSocket();
-    }, isMobile ? 300 : 0);
-    
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    fetchInitialPrices().then(() => {
+      const timeoutId = setTimeout(() => {
+        connectWebSocket();
+      }, isMobile ? 300 : 0);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    });
   }, [isMobile]);
   
   useEffect(() => {
@@ -396,10 +435,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             <List size={16} />
           </button>
           <button 
-            onClick={connectWebSocket} 
+            onClick={wsConnected ? refreshPrices : connectWebSocket} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
-            title={wsConnected ? "Reconnect WebSocket" : "Connect"}
+            title={wsConnected ? "Refresh data" : "Connect"}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>
@@ -476,28 +515,26 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               ))}
             </div>
             
-            <AnimatePresence>
-              {activeSymbol && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: isMobile ? 0.2 : 0.3 }}
-                >
-                  <Suspense fallback={
-                    <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
-                      <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
-                    </div>
-                  }>
-                    <LiveChart 
-                      key={liveChartKey}
-                      symbol={activeSymbol} 
-                      onClose={() => setActiveSymbol(null)} 
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {activeSymbol && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: isMobile ? 0.2 : 0.3 }}
+              >
+                <Suspense fallback={
+                  <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
+                    <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+                  </div>
+                }>
+                  <LiveChart 
+                    key={liveChartKey}
+                    symbol={activeSymbol} 
+                    onClose={() => setActiveSymbol(null)} 
+                  />
+                </Suspense>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

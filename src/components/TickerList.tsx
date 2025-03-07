@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
@@ -36,13 +35,18 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
 
       if (error) throw error;
       
-      data.forEach((ticker: TickerData) => {
-        tickersMapRef.current.set(ticker.symbol, ticker);
-      });
-      
-      setTickers(data);
-      setLastUpdateTime(new Date());
-      console.log(`Fetched ${data.length} tickers via HTTP`);
+      if (data && Array.isArray(data)) {
+        data.forEach((ticker: TickerData) => {
+          tickersMapRef.current.set(ticker.symbol, ticker);
+        });
+        
+        setTickers(data);
+        setLastUpdateTime(new Date());
+        console.log(`Fetched ${data.length} tickers via HTTP`);
+      } else {
+        console.error('Invalid data format received:', data);
+        toast.error('Received invalid ticker data format');
+      }
     } catch (error) {
       console.error('Failed to fetch tickers:', error);
       toast.error('Failed to fetch ticker data');
@@ -79,41 +83,51 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
           if (message.type === 'initial' || message.type === 'refresh') {
             const newTickers = message.data as TickerData[];
             
-            tickersMapRef.current.clear();
-            newTickers.forEach((ticker) => {
-              tickersMapRef.current.set(ticker.symbol, ticker);
-            });
-            
-            updatedTickersRef.current.clear();
-            
-            setTickers(newTickers);
-            setLastUpdateTime(new Date());
-            console.log(`Received ${newTickers.length} tickers via WebSocket (${message.type})`);
+            if (newTickers && Array.isArray(newTickers)) {
+              tickersMapRef.current.clear();
+              newTickers.forEach((ticker) => {
+                tickersMapRef.current.set(ticker.symbol, ticker);
+              });
+              
+              updatedTickersRef.current.clear();
+              
+              setTickers(newTickers);
+              setLastUpdateTime(new Date());
+              console.log(`Received ${newTickers.length} tickers via WebSocket (${message.type})`);
+            } else {
+              console.error('Invalid ticker data format in WebSocket message:', message);
+            }
           } 
           else if (message.type === 'update') {
             const updatedTicker = message.data as TickerData;
             
-            tickersMapRef.current.set(updatedTicker.symbol, updatedTicker);
-            
-            updatedTickersRef.current.add(updatedTicker.symbol);
-            
-            setTimeout(() => {
-              updatedTickersRef.current.delete(updatedTicker.symbol);
-            }, 2000);
-            
-            const updatedTickers = Array.from(tickersMapRef.current.values())
-              .sort((a, b) => {
-                const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
-                const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
-                return bVolume - aVolume;
-              });
-            
-            setTickers(updatedTickers);
-            setLastUpdateTime(new Date());
+            if (updatedTicker && updatedTicker.symbol) {
+              tickersMapRef.current.set(updatedTicker.symbol, updatedTicker);
+              
+              updatedTickersRef.current.add(updatedTicker.symbol);
+              
+              setTimeout(() => {
+                updatedTickersRef.current.delete(updatedTicker.symbol);
+              }, 2000);
+              
+              const updatedTickers = Array.from(tickersMapRef.current.values())
+                .sort((a, b) => {
+                  const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
+                  const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
+                  return bVolume - aVolume;
+                });
+              
+              setTickers(updatedTickers);
+              setLastUpdateTime(new Date());
+            }
           }
           else if (message.type === 'error') {
             console.error('WebSocket error message:', message.message);
             toast.error(`WebSocket error: ${message.message}`);
+          }
+          else if (message.type === 'ping') {
+            // Respond to ping with pong
+            ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
@@ -154,13 +168,19 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
-    fetchTickers();
-    const timeoutId = setTimeout(() => {
-      connectWebSocket();
-    }, 300);
+    // First fetch data via HTTP
+    fetchTickers().then(() => {
+      // Then attempt WebSocket connection
+      const timeoutId = setTimeout(() => {
+        connectWebSocket();
+      }, 300);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    });
     
     return () => {
-      clearTimeout(timeoutId);
       if (webSocketRef.current) {
         webSocketRef.current.close();
         webSocketRef.current = null;
@@ -172,6 +192,23 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let httpUpdateInterval: NodeJS.Timeout;
+    
+    // If WebSocket is not connected, fall back to HTTP updates
+    if (!isWebSocketConnected && tickers.length > 0) {
+      httpUpdateInterval = setInterval(() => {
+        fetchTickers();
+      }, 15000); // Every 15 seconds
+    }
+    
+    return () => {
+      if (httpUpdateInterval) {
+        clearInterval(httpUpdateInterval);
+      }
+    };
+  }, [isWebSocketConnected, tickers.length]);
 
   const formatPrice = (price: string): string => {
     const numericPrice = parseFloat(price);
