@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -71,6 +70,53 @@ async function fetch24hTickers() {
   }
 }
 
+// Keep track of active WebSocket connections
+const activeConnections = new Map();
+
+// Setup a heartbeat system to detect inactive connections
+function setupHeartbeat(socket: WebSocket, socketId: string) {
+  // Clear any existing interval
+  const existingConn = activeConnections.get(socketId);
+  if (existingConn && existingConn.heartbeatInterval) {
+    clearInterval(existingConn.heartbeatInterval);
+  }
+  
+  // Setup a ping at regular intervals (every 30 seconds)
+  const heartbeatInterval = setInterval(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      try {
+        // Send a ping to the client
+        socket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+      } catch (error) {
+        console.error('Error sending ping:', error);
+        clearConnection(socketId);
+      }
+    } else {
+      // Socket is not open, clear this connection
+      clearConnection(socketId);
+    }
+  }, 30000);
+  
+  return heartbeatInterval;
+}
+
+function clearConnection(socketId: string) {
+  const conn = activeConnections.get(socketId);
+  if (conn) {
+    if (conn.heartbeatInterval) {
+      clearInterval(conn.heartbeatInterval);
+    }
+    if (conn.refreshInterval) {
+      clearInterval(conn.refreshInterval);
+    }
+    if (conn.binanceWs && conn.binanceWs.readyState === WebSocket.OPEN) {
+      conn.binanceWs.close();
+    }
+    activeConnections.delete(socketId);
+    console.log(`Cleared connection ${socketId}. Active connections: ${activeConnections.size}`);
+  }
+}
+
 serve(async (req) => {
   // Check if WebSocket upgrade is requested
   const upgradeHeader = req.headers.get('upgrade') || '';
@@ -81,17 +127,23 @@ serve(async (req) => {
     
     try {
       const { socket, response } = Deno.upgradeWebSocket(req);
+      const socketId = crypto.randomUUID();
       
       // Set up event handlers for WebSocket
       socket.onopen = () => {
-        console.log('WebSocket connection established');
+        console.log(`WebSocket connection established (${socketId})`);
+        
+        // Store socket in active connections with heartbeat
+        const heartbeatInterval = setupHeartbeat(socket, socketId);
         
         // Immediately send initial data to client
         fetch24hTickers().then(tickers => {
-          socket.send(JSON.stringify({
-            type: 'initial',
-            data: tickers
-          }));
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'initial',
+              data: tickers
+            }));
+          }
         });
         
         // Set up connection to Binance WebSocket for combined streams
@@ -100,6 +152,11 @@ serve(async (req) => {
         const binanceWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams.join('/')}`);
         
         binanceWs.onmessage = (event) => {
+          if (socket.readyState !== WebSocket.OPEN) {
+            binanceWs.close();
+            return;
+          }
+          
           try {
             const tickerData = JSON.parse(event.data);
             
@@ -125,34 +182,76 @@ serve(async (req) => {
         
         binanceWs.onerror = (error) => {
           console.error('Binance WebSocket error:', error);
-          socket.send(JSON.stringify({
-            type: 'error',
-            message: 'Binance connection error'
-          }));
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Binance connection error'
+            }));
+          }
         };
         
         // Periodically refresh the full ticker list
-        const intervalId = setInterval(() => {
-          console.log('Refreshing full ticker list');
+        const refreshInterval = setInterval(() => {
+          if (socket.readyState !== WebSocket.OPEN) {
+            clearConnection(socketId);
+            return;
+          }
+          
+          console.log(`Refreshing full ticker list for connection ${socketId}`);
           fetch24hTickers().then(tickers => {
-            socket.send(JSON.stringify({
-              type: 'refresh',
-              data: tickers
-            }));
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'refresh',
+                data: tickers
+              }));
+            }
           });
         }, 60000); // Every minute
         
+        // Store all necessary information for this connection
+        activeConnections.set(socketId, {
+          socket,
+          binanceWs,
+          heartbeatInterval,
+          refreshInterval,
+          lastActivity: Date.now()
+        });
+        
+        console.log(`Active connections: ${activeConnections.size}`);
+        
         // Clean up WebSocket connections when client disconnects
         socket.onclose = () => {
-          console.log('Client WebSocket closed');
-          binanceWs.close();
-          clearInterval(intervalId);
+          console.log(`Client WebSocket closed (${socketId})`);
+          clearConnection(socketId);
         };
         
         socket.onerror = (error) => {
-          console.error('Client WebSocket error:', error);
-          binanceWs.close();
-          clearInterval(intervalId);
+          console.error(`Client WebSocket error (${socketId}):`, error);
+          clearConnection(socketId);
+        };
+        
+        // Handle client messages (including pings)
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            
+            // Update last activity timestamp
+            const conn = activeConnections.get(socketId);
+            if (conn) {
+              conn.lastActivity = Date.now();
+              activeConnections.set(socketId, conn);
+            }
+            
+            // Handle ping messages from client
+            if (message.type === 'ping') {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+              }
+              return;
+            }
+          } catch (error) {
+            console.error('Error processing client message:', error);
+          }
         };
       };
       
