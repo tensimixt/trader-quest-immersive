@@ -23,3 +23,49 @@ export const getEdgeFunctionWebSocketUrl = (functionName: string): string => {
   // Construct WebSocket URL
   return `wss://${projectId}.supabase.co/functions/v1/${functionName}`;
 };
+
+/**
+ * Makes a request to test if WebSockets are working for a specific edge function
+ * @param functionName The name of the Edge Function
+ * @returns Promise<boolean> indicating if WebSockets are available
+ */
+export const testEdgeFunctionWebSocket = async (functionName: string): Promise<boolean> => {
+  try {
+    // First try a simple HTTP request to the function to check if it's deployed
+    const { data, error } = await supabase.functions.invoke(functionName);
+    
+    if (error) {
+      console.error(`Edge function ${functionName} HTTP test failed:`, error);
+      return false;
+    }
+    
+    // If HTTP works, we'll try a WebSocket connection with timeout
+    return new Promise((resolve) => {
+      const wsUrl = getEdgeFunctionWebSocketUrl(functionName);
+      const ws = new WebSocket(wsUrl);
+      
+      // Set a timeout in case the connection hangs
+      const timeout = setTimeout(() => {
+        console.log(`WebSocket connection to ${functionName} timed out`);
+        ws.close();
+        resolve(false);
+      }, 5000);
+      
+      ws.onopen = () => {
+        clearTimeout(timeout);
+        console.log(`WebSocket connection to ${functionName} successful`);
+        ws.close();
+        resolve(true);
+      };
+      
+      ws.onerror = () => {
+        clearTimeout(timeout);
+        console.log(`WebSocket connection to ${functionName} failed`);
+        resolve(false);
+      };
+    });
+  } catch (error) {
+    console.error(`Error testing WebSocket for ${functionName}:`, error);
+    return false;
+  }
+};

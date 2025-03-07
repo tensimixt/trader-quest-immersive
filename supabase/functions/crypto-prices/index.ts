@@ -84,6 +84,17 @@ function setupHeartbeat(socket: WebSocket) {
 }
 
 serve(async (req) => {
+  console.log(`Received request: ${req.method} ${new URL(req.url).pathname}`);
+  
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
+  }
+  
   // Check if WebSocket upgrade is requested
   const upgradeHeader = req.headers.get('upgrade') || '';
   
@@ -93,6 +104,7 @@ serve(async (req) => {
     
     try {
       const { socket, response } = Deno.upgradeWebSocket(req);
+      console.log('WebSocket upgrade successful');
       
       // Set up event handlers for WebSocket
       socket.onopen = () => {
@@ -127,161 +139,127 @@ serve(async (req) => {
               data: tickers
             }));
           }
+        }).catch(error => {
+          console.error('Error sending initial data:', error);
         });
         
         // Setup heartbeat for connection keepalive
         const heartbeatInterval = setupHeartbeat(socket);
         
-        // Connect to Binance WebSocket for key symbols
-        const topSymbols = ['btcusdt', 'ethusdt', 'bnbusdt'];
+        // Instead of trying to connect to Binance WebSocket, we'll use fetch polling
+        const topSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
         
-        try {
-          // Connect to Binance WebSocket API
-          const binanceWs = new WebSocket('wss://ws-api.binance.com:443/ws-api/v3');
-          
-          binanceWs.onopen = () => {
-            console.log('Connected to Binance WebSocket API');
-            
-            // Subscribe to market mini tickers for our symbols
-            for (const symbol of topSymbols) {
-              // Setup interval to fetch prices every few seconds
-              setInterval(() => {
-                if (binanceWs.readyState === WebSocket.OPEN) {
-                  const requestId = crypto.randomUUID();
-                  binanceWs.send(JSON.stringify({
-                    id: requestId,
-                    method: "ticker.24hr",
-                    params: {
-                      symbol: symbol.toUpperCase()
-                    }
-                  }));
-                }
-              }, 5000); // Every 5 seconds
-            }
-          };
-          
-          binanceWs.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              
-              // Check if it's a ticker response from Binance
-              if (data.id && data.status === 200 && data.result) {
-                const ticker = data.result;
-                const symbol = ticker.symbol;
-                
-                // Format ticker data to match our API format
-                const formattedTicker = {
-                  symbol: symbol,
-                  lastPrice: ticker.lastPrice,
-                  priceChange: ticker.priceChange,
-                  priceChangePercent: ticker.priceChangePercent,
-                  volume: ticker.volume,
-                  quoteVolume: ticker.quoteVolume
-                };
-                
-                // Send update to client
-                if (socket.readyState === WebSocket.OPEN) {
-                  // Send general ticker update for the ticker list
-                  socket.send(JSON.stringify({
-                    type: 'update',
-                    data: formattedTicker
-                  }));
-                  
-                  // Also send simplified price update for the main cards
-                  socket.send(JSON.stringify({
-                    type: 'price',
-                    symbol: symbol,
-                    price: ticker.lastPrice,
-                    change: ticker.priceChangePercent
-                  }));
-                  
-                  console.log(`Sent price update for ${symbol}: ${ticker.lastPrice}`);
-                }
-              }
-              
-              // Handle ping from Binance
-              if (data.id && data.method === "ping") {
-                binanceWs.send(JSON.stringify({
-                  id: data.id,
-                  method: "pong",
-                  params: {}
-                }));
-              }
-            } catch (e) {
-              console.error('Error processing Binance WebSocket message:', e);
-            }
-          };
-          
-          // Periodically refresh the full ticker list
-          const tickerRefreshInterval = setInterval(() => {
-            if (socket.readyState === WebSocket.OPEN) {
-              console.log('Refreshing full ticker list');
-              fetch24hTickers().then(tickers => {
-                socket.send(JSON.stringify({
-                  type: 'refresh',
-                  data: tickers
-                }));
-              });
-            } else {
-              clearInterval(tickerRefreshInterval);
-            }
-          }, 60000); // Every minute
-          
-          // Clean up WebSocket connections when client disconnects
-          socket.onclose = () => {
-            console.log('Client WebSocket closed');
-            clearInterval(heartbeatInterval);
-            clearInterval(tickerRefreshInterval);
-            binanceWs.close();
-          };
-          
-          // Handle pong from client
-          socket.onmessage = (event) => {
-            try {
-              const message = JSON.parse(event.data);
-              if (message.type === 'pong') {
-                console.log('Received pong from client');
-              }
-              
-              // Handle kline requests
-              if (message.type === 'kline' && message.symbol) {
-                fetchBinanceKlines(message.symbol, message.interval || '15m')
-                  .then(klines => {
-                    if (socket.readyState === WebSocket.OPEN) {
-                      socket.send(JSON.stringify({
-                        type: 'klineData',
-                        symbol: message.symbol,
-                        data: klines
-                      }));
-                    }
-                  });
-              }
-            } catch (error) {
-              console.error('Error handling client message:', error);
-            }
-          };
-          
-          socket.onerror = (error) => {
-            console.error('Client WebSocket error:', error);
-            clearInterval(heartbeatInterval);
-            clearInterval(tickerRefreshInterval);
-            binanceWs.close();
-          };
-        } catch (binanceError) {
-          console.error('Failed to connect to Binance WebSocket:', binanceError);
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-              type: 'error',
-              message: 'Failed to connect to Binance WebSocket'
-            }));
+        // Setup interval to fetch prices every few seconds
+        const priceUpdateInterval = setInterval(async () => {
+          if (socket.readyState !== WebSocket.OPEN) {
+            clearInterval(priceUpdateInterval);
+            return;
           }
-        }
+          
+          try {
+            // Fetch current prices
+            const prices = await Promise.all(
+              topSymbols.map(async symbol => {
+                const price = await fetchBinancePrice(symbol);
+                return { symbol, price };
+              })
+            );
+            
+            // Send updates to client
+            prices.forEach(({ symbol, price }) => {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                  type: 'price',
+                  symbol: symbol,
+                  price: price,
+                  change: '0' // We don't have change data in this simplified version
+                }));
+              }
+            });
+          } catch (error) {
+            console.error('Error fetching price updates:', error);
+          }
+        }, 5000); // Every 5 seconds
+        
+        // Periodically refresh the full ticker list
+        const tickerRefreshInterval = setInterval(async () => {
+          if (socket.readyState !== WebSocket.OPEN) {
+            clearInterval(tickerRefreshInterval);
+            return;
+          }
+          
+          try {
+            console.log('Refreshing full ticker list');
+            const tickers = await fetch24hTickers();
+            
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'refresh',
+                data: tickers
+              }));
+              
+              // Update price changes for main coins
+              const changes = {
+                BTCUSDT: tickers.find((t: any) => t.symbol === 'BTCUSDT')?.priceChangePercent || '0',
+                ETHUSDT: tickers.find((t: any) => t.symbol === 'ETHUSDT')?.priceChangePercent || '0',
+                BNBUSDT: tickers.find((t: any) => t.symbol === 'BNBUSDT')?.priceChangePercent || '0',
+              };
+              
+              socket.send(JSON.stringify({
+                type: 'prices',
+                changes: changes
+              }));
+            }
+          } catch (error) {
+            console.error('Error refreshing ticker list:', error);
+          }
+        }, 60000); // Every minute
+        
+        // Clean up intervals when client disconnects
+        socket.onclose = (event) => {
+          console.log(`Client WebSocket closed with code: ${event.code}, reason: ${event.reason}`);
+          clearInterval(heartbeatInterval);
+          clearInterval(priceUpdateInterval);
+          clearInterval(tickerRefreshInterval);
+        };
+        
+        // Handle pong from client
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'pong') {
+              console.log('Received pong from client');
+            }
+            
+            // Handle kline requests
+            if (message.type === 'kline' && message.symbol) {
+              fetchBinanceKlines(message.symbol, message.interval || '15m')
+                .then(klines => {
+                  if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                      type: 'klineData',
+                      symbol: message.symbol,
+                      data: klines
+                    }));
+                  }
+                }).catch(error => {
+                  console.error('Error fetching klines:', error);
+                });
+            }
+          } catch (error) {
+            console.error('Error handling client message:', error);
+          }
+        };
+        
+        socket.onerror = (error) => {
+          console.error('Client WebSocket error:', error);
+        };
       };
       
       return response;
     } catch (error) {
       console.error('WebSocket upgrade error:', error);
-      return new Response(JSON.stringify({ error: 'WebSocket upgrade failed' }), {
+      return new Response(JSON.stringify({ error: 'WebSocket upgrade failed', details: error.message }), {
         status: 500,
         headers: {
           ...corsHeaders,
@@ -361,6 +339,7 @@ serve(async (req) => {
       });
     }
   } catch (error) {
+    console.error('HTTP request error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: {
