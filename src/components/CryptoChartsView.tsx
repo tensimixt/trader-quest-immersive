@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
@@ -423,7 +424,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   data-symbol={symbol}
                   className={`crypto-card p-4 rounded-lg border ${
                     activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
-                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors`}
+                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors overflow-hidden`}
                   onClick={() => handleSymbolSelect(symbol)}
                   whileHover={{ scale: isMobile ? 1 : 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -446,7 +447,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   </div>
                   <div className="flex items-end justify-between">
                     <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
-                    <span className={`text-sm font-mono min-w-[70px] text-right ${
+                    <span className={`text-sm font-mono min-w-[80px] text-right ${
                       isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>

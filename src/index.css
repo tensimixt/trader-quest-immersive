@@ -105,22 +105,26 @@
   animation: float 6s ease-in-out infinite;
 }
 
-/* New animations for price updates */
+/* Price update animations */
 @keyframes price-flash-positive {
   0% {
     background-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
   }
   100% {
     background-color: transparent;
+    box-shadow: none;
   }
 }
 
 @keyframes price-flash-negative {
   0% {
     background-color: rgba(234, 56, 76, 0.3);
+    box-shadow: 0 0 20px rgba(234, 56, 76, 0.2);
   }
   100% {
     background-color: transparent;
+    box-shadow: none;
   }
 }
 
@@ -178,4 +182,14 @@
     rgba(74, 222, 128, 0.2) 50%,
     transparent 100%
   );
+}
+
+/* Specific styling for crypto cards */
+.crypto-card {
+  @apply relative overflow-hidden;
+}
+
+.crypto-card .text-right {
+  white-space: nowrap;
+  margin-left: 8px;
 }
