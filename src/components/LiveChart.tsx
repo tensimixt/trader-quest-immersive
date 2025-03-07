@@ -235,6 +235,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         },
         () => {
           console.log('WebSocket connection closed');
+          if (currentSymbolRef.current === symbol) {
+            console.log('Attempting to reconnect after closure');
+            setTimeout(connectWebSocket, 3000);
+          }
         }
       );
     } catch (error) {
@@ -251,9 +255,23 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }
     
     if (refreshIntervalRef.current !== null) {
-      window.clearInterval(refreshIntervalRef.current);
+      clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
+  };
+
+  const setupKeepAlive = () => {
+    const pingInterval = setInterval(() => {
+      if (wsRef.current && wsRef.current.isConnected()) {
+        console.log(`Sending keep-alive ping for ${symbol}`);
+        wsRef.current.send(JSON.stringify({ method: "PING" }));
+      } else {
+        console.log(`WebSocket not connected for ${symbol}, attempting to reconnect`);
+        connectWebSocket();
+      }
+    }, 20000);
+    
+    return pingInterval;
   };
 
   useEffect(() => {
@@ -273,13 +291,18 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    refreshIntervalRef.current = window.setInterval(() => {
+    refreshIntervalRef.current = setInterval(() => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
     }, 5 * 60 * 1000);
     
-    return cleanupConnections;
+    const keepAliveInterval = setupKeepAlive();
+    
+    return () => {
+      cleanupConnections();
+      clearInterval(keepAliveInterval);
+    };
   }, [symbol, interval]);
 
   const formatPrice = (price: number) => {
