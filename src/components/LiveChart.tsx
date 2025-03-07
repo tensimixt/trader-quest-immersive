@@ -251,7 +251,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }
     
     if (refreshIntervalRef.current !== null) {
-      window.clearInterval(refreshIntervalRef.current);
+      clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
   };
@@ -273,11 +273,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    refreshIntervalRef.current = window.setInterval(() => {
+    refreshIntervalRef.current = setInterval(() => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
     
     return cleanupConnections;
   }, [symbol, interval]);
