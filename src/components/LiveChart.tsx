@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -296,11 +295,13 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    refreshIntervalRef.current = setInterval(() => {
+    const refreshInterval = setInterval(() => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
     }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
+    
+    refreshIntervalRef.current = refreshInterval;
     
     const keepAliveInterval = setupKeepAlive();
     
