@@ -1,9 +1,13 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+// Use the values from your Supabase project
+const supabaseUrl = 'https://zzbftruhrjfmynhamypk.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6YmZ0cnVocmpmbXluaGFteXBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc5MzI2OTMsImV4cCI6MjA1MzUwODY5M30.v-Oz5lCbpoB9aQvq43WSaZ8DKy1wthSPQYeD8KzixKo';
+
 export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  supabaseUrl,
+  supabaseAnonKey
 );
 
 /**
@@ -13,7 +17,6 @@ export const supabase = createClient(
  */
 export const getEdgeFunctionWebSocketUrl = (functionName: string): string => {
   // Extract the project ID from the Supabase URL
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1] || '';
   
   // Construct WebSocket URL
