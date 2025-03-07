@@ -1,12 +1,23 @@
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
-import { supabase, getEdgeFunctionWebSocketUrl } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const LiveChart = lazy(() => import('./LiveChart'));
 const TickerList = lazy(() => import('./TickerList'));
+
+type TickerStreamData = {
+  e: string; // Event type
+  E: number; // Event time
+  s: string; // Symbol
+  p: string; // Price change
+  P: string; // Price change percent
+  c: string; // Last price
+  v: string; // Total traded base asset volume
+  q: string; // Total traded quote asset volume
+};
 
 const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const isMobile = useIsMobile();
@@ -31,13 +42,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const webSocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastPingTimeRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
+  const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
 
   const fetchInitialPrices = async () => {
     setIsLoading(true);
     try {
+      // First try to get prices via HTTP as a fallback
       const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
       if (pricesError) throw pricesError;
@@ -82,19 +93,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const setupPingPong = (ws: WebSocket) => {
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current);
-    }
-    
-    pingIntervalRef.current = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
-        lastPingTimeRef.current = Date.now();
-      }
-    }, 25000);
-  };
-
   const connectWebSocket = () => {
     if (webSocketRef.current) {
       webSocketRef.current.close();
@@ -104,122 +102,59 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     setIsLoading(true);
     
     try {
-      console.log('Connecting to WebSocket...');
-      const wsUrl = getEdgeFunctionWebSocketUrl('crypto-prices');
-      console.log('WebSocket URL:', wsUrl);
+      // Create a string of symbols for the WebSocket stream
+      const streams = trackingSymbols.map(symbol => `${symbol.toLowerCase()}@ticker`).join('/');
+      const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+      
+      console.log('Connecting to Binance WebSocket:', wsUrl);
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
       
       ws.onopen = () => {
-        console.log('WebSocket connection established');
+        console.log('Binance WebSocket connection established');
         setWsConnected(true);
         setIsLoading(false);
         toast.success('Connected to live price updates');
         reconnectAttempts.current = 0;
-        
-        setupPingPong(ws);
       };
       
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const response = JSON.parse(event.data);
           
-          if (data.type === 'ping') {
-            ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
-            return;
-          }
-          
-          if (data.type === 'price') {
-            console.log('Received price update:', data);
-            setPrices(prevPrices => ({
-              ...prevPrices,
-              [data.symbol]: parseFloat(data.price)
-            }));
+          if (response && response.data) {
+            const ticker: TickerStreamData = response.data;
+            const symbol = ticker.s;
             
-            setChanges(prevChanges => ({
-              ...prevChanges,
-              [data.symbol]: parseFloat(data.change)
-            }));
-            
-            // Flash animation effect on price update
-            const symbol = data.symbol;
-            document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.add('flash-update');
-            setTimeout(() => {
-              document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.remove('flash-update');
-            }, 2000);
-            
-            return;
-          }
-          
-          if (data.type === 'prices') {
-            setPrices(data.data);
-            setChanges(data.changes);
-            setIsInitialized(true);
-            return;
-          }
-          
-          if (data.type === 'initial' || data.type === 'refresh') {
-            const newPrices = data.data.reduce((acc: {[key: string]: number}, ticker: any) => {
-              if (ticker.symbol) {
-                return {
-                  ...acc,
-                  [ticker.symbol]: parseFloat(ticker.lastPrice)
-                };
-              }
-              return acc;
-            }, {});
-            
-            setPreviousPrices(prices);
-            setPrices(prevPrices => ({
-              ...prevPrices,
-              ...newPrices
-            }));
-            
-            const newChanges = Object.keys(newPrices).reduce((acc: {[key: string]: number}, symbol) => {
-              if (data.type === 'initial') {
-                const ticker = data.data.find((t: any) => t.symbol === symbol);
-                return {
-                  ...acc,
-                  [symbol]: ticker ? parseFloat(ticker.priceChangePercent) : 0
-                };
-              } else {
-                const previousPrice = previousPrices[symbol] || prices[symbol];
-                if (!previousPrice) return {...acc, [symbol]: 0};
+            if (trackingSymbols.includes(symbol)) {
+              setPrices(prevPrices => {
+                const previousPrice = prevPrices[symbol] || 0;
                 
-                const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
-                return {...acc, [symbol]: change};
-              }
-            }, {});
-            
-            setChanges(prevChanges => ({
-              ...prevChanges,
-              ...newChanges
-            }));
-            if (!isInitialized) setIsInitialized(true);
-          } else if (data.type === 'update') {
-            const ticker = data.data;
-            
-            setPrices(prevPrices => {
-              const previousPrice = prevPrices[ticker.symbol] || 0;
+                if (previousPrice > 0) {
+                  setPreviousPrices(prev => ({
+                    ...prev,
+                    [symbol]: previousPrice
+                  }));
+                }
+                
+                return {
+                  ...prevPrices,
+                  [symbol]: parseFloat(ticker.c)
+                };
+              });
               
-              if (previousPrice > 0) {
-                setPreviousPrices(prev => ({
-                  ...prev,
-                  [ticker.symbol]: previousPrice
-                }));
-              }
+              setChanges(prevChanges => ({
+                ...prevChanges,
+                [symbol]: parseFloat(ticker.P)
+              }));
               
-              return {
-                ...prevPrices,
-                [ticker.symbol]: parseFloat(ticker.lastPrice)
-              };
-            });
-            
-            setChanges(prevChanges => ({
-              ...prevChanges,
-              [ticker.symbol]: parseFloat(ticker.priceChangePercent)
-            }));
+              // Flash animation effect on price update
+              document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.add('flash-update');
+              setTimeout(() => {
+                document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.remove('flash-update');
+              }, 2000);
+            }
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
@@ -237,11 +172,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         console.log('WebSocket connection closed');
         setWsConnected(false);
         setIsLoading(false);
-        
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-          pingIntervalRef.current = null;
-        }
         
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current += 1;

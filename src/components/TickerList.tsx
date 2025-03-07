@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
-import { supabase, getEdgeFunctionWebSocketUrl } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type TickerData = {
@@ -29,6 +29,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   const fetchTickers = async () => {
     setIsLoading(true);
     try {
+      // Fallback to HTTP for initial data
       const { data, error } = await supabase.functions.invoke('crypto-prices', {
         body: { get24hTickers: true }
       });
@@ -61,16 +62,16 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      // Use the helper function to create the WebSocket URL
-      const wsUrl = getEdgeFunctionWebSocketUrl('crypto-prices');
+      // Connect directly to Binance WebSocket for all USDT ticker updates
+      const wsUrl = 'wss://stream.binance.com:9443/ws/!ticker@arr';
       
-      console.log('Connecting to WebSocket URL:', wsUrl);
+      console.log('Connecting to Binance WebSocket URL:', wsUrl);
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected successfully');
+        console.log('Binance WebSocket connected successfully');
         setIsWebSocketConnected(true);
         toast.success('Live ticker updates connected');
         reconnectAttempts.current = 0;
@@ -78,38 +79,39 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
 
       ws.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data);
+          const tickerData = JSON.parse(event.data);
           
-          if (message.type === 'initial' || message.type === 'refresh') {
-            const newTickers = message.data as TickerData[];
+          if (Array.isArray(tickerData)) {
+            // Process ticker array updates
+            const usdtTickers = tickerData.filter(ticker => 
+              ticker.s && ticker.s.endsWith('USDT')
+            );
             
-            if (newTickers && Array.isArray(newTickers)) {
-              tickersMapRef.current.clear();
-              newTickers.forEach((ticker) => {
-                tickersMapRef.current.set(ticker.symbol, ticker);
-              });
-              
-              updatedTickersRef.current.clear();
-              
-              setTickers(newTickers);
-              setLastUpdateTime(new Date());
-              console.log(`Received ${newTickers.length} tickers via WebSocket (${message.type})`);
-            } else {
-              console.error('Invalid ticker data format in WebSocket message:', message);
-            }
-          } 
-          else if (message.type === 'update') {
-            const updatedTicker = message.data as TickerData;
+            let updated = false;
             
-            if (updatedTicker && updatedTicker.symbol) {
-              tickersMapRef.current.set(updatedTicker.symbol, updatedTicker);
+            usdtTickers.forEach(ticker => {
+              const formattedTicker: TickerData = {
+                symbol: ticker.s,
+                priceChange: ticker.p,
+                priceChangePercent: ticker.P,
+                lastPrice: ticker.c,
+                volume: ticker.v,
+                quoteVolume: ticker.q  // Quote volume in USDT
+              };
               
-              updatedTickersRef.current.add(updatedTicker.symbol);
+              tickersMapRef.current.set(formattedTicker.symbol, formattedTicker);
+              updatedTickersRef.current.add(formattedTicker.symbol);
               
+              // Clear the highlight after 2 seconds
               setTimeout(() => {
-                updatedTickersRef.current.delete(updatedTicker.symbol);
+                updatedTickersRef.current.delete(formattedTicker.symbol);
               }, 2000);
               
+              updated = true;
+            });
+            
+            if (updated) {
+              // Sort tickers by volume and update state
               const updatedTickers = Array.from(tickersMapRef.current.values())
                 .sort((a, b) => {
                   const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
@@ -120,14 +122,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
               setTickers(updatedTickers);
               setLastUpdateTime(new Date());
             }
-          }
-          else if (message.type === 'error') {
-            console.error('WebSocket error message:', message.message);
-            toast.error(`WebSocket error: ${message.message}`);
-          }
-          else if (message.type === 'ping') {
-            // Respond to ping with pong
-            ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
