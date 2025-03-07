@@ -49,7 +49,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const fetchInitialPrices = async () => {
     setIsLoading(true);
     try {
-      // First try to get prices via HTTP as a fallback
       const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
       if (pricesError) throw pricesError;
@@ -63,7 +62,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       setPrices(newPrices);
       
-      // Also try to get 24h changes
       try {
         const { data: tickersData, error: tickersError } = await supabase.functions.invoke('crypto-prices', {
           body: { get24hTickers: true }
@@ -103,7 +101,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     setIsLoading(true);
     
     try {
-      // Create a string of symbols for the WebSocket stream
       const streams = trackingSymbols.map(symbol => `${symbol.toLowerCase()}@ticker`).join('/');
       const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
       
@@ -150,11 +147,18 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 [symbol]: parseFloat(ticker.P)
               }));
               
-              // Flash animation effect on price update
-              document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.add('flash-update');
-              setTimeout(() => {
-                document.querySelector(`.crypto-card[data-symbol="${symbol}"]`)?.classList.remove('flash-update');
-              }, 2000);
+              const element = document.querySelector(`.crypto-card[data-symbol="${symbol}"]`);
+              if (element) {
+                const isPriceUp = parseFloat(ticker.c) > (previousPrices[symbol] || 0);
+                
+                element.classList.remove('flash-update-positive', 'flash-update-negative');
+                
+                element.classList.add(isPriceUp ? 'flash-update-positive' : 'flash-update-negative');
+                
+                setTimeout(() => {
+                  element.classList.remove('flash-update-positive', 'flash-update-negative');
+                }, 2000);
+              }
             }
           }
         } catch (error) {
@@ -442,7 +446,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   </div>
                   <div className="flex items-end justify-between">
                     <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
-                    <span className={`text-sm font-mono ${
+                    <span className={`text-sm font-mono min-w-[70px] text-right ${
                       isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -104,7 +105,8 @@
   animation: float 6s ease-in-out infinite;
 }
 
-@keyframes price-flash {
+/* New animations for price updates */
+@keyframes price-flash-positive {
   0% {
     background-color: rgba(16, 185, 129, 0.3);
   }
@@ -113,8 +115,26 @@
   }
 }
 
+@keyframes price-flash-negative {
+  0% {
+    background-color: rgba(234, 56, 76, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-update-positive {
+  animation: price-flash-positive 2s ease-out;
+}
+
+.flash-update-negative {
+  animation: price-flash-negative 2s ease-out;
+}
+
+/* Keep the legacy class for backward compatibility */
 .flash-update {
-  animation: price-flash 2s ease-out;
+  animation: price-flash-positive 2s ease-out;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
