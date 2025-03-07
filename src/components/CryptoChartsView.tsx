@@ -41,6 +41,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   
   const webSocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
