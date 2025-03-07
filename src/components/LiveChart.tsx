@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -230,14 +231,18 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           toast.error('Live connection error. Trying to reconnect...');
           
           if (currentSymbolRef.current === symbol) {
-            setTimeout(connectWebSocket, 5000);
+            setTimeout(() => {
+              connectWebSocket();
+            }, 5000);
           }
         },
         () => {
           console.log('WebSocket connection closed');
           if (currentSymbolRef.current === symbol) {
             console.log('Attempting to reconnect after closure');
-            setTimeout(connectWebSocket, 3000);
+            setTimeout(() => {
+              connectWebSocket();
+            }, 3000);
           }
         }
       );
@@ -269,7 +274,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         console.log(`WebSocket not connected for ${symbol}, attempting to reconnect`);
         connectWebSocket();
       }
-    }, 20000);
+    }, 20000) as unknown as NodeJS.Timeout;
     
     return pingInterval;
   };
@@ -295,7 +300,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
     
     const keepAliveInterval = setupKeepAlive();
     
