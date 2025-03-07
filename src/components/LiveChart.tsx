@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { RefreshCw, X, Maximize2 } from 'lucide-react';
-import { supabase, createHeartbeatWebSocket } from '@/integrations/supabase/client';
+import { supabase, getEdgeFunctionWebSocketUrl, createHeartbeatWebSocket } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -64,7 +64,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
-  const refreshIntervalRef = useRef<number | null>(null);
+  const refreshIntervalIdRef = useRef<number | null>(null);
   const prevPriceRef = useRef<number | null>(null);
   const newDataPointsTimestampsRef = useRef<Set<number>>(new Set());
   const isPriceDecreasingRef = useRef<boolean>(false);
@@ -251,9 +251,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       wsRef.current = null;
     }
     
-    if (refreshIntervalRef.current !== null) {
-      window.clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
+    if (refreshIntervalIdRef.current !== null) {
+      window.clearInterval(refreshIntervalIdRef.current);
+      refreshIntervalIdRef.current = null;
     }
   };
 
@@ -274,11 +274,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     fetchCryptoData();
     connectWebSocket();
     
-    refreshIntervalRef.current = window.setInterval(() => {
-      if (currentSymbolRef.current === symbol) {
-        fetchCryptoData();
-      }
-    }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
+    refreshIntervalIdRef.current = window.setInterval(fetchCryptoData, 5 * 60 * 1000);
     
     return () => {
       cleanupConnections();
