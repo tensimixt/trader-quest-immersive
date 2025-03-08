@@ -113,6 +113,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [priceChangeDirection, setPriceChangeDirection] = useState<{[key: string]: 'up' | 'down' | null}>({
+    'BTCUSDT': null,
+    'ETHUSDT': null,
+    'BNBUSDT': null,
+  });
   
   const isComponentMountedRef = useRef<boolean>(true);
   const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
@@ -120,6 +125,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const webSocketRef = useRef<WebSocket | null>(null);
   const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
     window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
+  const flashTimeoutsRef = useRef<{[key: string]: NodeJS.Timeout}>({});
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -193,6 +199,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         if (Array.isArray(data)) {
           const updatedPrices = { ...prices };
           let pricesUpdated = false;
+          const newDirections: {[key: string]: 'up' | 'down' | null} = { ...priceChangeDirection };
           
           data.forEach((ticker: any) => {
             const symbol = ticker.s;
@@ -200,6 +207,23 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               const price = parseFloat(ticker.c);
               
               if (prices[symbol] !== price) {
+                if (prices[symbol] > 0) {
+                  newDirections[symbol] = price > prices[symbol] ? 'up' : 'down';
+                  
+                  if (flashTimeoutsRef.current[symbol]) {
+                    clearTimeout(flashTimeoutsRef.current[symbol]);
+                  }
+                  
+                  flashTimeoutsRef.current[symbol] = setTimeout(() => {
+                    if (isComponentMountedRef.current) {
+                      setPriceChangeDirection(prev => ({
+                        ...prev,
+                        [symbol]: null
+                      }));
+                    }
+                  }, 2000);
+                }
+                
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
@@ -217,6 +241,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           if (pricesUpdated && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
+            setPriceChangeDirection(newDirections);
           }
         }
       };
@@ -328,6 +353,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     return () => {
       isComponentMountedRef.current = false;
       
+      Object.values(flashTimeoutsRef.current).forEach(timeout => {
+        clearTimeout(timeout);
+      });
+      
       if (webSocketRef.current) {
         priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
         webSocketRef.current = null;
@@ -420,6 +449,14 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const getPriceHighlightClass = (symbol: string): string => {
+    if (!priceChangeDirection[symbol]) return '';
+    
+    return priceChangeDirection[symbol] === 'up' 
+      ? 'flash-update-positive' 
+      : 'flash-update-negative';
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -494,7 +531,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   data-symbol={symbol}
                   className={`crypto-card p-4 rounded-lg border ${
                     activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
-                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors overflow-hidden`}
+                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors overflow-hidden ${getPriceHighlightClass(symbol)}`}
                   onClick={() => handleSymbolSelect(symbol)}
                   whileHover={{ scale: isMobile ? 1 : 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -515,9 +552,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
-                    <span className={`text-sm font-mono ${
+                  <div className="price-container">
+                    <span className="price">{formatPrice(prices[symbol])}</span>
+                    <span className={`price-change ${
                       isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>
