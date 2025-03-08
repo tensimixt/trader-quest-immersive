@@ -1,4 +1,3 @@
-
 type MarketCall = {
   timestamp: string;
   roi: number;
@@ -79,4 +78,65 @@ export const getTimeframeText = (days: number): string => {
   if (days === 7) return "7 days";
   if (days === 30) return "30 days";
   return `${days} days`;
+};
+
+// Calculate performance based on open vs close prices (for OHLC data)
+export const calculateOpenClosePerformance = (
+  klines: Array<{
+    timestamp: number, 
+    open: number, 
+    high: number, 
+    low: number, 
+    close: number,
+    volume: number
+  }>
+): number => {
+  if (klines.length < 2) return 0;
+  
+  const firstOpen = klines[0].open;
+  const lastClose = klines[klines.length - 1].close;
+  
+  return ((lastClose - firstOpen) / firstOpen) * 100;
+};
+
+// Normalize OHLC data for charts (showing open to close performance)
+export const normalizeOHLCChartData = (
+  klines: Array<{
+    timestamp: number, 
+    open: number, 
+    high: number, 
+    low: number, 
+    close: number,
+    volume: number
+  }>
+) => {
+  if (!klines.length) return [];
+  
+  const initialOpen = klines[0].open;
+  
+  return klines.map(kline => ({
+    timestamp: kline.timestamp,
+    formattedDate: new Date(kline.timestamp).toLocaleDateString(),
+    percentChange: ((kline.close - initialOpen) / initialOpen) * 100,
+    open: kline.open,
+    close: kline.close,
+    high: kline.high,
+    low: kline.low
+  }));
+};
+
+// Get daily change (close vs open of same day)
+export const getDailyChange = (
+  kline: {
+    open: number, 
+    close: number
+  }
+): number => {
+  return ((kline.close - kline.open) / kline.open) * 100;
+};
+
+// Format daily change with arrow indicator
+export const formatDailyChange = (change: number): string => {
+  const arrow = change >= 0 ? '↑' : '↓';
+  return `${arrow} ${Math.abs(change).toFixed(2)}%`;
 };
