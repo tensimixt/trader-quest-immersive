@@ -1,560 +1,409 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatCurrency, formatPercentage } from '@/utils/performanceUtils';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
-import {
+import { HelpCircle, TrendingUp, ChevronDown, ChevronUp, ExternalLink, Info } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { 
   Tooltip as UITooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { 
-  formatPercentage, 
-  formatPrice, 
-  getInitialPrice, 
-  getTimeframeText,
-  calculateOpenClosePerformance,
-  normalizeOHLCChartData,
-  getDailyChange,
-  formatDailyChange
-} from '@/utils/performanceUtils';
+import { toast } from 'sonner';
 
-type PerformanceData = {
+interface PerformanceData {
   symbol: string;
   performance: number;
-  priceData: Array<{
+  priceData: {
     timestamp: number;
     price: number;
-  }>;
-  klineData?: Array<{
+  }[];
+  currentPrice: number;
+  klineData?: {
     timestamp: number;
     open: number;
     high: number;
     low: number;
     close: number;
     volume: number;
-  }>;
-  currentPrice: number;
+  }[];
   isNewListing?: boolean;
-  dataPoints?: number;
-  expectedDataPoints?: number;
-  daysCovered?: string;
-  initialPrice?: number;
 }
 
-const COLORS = [
-  '#10B981', // emerald-500
-  '#3B82F6', // blue-500
-  '#EC4899', // pink-500
-  '#8B5CF6', // violet-500
-  '#F59E0B', // amber-500
-  '#06B6D4', // cyan-500
-  '#F97316', // orange-500
-  '#14B8A6', // teal-500
-  '#6366F1', // indigo-500
-  '#EF4444', // red-500
-];
+interface TokenPrice {
+  timestamp: number;
+  price: number;
+}
 
-const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [topPerformers, setTopPerformers] = useState<PerformanceData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [timeframe, setTimeframe] = useState<number>(7);
-  const [limit, setLimit] = useState<number>(10);
-  const [normalizedData, setNormalizedData] = useState<any[]>([]);
-  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+const DEFAULT_DAYS = 7;
+const DEFAULT_LIMIT = 10;
+
+// Color palettes
+const performanceColors = {
+  positive: {
+    primary: "#10B981",
+    secondary: "rgba(16, 185, 129, 0.1)"
+  },
+  negative: {
+    primary: "#EF4444",
+    secondary: "rgba(239, 68, 68, 0.1)"
+  }
+};
+
+const formatTimestamp = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+// Format number as compact
+const formatCompact = (value: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(value);
+};
+
+const TopPerformersChart = () => {
+  const [days, setDays] = useState(DEFAULT_DAYS);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('7d');
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState<{[key: string]: boolean}>({});
-  const isOpeningDialogRef = useRef(false);
-
-  const openTokenDetails = (token: PerformanceData) => {
-    if (isOpeningDialogRef.current) return;
+  
+  // Refs to control dialog behavior
+  const dialogActionInProgressRef = useRef(false);
+  const pendingTokenRef = useRef<PerformanceData | null>(null);
+  
+  const openTokenDetails = (token: PerformanceData, e?: React.MouseEvent) => {
+    // Stop event propagation to prevent bubbling
+    if (e) {
+      e.stopPropagation();
+    }
     
-    isOpeningDialogRef.current = true;
+    // If an action is already in progress, store this token to be processed later
+    if (dialogActionInProgressRef.current) {
+      pendingTokenRef.current = token;
+      return;
+    }
     
-    setSelectedToken(token);
+    // Mark that we're starting a dialog action
+    dialogActionInProgressRef.current = true;
+    console.log(`Opening dialog for ${token.symbol}`);
     
+    // Clear any previous selection to prevent flashing of old content
+    setTokenDetailsOpen(false);
+    
+    // Set the new token after a small delay
     setTimeout(() => {
-      setTokenDetailsOpen(true);
+      setSelectedToken(token);
+      
+      // Open the dialog after the token is set
       setTimeout(() => {
-        isOpeningDialogRef.current = false;
-      }, 100);
+        setTokenDetailsOpen(true);
+        
+        // Release the lock after a delay to allow animations to complete
+        setTimeout(() => {
+          dialogActionInProgressRef.current = false;
+          
+          // Process any pending token requests
+          if (pendingTokenRef.current) {
+            const pendingToken = pendingTokenRef.current;
+            pendingTokenRef.current = null;
+            openTokenDetails(pendingToken);
+          }
+        }, 300);
+      }, 50);
     }, 50);
   };
 
   useEffect(() => {
-    fetchTopPerformers();
-  }, [timeframe, limit]);
+    fetchPerformanceData();
+  }, [days, limit]);
 
-  const fetchTopPerformers = async () => {
+  useEffect(() => {
+    // Handle tab changes
+    if (activeTab === '1d') {
+      setDays(1);
+    } else if (activeTab === '7d') {
+      setDays(7);
+    } else if (activeTab === '30d') {
+      setDays(30);
+    }
+  }, [activeTab]);
+
+  const fetchPerformanceData = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
+      console.log(`Fetching top performers for ${days} days...`);
       const { data, error } = await supabase.functions.invoke('crypto-prices', {
-        body: { 
-          getTopPerformers: true,
-          days: timeframe,
-          limit: limit,
-          useOHLC: true
-        }
+        body: { getTopPerformers: true, days, limit, useOHLC: true }
       });
-      
-      if (error) throw error;
-      
-      console.log('Fetched top performers:', data);
-      
-      const enhancedData = data.map((performer: PerformanceData) => {
-        let calculatedPerformance = performer.performance;
-        
-        if (performer.klineData && performer.klineData.length >= 2) {
-          calculatedPerformance = calculateOpenClosePerformance(performer.klineData);
-        }
-        
-        return {
-          ...performer,
-          performance: calculatedPerformance,
-          initialPrice: performer.klineData?.length ? performer.klineData[0].open : 
-                        (performer.priceData.length > 0 ? performer.priceData[0].price : 0)
-        };
-      });
-      
-      setTopPerformers(enhancedData);
-      
-      normalizeDataForChart(enhancedData);
-      
+
+      if (error) {
+        console.error('Error fetching top performers:', error);
+        toast.error('Failed to load performance data');
+        return;
+      }
+
+      console.log(`Received ${data.length} top performers`);
+      setPerformanceData(data);
     } catch (error) {
-      console.error('Error fetching top performers:', error);
-      toast.error('Failed to fetch top performers');
+      console.error('Error in fetchPerformanceData:', error);
+      toast.error('Failed to load performance data');
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const normalizeDataForChart = (performers: PerformanceData[]) => {
-    if (!performers.length) return;
-    
-    const hasKlineData = performers.some(p => p.klineData && p.klineData.length > 0);
-    
-    if (hasKlineData) {
-      const allTimestamps = new Set<number>();
-      performers.forEach(performer => {
-        if (performer.klineData) {
-          performer.klineData.forEach(kline => {
-            allTimestamps.add(kline.timestamp);
-          });
-        }
-      });
-      
-      const timestampArray = Array.from(allTimestamps).sort((a, b) => a - b);
-      
-      const normalized = timestampArray.map(timestamp => {
-        const dataPoint: any = { timestamp };
-        
-        performers.forEach(performer => {
-          if (performer.klineData) {
-            const matchingKline = performer.klineData.find(k => k.timestamp === timestamp);
-            if (matchingKline) {
-              const initialOpen = performer.klineData[0]?.open || 1;
-              const percentChange = ((matchingKline.close - initialOpen) / initialOpen) * 100;
-              dataPoint[performer.symbol] = percentChange;
-            }
-          }
-        });
-        
-        return dataPoint;
-      });
-      
-      const sortedData = normalized.sort((a, b) => a.timestamp - b.timestamp);
-      const formattedData = sortedData.map(point => ({
-        ...point,
-        formattedDate: new Date(point.timestamp).toLocaleDateString()
-      }));
-      
-      setNormalizedData(formattedData);
-    } else {
-      const allTimestamps = new Set<number>();
-      performers.forEach(performer => {
-        performer.priceData.forEach(point => {
-          allTimestamps.add(point.timestamp);
-        });
-      });
-      
-      const timestampArray = Array.from(allTimestamps).sort((a, b) => a - b);
-      
-      const normalized = timestampArray.map(timestamp => {
-        const dataPoint: any = { timestamp };
-        
-        performers.forEach(performer => {
-          const matchingPoint = performer.priceData.find(p => p.timestamp === timestamp);
-          if (matchingPoint) {
-            const initialPrice = performer.priceData[0]?.price || 1;
-            const percentChange = ((matchingPoint.price - initialPrice) / initialPrice) * 100;
-            dataPoint[performer.symbol] = percentChange;
-          }
-        });
-        
-        return dataPoint;
-      });
-      
-      const sortedData = normalized.sort((a, b) => a.timestamp - b.timestamp);
-      const formattedData = sortedData.map(point => ({
-        ...point,
-        formattedDate: new Date(point.timestamp).toLocaleDateString()
-      }));
-      
-      setNormalizedData(formattedData);
-    }
-  };
-  
-  const formatPercentage = (value: number): string => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
 
-  const formatPrice = (price: number): string => {
-    if (price < 0.01) return `$${price.toFixed(6)}`;
-    if (price < 1) return `$${price.toFixed(4)}`;
-    if (price < 1000) return `$${price.toFixed(2)}`;
-    return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  };
-  
-  const formatTimestamp = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleDateString();
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const date = formatTimestamp(label);
-      
-      return (
-        <div className="custom-tooltip bg-black/90 border border-emerald-500/30 p-2 rounded">
-          <p className="text-emerald-400 font-mono text-xs">{date}</p>
-          <div className="tooltip-items">
-            {payload.map((entry: any, index: number) => (
-              <div key={`item-${index}`} className="flex items-center text-xs py-1">
-                <div 
-                  className="w-2 h-2 rounded-full mr-1" 
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="text-white mr-2">{entry.name}:</span>
-                <span 
-                  className={entry.value >= 0 ? 'text-emerald-400' : 'text-red-400'}
-                >
-                  {formatPercentage(entry.value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    
-    return null;
-  };
-
-  const InfoNote = () => (
-    <div className="text-amber-200 text-xs leading-relaxed">
-      <p className="mb-2">
-        <span className="font-bold">How performance is calculated:</span>
-      </p>
-      <ul className="list-disc pl-4 space-y-1">
-        <li>Performance is measured from the <strong>opening price</strong> of the first candle to the <strong>closing price</strong> of the most recent candle within the selected timeframe ({getTimeframeText(timeframe)}).</li>
-        <li>For tokens with complete data history, this shows the real market performance over time.</li>
-        <li>For new listings with incomplete data, performance is calculated from the earliest available price point.</li>
-        <li>Tokens marked with <AlertTriangle size={12} className="inline text-amber-400 mx-1" /> are new listings with less than complete data for the selected timeframe.</li>
-        <li>The number beside the warning icon (e.g., "16d") indicates the number of days of data available for that token.</li>
-      </ul>
-      <p className="mt-2">
-        This methodology aligns with standard financial market analysis by comparing opening and closing prices rather than arbitrary points during trading sessions.
-      </p>
-    </div>
-  );
-
-  const TokenDetailsDialog = () => {
-    if (!selectedToken) return null;
-    
-    const initialPrice = selectedToken.initialPrice || 
-                          (selectedToken.klineData?.length ? selectedToken.klineData[0].open : 
-                          getInitialPrice(selectedToken.priceData));
-    const daysAvailable = selectedToken.daysCovered || "N/A";
-    
-    const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
-    const dailyChange = lastKline ? getDailyChange(lastKline) : null;
-    
-    const handleOpenChange = (open: boolean) => {
-      if (!open) {
-        setTokenDetailsOpen(false);
-        setTimeout(() => {
-          setSelectedToken(null);
-        }, 300);
-      }
-    };
-    
-    return (
-      <Dialog open={tokenDetailsOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-emerald-400 flex items-center gap-2">
-              <Info size={18} />
-              {selectedToken.symbol.replace('USDT', '')} Performance Details
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div>
-              <span className="text-emerald-400 font-semibold">Current Price:</span>
-              <span className="ml-2 text-white">{formatPrice(selectedToken.currentPrice)}</span>
-              {dailyChange !== null && (
-                <span className={`ml-2 ${dailyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {formatDailyChange(dailyChange)}
-                </span>
-              )}
-            </div>
-            <div>
-              <span className="text-emerald-400 font-semibold">Initial Price:</span>
-              <span className="ml-2 text-white">{formatPrice(initialPrice)}</span>
-              {selectedToken.isNewListing && (
-                <span className="ml-2 text-amber-400">(from {daysAvailable} days ago)</span>
-              )}
-            </div>
-            <div>
-              <span className="text-emerald-400 font-semibold">Overall Performance:</span>
-              <span className={`ml-2 ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {formatPercentage(selectedToken.performance)}
-              </span>
-            </div>
-            {selectedToken.klineData && selectedToken.klineData.length > 0 && (
-              <div>
-                <span className="text-emerald-400 font-semibold">Calculation Method:</span>
-                <span className="ml-2 text-white">
-                  Open price at start: {formatPrice(selectedToken.klineData[0].open)} → 
-                  Close price now: {formatPrice(selectedToken.klineData[selectedToken.klineData.length-1].close)}
-                </span>
-              </div>
-            )}
-            {selectedToken.isNewListing && (
-              <div className="border border-amber-500/20 rounded p-2 bg-amber-500/10">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-amber-400 mt-0.5" />
-                  <div>
-                    <p className="text-amber-300 font-medium">New Listing</p>
-                    <p className="text-amber-200 text-xs mt-1">
-                      This token has only been available for trading for {daysAvailable} days, 
-                      which is less than the selected timeframe of {timeframe} days.
-                      The performance shown is calculated from its first trading day.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  const handleTooltipOpenChange = (symbol: string, isOpen: boolean) => {
+  const toggleTooltip = (symbol: string) => {
     setTooltipOpen(prev => ({
       ...prev,
-      [symbol]: isOpen
+      [symbol]: !prev[symbol]
     }));
   };
 
+  // Custom tooltip for the recharts component
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-black/80 border border-emerald-500/20 p-2 rounded-lg text-sm">
+          <p className="text-emerald-400 font-mono">{formatTimestamp(label)}</p>
+          <p className="text-white font-mono">{formatCurrency(payload[0].value)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="top-performers-view glass-card rounded-xl border border-emerald-500/20 p-4 relative"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
-    >
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-white font-mono tracking-wider">
-          TOP {limit} PERFORMERS ({timeframe}D)
-        </h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setInfoDialogOpen(true)}
-            className="p-1.5 rounded-lg bg-black/40 text-amber-400 hover:bg-amber-500/20 transition-colors"
-          >
-            <Info size={16} />
-          </button>
-          <button 
-            onClick={fetchTopPerformers} 
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-            disabled={isLoading}
-          >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-          </button>
-          <button 
-            onClick={onClose} 
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
+    <div className="glass-card rounded-xl p-4 border border-emerald-500/20">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold text-white">Top Performers</h2>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+          <TabsList className="bg-black/50">
+            <TabsTrigger value="1d" className="text-xs data-[state=active]:bg-emerald-500/20">1D</TabsTrigger>
+            <TabsTrigger value="7d" className="text-xs data-[state=active]:bg-emerald-500/20">7D</TabsTrigger>
+            <TabsTrigger value="30d" className="text-xs data-[state=active]:bg-emerald-500/20">30D</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
-      
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button
-          variant={timeframe === 1 ? "default" : "outline"}
-          size="sm"
-          onClick={() => setTimeframe(1)}
-          className={timeframe === 1 ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-500/50 text-emerald-400"}
-        >
-          24H
-        </Button>
-        <Button
-          variant={timeframe === 7 ? "default" : "outline"}
-          size="sm"
-          onClick={() => setTimeframe(7)}
-          className={timeframe === 7 ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-500/50 text-emerald-400"}
-        >
-          7D
-        </Button>
-        <Button
-          variant={timeframe === 30 ? "default" : "outline"}
-          size="sm"
-          onClick={() => setTimeframe(30)}
-          className={timeframe === 30 ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-500/50 text-emerald-400"}
-        >
-          30D
-        </Button>
-      </div>
-      
+
       {isLoading ? (
-        <div className="flex items-center justify-center h-[350px] border border-dashed border-emerald-500/20 rounded-lg">
-          <div className="w-8 h-8 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
-        </div>
-      ) : normalizedData.length > 0 ? (
-        <div className="h-[350px] mb-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={normalizedData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#10b98130" />
-              <XAxis 
-                dataKey="formattedDate" 
-                stroke="#10B981" 
-                tick={{ fill: '#10B981', fontSize: 12 }} 
-              />
-              <YAxis 
-                stroke="#10B981" 
-                tick={{ fill: '#10B981', fontSize: 12 }}
-                tickFormatter={(value) => `${value.toFixed(0)}%`}
-                domain={['dataMin', 'dataMax']}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              {topPerformers.map((performer, index) => (
-                <Line
-                  key={performer.symbol}
-                  type="monotone"
-                  dataKey={performer.symbol}
-                  name={performer.symbol.replace('USDT', '')}
-                  stroke={COLORS[index % COLORS.length]}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="flex justify-center items-center h-64">
+          <div className="spinner border-t-2 border-emerald-500 rounded-full h-8 w-8"></div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-[350px] border border-dashed border-emerald-500/20 rounded-lg text-emerald-400">
-          No data available
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
+          {performanceData.slice(0, 9).map((token, index) => {
+            const isPositive = token.performance >= 0;
+            const colorScheme = isPositive ? performanceColors.positive : performanceColors.negative;
+            
+            // Get first and last price points
+            const firstPoint = token.priceData[0];
+            const lastPoint = token.priceData[token.priceData.length - 1];
+            
+            return (
+              <motion.div
+                key={token.symbol}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={`glass-card rounded-lg p-3 border border-${isPositive ? 'emerald' : 'red'}-500/20 cursor-pointer hover:bg-${isPositive ? 'emerald' : 'red'}-500/10 transition-colors`}
+                onClick={(e) => openTokenDetails(token, e)}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <h3 className="font-bold text-white">{token.symbol.replace('USDT', '')}</h3>
+                      
+                      {token.isNewListing && (
+                        <TooltipProvider>
+                          <UITooltip open={tooltipOpen[token.symbol]} onOpenChange={(open) => setTooltipOpen(prev => ({ ...prev, [token.symbol]: open }))}>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className="bg-blue-500/30 text-blue-300 text-[10px] px-1.5 rounded-full cursor-help"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTooltip(token.symbol);
+                                }}
+                              >
+                                NEW
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">Recent listing with limited historical data</p>
+                            </TooltipContent>
+                          </UITooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-white/70 text-sm font-mono">{formatCurrency(token.currentPrice)}</span>
+                      <span className={`text-xs ${isPositive ? 'text-emerald-400' : 'text-red-400'} flex items-center`}>
+                        {isPositive ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {formatPercentage(Math.abs(token.performance))}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-1 py-0.5 bg-black/30 rounded text-xs text-center">
+                    <span className={isPositive ? 'text-emerald-400' : 'text-red-400'}>#{index + 1}</span>
+                  </div>
+                </div>
+                
+                <div className="h-16 mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={token.priceData}>
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke={colorScheme.primary} 
+                        dot={false}
+                        strokeWidth={2}
+                        isAnimationActive={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="flex justify-between mt-2 text-xs text-white/50 font-mono">
+                  <div>{formatTimestamp(firstPoint?.timestamp || 0)}</div>
+                  <div>{formatTimestamp(lastPoint?.timestamp || 0)}</div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-        {topPerformers.map((performer, index) => (
-          <div 
-            key={performer.symbol} 
-            className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              openTokenDetails(performer);
-            }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-emerald-400 font-mono text-xs font-bold">
-                {performer.symbol.replace('USDT', '')}
-              </span>
-              <div className="flex items-center">
-                <div 
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                />
-                {performer.isNewListing && (
-                  <TooltipProvider>
-                    <UITooltip 
-                      open={tooltipOpen[performer.symbol]} 
-                      onOpenChange={(open) => handleTooltipOpenChange(performer.symbol, open)}
-                    >
-                      <TooltipTrigger asChild>
-                        <div 
-                          className="ml-1 cursor-help"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent triggering the card click
-                            handleTooltipOpenChange(performer.symbol, !tooltipOpen[performer.symbol]);
-                          }}
-                        >
-                          <AlertTriangle size={12} className="text-amber-400" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent 
-                        side="top" 
-                        className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]"
-                        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
-                      >
-                        <p className="font-bold mb-1">New Listing Alert!</p>
-                        <p className="mb-1">{performer.symbol.replace('USDT', '')} was listed <span className="text-amber-400 font-bold">{performer.daysCovered}</span> days ago.</p>
-                        <p>Performance is calculated from its initial price of {formatPrice(performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}</p>
-                      </TooltipContent>
-                    </UITooltip>
-                  </TooltipProvider>
+      {/* Dialog for token details */}
+      {selectedToken && (
+        <Dialog
+          open={tokenDetailsOpen}
+          onOpenChange={(open) => {
+            if (!open && !dialogActionInProgressRef.current) {
+              dialogActionInProgressRef.current = true;
+              console.log(`Closing dialog for ${selectedToken.symbol}`);
+              
+              setTokenDetailsOpen(false);
+              
+              // Only clear the selected token after the dialog closes
+              setTimeout(() => {
+                setSelectedToken(null);
+                dialogActionInProgressRef.current = false;
+                
+                // Process any pending token requests
+                if (pendingTokenRef.current) {
+                  const pendingToken = pendingTokenRef.current;
+                  pendingTokenRef.current = null;
+                  openTokenDetails(pendingToken);
+                }
+              }, 300);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[600px] bg-black/90 border-emerald-500/20">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <span>{selectedToken.symbol.replace('USDT', '')} / USDT</span>
+                {selectedToken.isNewListing && (
+                  <span className="bg-blue-500/30 text-blue-300 text-xs px-2 py-0.5 rounded-full">NEW</span>
                 )}
+              </DialogTitle>
+              <DialogDescription>
+                Performance data for the past {days} days
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-lg font-bold font-mono">{formatCurrency(selectedToken.currentPrice)}</p>
+                  <div className="flex items-center gap-1">
+                    <span className={`${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'} flex items-center`}>
+                      {selectedToken.performance >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
+                      {formatPercentage(Math.abs(selectedToken.performance))}
+                    </span>
+                    <span className="text-xs text-white/50">({days}D)</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`https://www.binance.com/en/trade/${selectedToken.symbol}?theme=dark&type=spot`, '_blank');
+                  }}
+                >
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  Trade on Binance
+                </Button>
               </div>
+              
+              <div className="h-60 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={selectedToken.priceData}
+                    margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <XAxis 
+                      dataKey="timestamp" 
+                      tickFormatter={formatTimestamp} 
+                      tick={{ fill: '#9CA3AF', fontSize: 10 }}
+                    />
+                    <YAxis 
+                      domain={['auto', 'auto']}
+                      tick={{ fill: '#9CA3AF', fontSize: 10 }}
+                      tickFormatter={(value) => formatCurrency(value)}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke={selectedToken.performance >= 0 ? "#10B981" : "#EF4444"} 
+                      dot={false}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              
+              {selectedToken.klineData && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 bg-black/50 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Open</p>
+                    <p className="text-sm font-mono text-white">{formatCurrency(selectedToken.klineData[0].open)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">High</p>
+                    <p className="text-sm font-mono text-emerald-400">{formatCurrency(Math.max(...selectedToken.klineData.map(k => k.high)))}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Low</p>
+                    <p className="text-sm font-mono text-red-400">{formatCurrency(Math.min(...selectedToken.klineData.map(k => k.low)))}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Volume</p>
+                    <p className="text-sm font-mono text-white">{formatCompact(selectedToken.klineData.reduce((sum, k) => sum + k.volume, 0))}</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <span className="text-white text-sm font-mono">
-              {formatPrice(performer.currentPrice)}
-            </span>
-            <div className="flex items-center">
-              <span className={`text-xs font-mono ${performer.performance >= 0 ? 'text-emerald-400 flex items-center' : 'text-red-400 flex items-center'}`}>
-                {performer.performance >= 0 ? (
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                ) : (
-                  <TrendingDown className="w-3 h-3 mr-1" />
-                )}
-                {formatPercentage(performer.performance)}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
-        <DialogContent className="bg-black/95 border border-amber-500/30 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-amber-400 flex items-center gap-2">
-              <Info size={18} />
-              Performance Calculation Info
-            </DialogTitle>
-          </DialogHeader>
-          <DialogDescription>
-            <InfoNote />
-          </DialogDescription>
-        </DialogContent>
-      </Dialog>
-      
-      <TokenDetailsDialog />
-    </motion.div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 };
 
