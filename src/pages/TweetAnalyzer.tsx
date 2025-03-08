@@ -49,52 +49,84 @@ const TweetAnalyzer = () => {
   const fetchTweets = async () => {
     setIsLoading(true);
     try {
-      // Create the tweets structure directly instead of using the API
-      // since the API is returning HTML instead of JSON
-      console.log("Using sample tweet data instead of API");
+      // Call the Twitter API directly
+      const response = await fetch('https://api.twitterapi.io/twitter/list/tweets', {
+        method: 'GET',
+        headers: {
+          'X-API-Key': '63b174ff7c2f44af89a86e7022509709',
+          'Content-Type': 'application/json',
+        },
+      });
       
-      // This simulates a successful API response with our sample data
-      setTimeout(() => {
-        const sampleTweets = marketIntelligence
-          .filter(item => item.screenName)
-          .map(item => ({
-            id: item.id.toString(),
-            text: item.message,
-            createdAt: item.timestamp,
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      
+      // Check if the response is JSON
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        console.log('Twitter API response:', data);
+        
+        if (data && data.tweets && Array.isArray(data.tweets)) {
+          const formattedTweets = data.tweets.map((tweet: any) => ({
+            id: tweet.id,
+            text: tweet.text,
+            createdAt: tweet.createdAt,
             author: {
-              userName: item.screenName || "unknown",
-              name: item.screenName || "Unknown User",
-              profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+              userName: tweet.author?.userName || "unknown",
+              name: tweet.author?.name || "Unknown User",
+              profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
             },
-            isReply: item.isReply || false,
-            isQuote: item.isQuote || false,
-            quoted_tweet: item.quoteTweet ? {
-              text: item.quoteTweet,
+            isReply: tweet.isReply || false,
+            isQuote: tweet.isQuote || false,
+            quoted_tweet: tweet.quoted_tweet ? {
+              text: tweet.quoted_tweet.text,
               author: {
-                userName: item.screenName
+                userName: tweet.quoted_tweet.author?.userName || "unknown"
               }
             } : undefined
           }));
-        
-        setTweetData(sampleTweets);
-        setIsLoading(false);
-        toast.success('Tweets loaded successfully');
-      }, 500);
-      
-    } catch (error) {
-      console.error('Error creating sample tweets:', error);
-      toast.error('Failed to load tweets');
-      // Make sure we have fallback data
-      setTweetData(marketIntelligence.filter(item => item.screenName).map(item => ({
-        id: item.id.toString(),
-        text: item.message,
-        createdAt: item.timestamp,
-        author: {
-          userName: item.screenName || "unknown",
-          name: item.screenName || "Unknown User",
-          profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          
+          setTweetData(formattedTweets);
+          toast.success('Tweets loaded successfully');
+        } else {
+          throw new Error('Invalid API response format');
         }
-      })));
+      } else {
+        // If response is not JSON, fall back to sample data
+        console.warn('API returned non-JSON response, using sample data');
+        throw new Error('API returned non-JSON response');
+      }
+    } catch (error) {
+      console.error('Error fetching tweets:', error);
+      toast.error('Failed to load tweets from API, using sample data');
+      
+      // Fall back to sample data
+      const sampleTweets = marketIntelligence
+        .filter(item => item.screenName)
+        .map(item => ({
+          id: item.id.toString(),
+          text: item.message,
+          createdAt: item.timestamp,
+          author: {
+            userName: item.screenName || "unknown",
+            name: item.screenName || "Unknown User",
+            profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          },
+          isReply: item.isReply || false,
+          isQuote: item.isQuote || false,
+          quoted_tweet: item.quoteTweet ? {
+            text: item.quoteTweet,
+            author: {
+              userName: item.screenName
+            }
+          } : undefined
+        }));
+      
+      setTweetData(sampleTweets);
+    } finally {
       setIsLoading(false);
     }
   };
