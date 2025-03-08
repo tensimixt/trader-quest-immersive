@@ -132,6 +132,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     'BNBUSDT': false
   });
   const lastValidPricesRef = useRef<{[key: string]: number}>({});
+  const lastValidChangesRef = useRef<{[key: string]: number}>({});
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -173,6 +174,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               const percentChange = parseFloat(ticker.priceChangePercent);
               if (!isNaN(percentChange)) {
                 changeData[ticker.symbol] = percentChange;
+                lastValidChangesRef.current[ticker.symbol] = percentChange;
                 initialDataFetchedRef.current[ticker.symbol] = true;
               }
             }
@@ -220,6 +222,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         
         if (Array.isArray(data)) {
           const updatedPrices = { ...prices };
+          const updatedChanges = { ...changes };
           let pricesUpdated = false;
           
           data.forEach((ticker: any) => {
@@ -254,13 +257,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                if (isValidPrice(previousPrices[symbol])) {
-                  const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
-                  if (!isNaN(change)) {
-                    setChanges(prev => ({
-                      ...prev,
-                      [symbol]: change
-                    }));
+                if (ticker.p && ticker.P) {
+                  const priceChange = parseFloat(ticker.P);
+                  if (!isNaN(priceChange)) {
+                    updatedChanges[symbol] = priceChange;
+                    lastValidChangesRef.current[symbol] = priceChange;
                   }
                 }
               } else {
@@ -275,6 +276,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           if (pricesUpdated && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
+            setChanges(updatedChanges);
           }
         }
       };
@@ -324,19 +326,29 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         setPrices(prev => ({...prev, ...newPrices}));
       }
       
-      const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
-        const previousPrice = previousPrices[symbol] || currentPrices[symbol];
-        if (!isValidPrice(previousPrice)) return acc;
+      try {
+        const { data: tickersData, error: tickersError } = await supabase.functions.invoke('crypto-prices', {
+          body: { get24hTickers: true }
+        });
         
-        const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
-        if (!isNaN(change)) {
-          acc[symbol] = change;
+        if (!tickersError && tickersData && isComponentMountedRef.current) {
+          const newChanges = {};
+          tickersData.forEach(ticker => {
+            if (ticker.symbol && ticker.priceChangePercent) {
+              const percentChange = parseFloat(ticker.priceChangePercent);
+              if (!isNaN(percentChange)) {
+                newChanges[ticker.symbol] = percentChange;
+                lastValidChangesRef.current[ticker.symbol] = percentChange;
+              }
+            }
+          });
+          
+          if (Object.keys(newChanges).length > 0) {
+            setChanges(prev => ({...prev, ...newChanges}));
+          }
         }
-        return acc;
-      }, {} as {[key: string]: number});
-      
-      if (Object.keys(newChanges).length > 0) {
-        setChanges(prev => ({...prev, ...newChanges}));
+      } catch (err) {
+        console.error('Failed to fetch ticker changes:', err);
       }
       
       if (!isInitialized && isComponentMountedRef.current) {
@@ -524,6 +536,16 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     return 0;
   };
 
+  const getDisplayChange = (symbol: string): number => {
+    if (typeof changes[symbol] === 'number' && !isNaN(changes[symbol])) {
+      return changes[symbol];
+    }
+    if (lastValidChangesRef.current[symbol] && !isNaN(lastValidChangesRef.current[symbol])) {
+      return lastValidChangesRef.current[symbol];
+    }
+    return 0;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -638,13 +660,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                     </div>
                     <div className="flex items-center space-x-1">
                       {hasSymbolData(symbol) && (
-                        (typeof changes[symbol] === 'number') && (
-                          changes[symbol] >= 0 ? (
-                            <TrendingUp size={16} className="text-emerald-400" />
-                          ) : (
-                            <TrendingDown size={16} className="text-red-400" />
-                          )
-                        )
+                        (getDisplayChange(symbol) >= 0 ? (
+                          <TrendingUp size={16} className="text-emerald-400" />
+                        ) : (
+                          <TrendingDown size={16} className="text-red-400" />
+                        ))
                       )}
                     </div>
                   </div>
@@ -660,10 +680,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                     )}
                     <span className={`price-change ${
                       !hasSymbolData(symbol) ? 'text-emerald-400/50' : 
-                      (typeof changes[symbol] === 'number' && changes[symbol] >= 0) ? 'text-emerald-400' : 'text-red-400'
+                      getDisplayChange(symbol) >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>
-                      {hasSymbolData(symbol) && typeof changes[symbol] === 'number' ? 
-                        formatPercentage(changes[symbol]) : 
+                      {hasSymbolData(symbol) ? 
+                        formatPercentage(getDisplayChange(symbol)) : 
                         "Loading..." 
                       }
                     </span>
