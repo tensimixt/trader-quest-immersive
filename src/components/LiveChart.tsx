@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -31,64 +32,6 @@ interface KlineData {
   isNew?: boolean;
 }
 
-const wsRegistry = {
-  activeConnections: new Map<string, WebSocket>(),
-  connectionCounts: new Map<string, number>(),
-  
-  getConnection(symbol: string, interval: string, onMessageCallback: (event: MessageEvent) => void): WebSocket {
-    const key = `${symbol.toLowerCase()}_${interval}`;
-    
-    if (this.activeConnections.has(key)) {
-      const count = this.connectionCounts.get(key) || 0;
-      this.connectionCounts.set(key, count + 1);
-      
-      console.log(`Reusing existing WebSocket for ${key}, count: ${count + 1}`);
-      
-      const existingSocket = this.activeConnections.get(key)!;
-      const oldOnMessage = existingSocket.onmessage;
-      
-      existingSocket.onmessage = (event) => {
-        if (oldOnMessage) {
-          oldOnMessage(event);
-        }
-        onMessageCallback(event);
-      };
-      
-      return existingSocket;
-    } else {
-      console.log(`Creating new WebSocket for ${key}`);
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
-      
-      ws.onmessage = onMessageCallback;
-      
-      this.activeConnections.set(key, ws);
-      this.connectionCounts.set(key, 1);
-      
-      return ws;
-    }
-  },
-  
-  releaseConnection(symbol: string, interval: string): void {
-    const key = `${symbol.toLowerCase()}_${interval}`;
-    
-    if (this.activeConnections.has(key)) {
-      const count = this.connectionCounts.get(key) || 0;
-      
-      if (count <= 1) {
-        console.log(`Closing WebSocket for ${key}`);
-        const ws = this.activeConnections.get(key)!;
-        ws.close();
-        
-        this.activeConnections.delete(key);
-        this.connectionCounts.delete(key);
-      } else {
-        this.connectionCounts.set(key, count - 1);
-        console.log(`Released WebSocket for ${key}, count: ${count - 1}`);
-      }
-    }
-  }
-};
-
 const getSymbolName = (symbol: string): string => {
   switch (symbol) {
     case 'BTCUSDT':
@@ -119,7 +62,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
   const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
-  
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
@@ -127,15 +69,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const prevPriceRef = useRef<number | null>(null);
   const newDataPointsTimestampsRef = useRef<Set<number>>(new Set());
   const isPriceDecreasingRef = useRef<boolean>(false);
+  // Add a ref to track the current symbol for cleanup/reconnect
   const currentSymbolRef = useRef<string>(symbol);
-  const currentIntervalRef = useRef<string>(interval);
-  const isComponentMountedRef = useRef<boolean>(true);
-  const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
-    window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
 
   const fetchCryptoData = async () => {
-    if (!isComponentMountedRef.current) return;
-    
     try {
       setIsLoading(true);
       setIsUpdating(true);
@@ -147,7 +84,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       });
       
       if (fetchError) throw fetchError;
-      if (!isComponentMountedRef.current) return;
       
       if (responseData.price) {
         const newPrice = responseData.price;
@@ -161,11 +97,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
             isPriceDecreasingRef.current = true;
           }
           
-          setTimeout(() => {
-            if (isComponentMountedRef.current) {
-              setPriceChangeAnimation(null);
-            }
-          }, 1000);
+          setTimeout(() => setPriceChangeAnimation(null), 1000);
         }
         
         prevPriceRef.current = newPrice;
@@ -198,31 +130,38 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       toast.success(`${getSymbolName(symbol)} data updated`);
     } catch (err) {
       console.error('Error fetching crypto data:', err);
-      if (isComponentMountedRef.current) {
-        setError('Failed to fetch data. Please try again.');
-        toast.error('Failed to load chart data');
-      }
+      setError('Failed to fetch data. Please try again.');
+      toast.error('Failed to load chart data');
     } finally {
-      if (isComponentMountedRef.current) {
-        setIsLoading(false);
-        setTimeout(() => {
-          if (isComponentMountedRef.current) {
-            setIsUpdating(false);
-          }
-        }, 500);
-      }
+      setIsLoading(false);
+      
+      setTimeout(() => setIsUpdating(false), 500);
     }
   };
 
   const connectWebSocket = () => {
-    if (!isComponentMountedRef.current) return;
+    // Close any existing connection
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Get the current symbol from the props or ref
+    const currentSymbol = symbol.toLowerCase();
+    
+    console.log(`Connecting WebSocket for ${currentSymbol} with interval ${interval}`);
     
     try {
-      const onWebSocketMessage = (event: MessageEvent) => {
-        if (!isComponentMountedRef.current) return;
-        
+      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${currentSymbol}@kline_${interval}`);
+      
+      ws.onopen = () => {
+        console.log(`WebSocket connected for ${currentSymbol}`);
+      };
+      
+      ws.onmessage = (event) => {
+        // Only process messages if this is still the current symbol
         if (currentSymbolRef.current !== symbol) {
-          console.log(`Ignoring message for ${symbol.toLowerCase()} as current symbol is now ${currentSymbolRef.current}`);
+          console.log(`Ignoring message for ${currentSymbol} as current symbol is now ${currentSymbolRef.current}`);
           return;
         }
         
@@ -242,11 +181,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               isPriceDecreasingRef.current = true;
             }
             
-            setTimeout(() => {
-              if (isComponentMountedRef.current) {
-                setPriceChangeAnimation(null);
-              }
-            }, 1000);
+            setTimeout(() => setPriceChangeAnimation(null), 1000);
           }
           
           prevPriceRef.current = newPrice;
@@ -283,46 +218,52 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
             return;
           }
           
-          if (isComponentMountedRef.current) {
-            setData(prevData => {
-              const updatedData = Array.from(dataMapRef.current.values())
-                .sort((a, b) => a.timestamp - b.timestamp)
-                .map(point => ({
-                  ...point,
-                  isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
-                }));
-              
-              if (updatedData.length > 30) {
-                return updatedData.slice(updatedData.length - 30);
-              }
-              
-              return updatedData;
-            });
+          setData(prevData => {
+            const updatedData = Array.from(dataMapRef.current.values())
+              .sort((a, b) => a.timestamp - b.timestamp)
+              .map(point => ({
+                ...point,
+                isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
+              }));
             
-            setTimeout(() => {
-              if (isComponentMountedRef.current) {
-                setIsUpdating(false);
-              }
-            }, 500);
-          }
+            if (updatedData.length > 30) {
+              return updatedData.slice(updatedData.length - 30);
+            }
+            
+            return updatedData;
+          });
+          
+          setTimeout(() => setIsUpdating(false), 500);
         }
       };
       
-      wsRef.current = wsRegistry.getConnection(symbol, interval, onWebSocketMessage);
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast.error('Live connection error. Trying to reconnect...');
+        
+        // Only reconnect if this is still the current symbol
+        if (currentSymbolRef.current === symbol) {
+          setTimeout(connectWebSocket, 5000);
+        }
+      };
       
-      currentSymbolRef.current = symbol;
-      currentIntervalRef.current = interval;
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
       
-      console.log(`WebSocket connected for ${symbol.toLowerCase()}`);
+      wsRef.current = ws;
     } catch (error) {
       console.error('Error connecting to WebSocket:', error);
       toast.error('Connection error. Please try again.');
     }
   };
 
+  // Clean up function to properly handle WebSocket disconnection
   const cleanupConnections = () => {
-    if (currentSymbolRef.current && currentIntervalRef.current) {
-      wsRegistry.releaseConnection(currentSymbolRef.current, currentIntervalRef.current);
+    if (wsRef.current) {
+      console.log(`Closing WebSocket for ${currentSymbolRef.current}`);
+      wsRef.current.close();
+      wsRef.current = null;
     }
     
     if (refreshIntervalRef.current !== null) {
@@ -331,36 +272,14 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }
   };
 
-  useEffect(() => {
-    const handleResize = () => {
-      const newScreenSize = window.innerWidth <= 768 ? 'mobile' : 'desktop';
-      if (screenSizeRef.current !== newScreenSize) {
-        console.log(`Screen size changed from ${screenSizeRef.current} to ${newScreenSize}`);
-        screenSizeRef.current = newScreenSize;
-        
-        if (currentSymbolRef.current && currentIntervalRef.current) {
-          cleanupConnections();
-          
-          setTimeout(() => {
-            if (isComponentMountedRef.current) {
-              connectWebSocket();
-            }
-          }, 300);
-        }
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
+  // Handle symbol changes
   useEffect(() => {
     console.log(`Symbol changed to ${symbol}, previous was ${currentSymbolRef.current}`);
     
+    // Update refs and clean up previous connections
     cleanupConnections();
     
+    // Reset state for new symbol
     setData([]);
     setCurrentPrice(null);
     setLastDataPoint(null);
@@ -368,30 +287,22 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     dataMapRef.current = new Map();
     newDataPointsTimestampsRef.current = new Set();
     
+    // Update the current symbol ref
     currentSymbolRef.current = symbol;
-    currentIntervalRef.current = interval;
     
+    // Fetch new data and connect WebSocket
     fetchCryptoData();
     connectWebSocket();
     
+    // Set up refresh interval
     refreshIntervalRef.current = window.setInterval(() => {
-      if (isComponentMountedRef.current && currentSymbolRef.current === symbol) {
+      if (currentSymbolRef.current === symbol) {
         fetchCryptoData();
       }
     }, 5 * 60 * 1000);
     
     return cleanupConnections;
   }, [symbol, interval]);
-
-  useEffect(() => {
-    isComponentMountedRef.current = true;
-    
-    return () => {
-      console.log(`LiveChart component unmounting for ${symbol}`);
-      isComponentMountedRef.current = false;
-      cleanupConnections();
-    };
-  }, []);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
