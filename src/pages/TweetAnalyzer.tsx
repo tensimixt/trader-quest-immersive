@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
@@ -10,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
+import { supabase } from '@/integrations/supabase/client';
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -49,55 +49,39 @@ const TweetAnalyzer = () => {
   const fetchTweets = async () => {
     setIsLoading(true);
     try {
-      // Call the Twitter API directly
-      const response = await fetch('https://api.twitterapi.io/twitter/list/tweets', {
-        method: 'GET',
-        headers: {
-          'X-API-Key': '63b174ff7c2f44af89a86e7022509709',
-          'Content-Type': 'application/json',
-        },
-      });
+      // Call our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('twitter-feed');
       
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
       }
       
-      const contentType = response.headers.get('content-type');
+      console.log('Supabase function response:', data);
       
-      // Check if the response is JSON
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        console.log('Twitter API response:', data);
-        
-        if (data && data.tweets && Array.isArray(data.tweets)) {
-          const formattedTweets = data.tweets.map((tweet: any) => ({
-            id: tweet.id,
-            text: tweet.text,
-            createdAt: tweet.createdAt,
+      if (data && data.tweets && Array.isArray(data.tweets)) {
+        const formattedTweets = data.tweets.map((tweet: any) => ({
+          id: tweet.id,
+          text: tweet.text,
+          createdAt: tweet.createdAt,
+          author: {
+            userName: tweet.author?.userName || "unknown",
+            name: tweet.author?.name || "Unknown User",
+            profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          },
+          isReply: tweet.isReply || false,
+          isQuote: tweet.isQuote || false,
+          quoted_tweet: tweet.quoted_tweet ? {
+            text: tweet.quoted_tweet.text,
             author: {
-              userName: tweet.author?.userName || "unknown",
-              name: tweet.author?.name || "Unknown User",
-              profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-            },
-            isReply: tweet.isReply || false,
-            isQuote: tweet.isQuote || false,
-            quoted_tweet: tweet.quoted_tweet ? {
-              text: tweet.quoted_tweet.text,
-              author: {
-                userName: tweet.quoted_tweet.author?.userName || "unknown"
-              }
-            } : undefined
-          }));
-          
-          setTweetData(formattedTweets);
-          toast.success('Tweets loaded successfully');
-        } else {
-          throw new Error('Invalid API response format');
-        }
+              userName: tweet.quoted_tweet.author?.userName || "unknown"
+            }
+          } : undefined
+        }));
+        
+        setTweetData(formattedTweets);
+        toast.success('Tweets loaded successfully');
       } else {
-        // If response is not JSON, fall back to sample data
-        console.warn('API returned non-JSON response, using sample data');
-        throw new Error('API returned non-JSON response');
+        throw new Error('Invalid response format from function');
       }
     } catch (error) {
       console.error('Error fetching tweets:', error);
