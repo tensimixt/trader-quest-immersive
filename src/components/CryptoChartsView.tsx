@@ -231,10 +231,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         if (!isComponentMountedRef.current) return;
         
         if (Array.isArray(data)) {
+          const updatedPrices = { ...prices };
+          const updatedChanges = { ...changes };
+          let hasUpdates = false;
+          
           data.forEach((ticker: any) => {
             const symbol = ticker.s;
             if (trackingSymbols.includes(symbol)) {
               const currentPrice = parseFloat(ticker.c || '0');
+              const changePercent = parseFloat(ticker.P || '0');
               
               if (isValidPrice(currentPrice)) {
                 const previousPrice = previousPricesRef.current.get(symbol);
@@ -255,6 +260,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 }
                 
                 previousPricesRef.current.set(symbol, currentPrice);
+                updatedPrices[symbol] = currentPrice;
+                hasUpdates = true;
                 
                 tickersMapRef.current.set(symbol, {
                   s: symbol,
@@ -269,29 +276,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 
                 initialDataFetchedRef.current[symbol] = true;
               }
+              
+              if (!isNaN(changePercent)) {
+                updatedChanges[symbol] = changePercent;
+                hasUpdates = true;
+              }
             }
           });
           
-          if (isComponentMountedRef.current) {
-            const updatedPrices = { ...prices };
-            const updatedChanges = { ...changes };
-            
-            for (const symbol of trackingSymbols) {
-              const ticker = tickersMapRef.current.get(symbol);
-              if (ticker) {
-                const price = parseFloat(ticker.c);
-                const changePercent = parseFloat(ticker.P);
-                
-                if (isValidPrice(price)) {
-                  updatedPrices[symbol] = price;
-                }
-                
-                if (!isNaN(changePercent)) {
-                  updatedChanges[symbol] = changePercent;
-                }
-              }
-            }
-            
+          if (hasUpdates && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
             setChanges(updatedChanges);
@@ -566,8 +559,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 
   const getDisplayChange = (symbol: string): number => {
     const ticker = tickersMapRef.current.get(symbol);
-    if (ticker && !isNaN(parseFloat(ticker.P))) {
-      return parseFloat(ticker.P);
+    if (ticker && ticker.P) {
+      const change = parseFloat(ticker.P);
+      if (!isNaN(change)) {
+        return change;
+      }
     }
     return changes[symbol] || 0;
   };
