@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatPrice, formatPercentage } from '@/utils/performanceUtils';
 
 const LiveChart = lazy(() => import('./LiveChart'));
 const TickerList = lazy(() => import('./TickerList'));
@@ -128,6 +130,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
     window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
   const flashTimeoutsRef = useRef<{[key: string]: NodeJS.Timeout}>({});
+  const initialDataFetchedRef = useRef<{[key: string]: boolean}>({
+    'BTCUSDT': false,
+    'ETHUSDT': false,
+    'BNBUSDT': false
+  });
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -141,12 +148,27 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 
       console.log('Initial prices fetched via HTTP:', pricesData);
       
-      const newPrices = pricesData.reduce((acc, curr) => ({
-        ...acc,
-        [curr.symbol]: curr.price
-      }), {});
+      const newPrices = pricesData.reduce((acc, curr) => {
+        // Mark this symbol as having initial data
+        initialDataFetchedRef.current[curr.symbol] = true;
+        return {
+          ...acc,
+          [curr.symbol]: curr.price
+        };
+      }, {});
       
-      setPrices(newPrices);
+      // Only update non-zero values to prevent overwriting with zeros
+      const validNewPrices = Object.entries(newPrices).reduce((acc, [symbol, price]) => {
+        if (price && price > 0) {
+          acc[symbol] = price;
+        }
+        return acc;
+      }, {} as {[key: string]: number});
+      
+      // Only update if we have valid prices
+      if (Object.keys(validNewPrices).length > 0) {
+        setPrices(prev => ({...prev, ...validNewPrices}));
+      }
       
       try {
         const { data: tickersData, error: tickersError } = await supabase.functions.invoke('crypto-prices', {
@@ -157,11 +179,18 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           const changeData = {};
           tickersData.forEach(ticker => {
             if (ticker.symbol && ticker.priceChangePercent) {
-              changeData[ticker.symbol] = parseFloat(ticker.priceChangePercent);
+              const percentChange = parseFloat(ticker.priceChangePercent);
+              if (!isNaN(percentChange)) {
+                changeData[ticker.symbol] = percentChange;
+              }
             }
           });
           
-          setChanges(changeData);
+          // Only update non-zero values or specifically zero values from valid data
+          if (Object.keys(changeData).length > 0) {
+            setChanges(prev => ({...prev, ...changeData}));
+          }
+          
           console.log('Initial changes fetched:', changeData);
         }
       } catch (err) {
@@ -208,7 +237,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             if (trackingSymbols.includes(symbol)) {
               const price = parseFloat(ticker.c);
               
-              if (prices[symbol] !== price) {
+              // Only update if price is valid and not zero
+              if (!isNaN(price) && price > 0) {
                 if (prices[symbol] > 0) {
                   newDirections[symbol] = price > prices[symbol] ? 'up' : 'down';
                   
@@ -226,10 +256,14 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   }, 2000);
                 }
                 
+                // Mark this symbol as having data
+                initialDataFetchedRef.current[symbol] = true;
+                
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                if (previousPrices[symbol]) {
+                // Calculate 24h percent change if we have previous price data
+                if (previousPrices[symbol] && previousPrices[symbol] > 0) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
                   setChanges(prev => ({
                     ...prev,
@@ -241,6 +275,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           });
           
           if (pricesUpdated && isComponentMountedRef.current) {
+            // Store current prices as previous before updating
             setPreviousPrices(prices);
             setPrices(updatedPrices);
             setPriceChangeDirection(newDirections);
@@ -275,23 +310,41 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       if (pricesError) throw pricesError;
       if (!isComponentMountedRef.current) return;
 
-      setPreviousPrices({...prices});
+      // Store current prices before updating
+      const currentPrices = {...prices};
+      setPreviousPrices(currentPrices);
       
-      const newPrices = pricesData.reduce((acc, curr) => ({
-        ...acc,
-        [curr.symbol]: curr.price
-      }), {});
+      const newPrices = pricesData.reduce((acc, curr) => {
+        // Only update if we have a valid price
+        if (curr.price && curr.price > 0) {
+          acc[curr.symbol] = curr.price;
+          // Mark as having initial data
+          initialDataFetchedRef.current[curr.symbol] = true;
+        }
+        return acc;
+      }, {} as {[key: string]: number});
+      
+      // Only update if we have valid prices
+      if (Object.keys(newPrices).length > 0) {
+        setPrices(prev => ({...prev, ...newPrices}));
+      }
       
       const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
-        const previousPrice = previousPrices[symbol] || prices[symbol];
-        if (!previousPrice) return {...acc, [symbol]: 0};
+        const previousPrice = previousPrices[symbol] || currentPrices[symbol];
+        if (!previousPrice || previousPrice <= 0) return acc;
         
         const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
-        return {...acc, [symbol]: change};
-      }, {});
+        if (!isNaN(change)) {
+          acc[symbol] = change;
+        }
+        return acc;
+      }, {} as {[key: string]: number});
       
-      setPrices(newPrices);
-      setChanges(newChanges);
+      // Only update if we have valid changes
+      if (Object.keys(newChanges).length > 0) {
+        setChanges(prev => ({...prev, ...newChanges}));
+      }
+      
       if (!isInitialized && isComponentMountedRef.current) {
         setIsInitialized(true);
       }
@@ -469,6 +522,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     setShowTopPerformers(false);
   };
 
+  // Check if a particular symbol has data loaded
+  const hasSymbolData = (symbol: string): boolean => {
+    return initialDataFetchedRef.current[symbol] && prices[symbol] > 0;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -575,25 +633,38 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <div className="text-emerald-400">
-                        {getIconForSymbol(symbol)}
+                        {symbol === 'BTCUSDT' ? <Bitcoin className="w-5 h-5" /> : 
+                         symbol === 'ETHUSDT' ? <Coins className="w-5 h-5" /> : 
+                         <BarChart2 className="w-5 h-5" />}
                       </div>
-                      <span className="font-mono text-sm text-emerald-400">{getNameForSymbol(symbol)}</span>
+                      <span className="font-mono text-sm text-emerald-400">
+                        {symbol === 'BTCUSDT' ? 'Bitcoin' : 
+                         symbol === 'ETHUSDT' ? 'Ethereum' : 
+                         'Binance Coin'}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      {isNaN(changes[symbol]) ? null : changes[symbol] >= 0 ? (
-                        <TrendingUp size={16} className="text-emerald-400" />
-                      ) : (
-                        <TrendingDown size={16} className="text-red-400" />
+                      {hasSymbolData(symbol) && (
+                        changes[symbol] >= 0 ? (
+                          <TrendingUp size={16} className="text-emerald-400" />
+                        ) : (
+                          <TrendingDown size={16} className="text-red-400" />
+                        )
                       )}
                     </div>
                   </div>
                   <div className="price-container">
-                    <span className="price">{formatPrice(prices[symbol])}</span>
+                    <span className="price">
+                      {hasSymbolData(symbol) ? formatPrice(prices[symbol]) : "$-.--"}
+                    </span>
                     <span className={`price-change ${
-                      isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
+                      !hasSymbolData(symbol) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>
-                      {formatChange(changes[symbol])}
+                      {hasSymbolData(symbol) ? 
+                        `${changes[symbol] >= 0 ? '+' : ''}${changes[symbol].toFixed(2)}%` : 
+                        "-.--%" 
+                      }
                     </span>
                   </div>
                 </motion.div>

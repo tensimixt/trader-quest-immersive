@@ -1,28 +1,39 @@
-
 // Add this import at the top if it's not already there
 import { format as formatDate } from 'date-fns';
 
 // Add this export if not already present
-export const formatCurrency = (value: number): string => {
+export const formatCurrency = (value: number | string): string => {
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+  
+  if (isNaN(numericValue)) return "$0.00";
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(numericValue);
 };
 
-export const formatPercentage = (value: number): string => {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+export const formatPercentage = (value: number | string): string => {
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+  
+  if (isNaN(numericValue)) return "+0.00%";
+  
+  return `${numericValue >= 0 ? '+' : ''}${numericValue.toFixed(2)}%`;
 };
 
-export const formatPrice = (price: number): string => {
+export const formatPrice = (price: number | string): string => {
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+  
+  if (isNaN(numericPrice)) return "$0.00";
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price);
+  }).format(numericPrice);
 };
 
 export const getInitialPrice = (priceData: Array<{ timestamp: number; price: number }>): number => {
@@ -74,7 +85,6 @@ export const formatDailyChange = (change: number): string => {
   return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%`;
 };
 
-// Add the missing generatePerformanceData function
 export const generatePerformanceData = (marketCalls: Array<any>, year: string): any => {
   // Filter calls for the specified year
   const yearCalls = marketCalls.filter(call => {
