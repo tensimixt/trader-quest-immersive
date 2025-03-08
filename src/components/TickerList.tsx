@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatPrice } from '@/utils/performanceUtils';
 
 type TickerData = {
   symbol: string;
@@ -203,26 +204,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       }
     };
   }, [isWebSocketConnected, tickers.length]);
-
-  const formatPrice = (price: string): string => {
-    const numericPrice = parseFloat(price);
-    
-    if (numericPrice < 0.01) {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 6, 
-        maximumFractionDigits: 8
-      }).format(numericPrice);
-    }
-    
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    }).format(numericPrice);
-  };
 
   const filteredTickers = tickers.filter(ticker => 
     ticker.symbol.toLowerCase().includes(searchInput.toLowerCase())

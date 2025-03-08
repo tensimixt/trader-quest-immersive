@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,6 +19,7 @@ import PerformanceChart from '@/components/PerformanceChart';
 import ChatSection from '@/components/ChatSection';
 import LeaderboardSection from '@/components/LeaderboardSection';
 import CryptoChartsView from '@/components/CryptoChartsView';
+import TopPerformers from '@/components/TopPerformers';
 
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { marketCalls } from '@/data/marketCalls';
@@ -65,6 +65,7 @@ const Index = () => {
 
   const [visibleCards, setVisibleCards] = useState<Array<any>>([]);
   const [showCryptoCharts, setShowCryptoCharts] = useState(false);
+  const [showTopPerformers, setShowTopPerformers] = useState(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -414,6 +415,10 @@ const Index = () => {
     setShowCryptoCharts(!showCryptoCharts);
   };
 
+  const toggleTopPerformers = () => {
+    setShowTopPerformers(!showTopPerformers);
+  };
+
   useEffect(() => {
     const handleResize = () => {
       if (!isMobile && activeTab === "market_intel") {
@@ -615,7 +620,7 @@ const Index = () => {
             <div className="h-full flex flex-col max-h-[calc(100vh-8rem)]">
               <AnimatePresence mode="wait">
                 <motion.div 
-                  key={isHistoryView ? 'history' : (showCryptoCharts ? 'crypto' : 'intel')}
+                  key={isHistoryView ? 'history' : (showCryptoCharts ? 'crypto' : (showTopPerformers ? 'performers' : 'intel'))}
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
@@ -644,6 +649,14 @@ const Index = () => {
                             <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
                           </h2>
                         </>
+                      ) : showTopPerformers ? (
+                        <>
+                          <Activity className="w-5 h-5 text-purple-400" />
+                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            TOP_PERFORMERS
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                          </h2>
+                        </>
                       ) : (
                         <>
                           <Eye className="w-5 h-5 text-emerald-400" />
@@ -655,13 +668,25 @@ const Index = () => {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      {(isHistoryView || showCryptoCharts) && (
+                      {!isHistoryView && !showCryptoCharts && !showTopPerformers && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={toggleTopPerformers}
+                          className="text-purple-400 hover:text-purple-300 hover:bg-purple-400/10"
+                        >
+                          <Activity className="w-4 h-4 mr-2" />
+                          Top Performers
+                        </Button>
+                      )}
+                      {(isHistoryView || showCryptoCharts || showTopPerformers) && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => {
                             setIsHistoryView(false);
                             setShowCryptoCharts(false);
+                            setShowTopPerformers(false);
                           }}
                           className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
                         >
@@ -675,6 +700,10 @@ const Index = () => {
                   <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
                     {showCryptoCharts && (
                       <CryptoChartsView onClose={() => setShowCryptoCharts(false)} />
+                    )}
+                    
+                    {showTopPerformers && (
+                      <TopPerformers onClose={() => setShowTopPerformers(false)} />
                     )}
                     
                     {isHistoryView && performanceData && !showCryptoCharts && (
@@ -730,7 +759,7 @@ const Index = () => {
                       </AnimatePresence>
                     )}
                     
-                    {!isHistoryView && !showCryptoCharts && (
+                    {!isHistoryView && !showCryptoCharts && !showTopPerformers && (
                       <AnimatePresence mode="popLayout">
                         {visibleCards.map((prediction, index) => (
                           <motion.div
