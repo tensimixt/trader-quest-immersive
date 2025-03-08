@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
@@ -24,7 +25,8 @@ const priceWsRegistry = {
     } else {
       console.log('Creating new price WebSocket');
       
-      const wsUrl = 'wss://stream.binance.com:9443/ws/!miniTicker@arr';
+      // Changed from !miniTicker@arr to !ticker@arr to get full ticker data including 24h changes
+      const wsUrl = 'wss://stream.binance.com:9443/ws/!ticker@arr';
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
@@ -239,6 +241,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             const symbol = ticker.s;
             if (trackingSymbols.includes(symbol)) {
               const currentPrice = parseFloat(ticker.c || '0');
+              const changePercent = parseFloat(ticker.P || '0');
               
               if (isValidPrice(currentPrice)) {
                 const previousPrice = previousPricesRef.current.get(symbol);
@@ -262,13 +265,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = currentPrice;
                 hasUpdates = true;
                 
-                const existingTicker = tickersMapRef.current.get(symbol);
-                
                 tickersMapRef.current.set(symbol, {
                   s: symbol,
                   c: ticker.c || '0',
-                  P: existingTicker?.P || '0',
-                  p: existingTicker?.p || '0',
+                  P: ticker.P || '0',
+                  p: ticker.p || '0',
                   v: ticker.v || '0',
                   q: ticker.q || '0',
                   e: ticker.e || '',
@@ -277,12 +278,18 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 
                 initialDataFetchedRef.current[symbol] = true;
               }
+              
+              if (!isNaN(changePercent)) {
+                updatedChanges[symbol] = changePercent;
+                hasUpdates = true;
+              }
             }
           });
           
           if (hasUpdates && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
+            setChanges(updatedChanges);
           }
         }
       };
