@@ -5,6 +5,19 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type PerformanceData = {
   symbol: string;
@@ -39,6 +52,7 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [timeframe, setTimeframe] = useState<number>(7);
   const [limit, setLimit] = useState<number>(10);
   const [normalizedData, setNormalizedData] = useState<any[]>([]);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchTopPerformers();
@@ -162,6 +176,23 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return null;
   };
 
+  const InfoNote = () => (
+    <div className="text-amber-200 text-xs leading-relaxed">
+      <p className="mb-2">
+        <span className="font-bold">How performance is calculated:</span>
+      </p>
+      <ul className="list-disc pl-4 space-y-1">
+        <li>For tokens with complete data history, performance is measured from the beginning of the selected time period.</li>
+        <li>For new listings with incomplete data, performance is calculated from the earliest available price point.</li>
+        <li>Tokens marked with <AlertTriangle size={12} className="inline text-amber-400 mx-1" /> are new listings with less than complete data for the selected timeframe.</li>
+        <li>The number beside the warning icon (e.g., "16d") indicates the number of days of data available for that token.</li>
+      </ul>
+      <p className="mt-2">
+        This approach ensures fair comparison while also highlighting tokens that might show higher volatility due to recent listing.
+      </p>
+    </div>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -175,6 +206,12 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           TOP {limit} PERFORMERS ({timeframe}D)
         </h3>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setInfoDialogOpen(true)}
+            className="p-1.5 rounded-lg bg-black/40 text-amber-400 hover:bg-amber-500/20 transition-colors"
+          >
+            <Info size={16} />
+          </button>
           <button 
             onClick={fetchTopPerformers} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
@@ -189,15 +226,6 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <X size={16} />
           </button>
         </div>
-      </div>
-      
-      <div className="bg-amber-900/30 border border-amber-500/20 rounded-lg p-2 mb-4 flex items-start">
-        <Info size={16} className="text-amber-400 mt-0.5 mr-2 flex-shrink-0" />
-        <p className="text-amber-200 text-xs">
-          <span className="font-bold">Note:</span> Performance percentage is calculated based on available data. 
-          Tokens with <AlertTriangle size={10} className="inline text-amber-400 mx-1" /> 
-          are new listings with incomplete data and may show different performance than expected.
-        </p>
       </div>
       
       <div className="flex flex-wrap gap-2 mb-4">
@@ -285,9 +313,18 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 />
                 {performer.isNewListing && (
-                  <div className="ml-1" title={`New listing or incomplete data (${performer.daysCovered}/${timeframe} days)`}>
-                    <AlertTriangle size={12} className="text-amber-400" />
-                  </div>
+                  <TooltipProvider>
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <div className="ml-1 cursor-help">
+                          <AlertTriangle size={12} className="text-amber-400" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[200px]">
+                        New listing with {performer.daysCovered} days of data
+                      </TooltipContent>
+                    </UITooltip>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
@@ -312,6 +349,20 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </div>
         ))}
       </div>
+
+      <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
+        <DialogContent className="bg-black/95 border border-amber-500/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-amber-400 flex items-center gap-2">
+              <Info size={18} />
+              Performance Calculation Info
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            <InfoNote />
+          </DialogDescription>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
