@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, X, AlertTriangle, Info, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { formatPrice, formatPercentage } from '@/utils/performanceUtils';
 
 type TickerData = {
   symbol: string;
@@ -11,6 +20,17 @@ type TickerData = {
   lastPrice: string;
   volume: string;
   quoteVolume?: string; // Adding quoteVolume which is in USDT
+};
+
+type TickerDetailData = TickerData & {
+  klineData?: Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>;
 };
 
 // Create a static WebSocket registry to manage all-tickers connection
@@ -115,6 +135,10 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   const onMessageCallbackRef = useRef<(data: any) => void>(() => {});
   const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
     window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
+  const [selectedTicker, setSelectedTicker] = useState<TickerDetailData | null>(null);
+  const [tickerDialogOpen, setTickerDialogOpen] = useState(false);
+  const [tickerChartData, setTickerChartData] = useState<any[]>([]);
+  const [isChartLoading, setIsChartLoading] = useState(false);
 
   const fetchTickers = async () => {
     if (!isComponentMountedRef.current) return;
@@ -317,6 +341,48 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     };
   }, [isWebSocketConnected, tickers.length]);
 
+  const handleTickerClick = async (ticker: TickerData) => {
+    setIsChartLoading(true);
+    setSelectedTicker({...ticker});
+    setTickerDialogOpen(true);
+    
+    try {
+      // Fetch historical data for the selected ticker
+      const { data, error } = await supabase.functions.invoke('crypto-prices', {
+        body: { 
+          getTickerHistory: true,
+          symbol: ticker.symbol,
+          days: 7 // Default to 7 days
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data && data.klineData) {
+        setTickerChartData(data.klineData);
+        setSelectedTicker(prev => prev ? {...prev, klineData: data.klineData} : null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ticker history:', error);
+      toast.error('Could not load ticker history');
+    } finally {
+      setIsChartLoading(false);
+    }
+  };
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000000) {
+      return (num / 1000000000).toFixed(2) + 'B';
+    }
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(2) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(2) + 'K';
+    }
+    return num.toFixed(2);
+  };
+
   const formatPrice = (price: string): string => {
     const numericPrice = parseFloat(price);
     
@@ -439,7 +505,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                         key={ticker.symbol} 
                         className={`border-b border-white/5 transition-colors ${
                           getTickerHighlightClass(ticker.symbol)
-                        }`}
+                        } cursor-pointer`}
+                        onClick={() => handleTickerClick(ticker)}
                       >
                         <td className="py-3 text-left font-mono">{ticker.symbol}</td>
                         <td className="py-3 text-right font-mono">{formatPrice(ticker.lastPrice)}</td>
@@ -470,6 +537,152 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
           </>
         )}
       </div>
+      
+      {/* Ticker Detail Dialog */}
+      <Dialog 
+        open={tickerDialogOpen} 
+        onOpenChange={setTickerDialogOpen}
+      >
+        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white max-w-2xl w-full">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-400 flex items-center gap-2">
+              {selectedTicker && (
+                <>
+                  <div className="w-4 h-4 rounded-full bg-emerald-500" />
+                  {selectedTicker.symbol} Details
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedTicker && (
+            <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">Current Price</div>
+                  <div className="text-white font-mono text-lg">{formatPrice(selectedTicker.lastPrice)}</div>
+                </div>
+                
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">24h Change</div>
+                  <div className={`font-mono text-lg flex items-center ${parseFloat(selectedTicker.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {parseFloat(selectedTicker.priceChangePercent) >= 0 ? (
+                      <ArrowUp className="mr-1" size={18} />
+                    ) : (
+                      <ArrowDown className="mr-1" size={18} />
+                    )}
+                    {selectedTicker.priceChangePercent}%
+                  </div>
+                </div>
+                
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">24h Volume</div>
+                  <div className="text-white font-mono text-lg">
+                    ${formatNumber(selectedTicker.quoteVolume ? parseFloat(selectedTicker.quoteVolume) : parseFloat(selectedTicker.volume) * parseFloat(selectedTicker.lastPrice))}
+                  </div>
+                </div>
+                
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">Price Change</div>
+                  <div className={`text-white font-mono text-lg ${parseFloat(selectedTicker.priceChange) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPrice(selectedTicker.priceChange)}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <div className="text-sm text-gray-300 mb-2 flex items-center justify-between">
+                  <span>Price History (7D)</span>
+                  {selectedTicker.klineData && (
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                        <span className="text-xs text-emerald-400/70">Close Price</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 rounded-full bg-blue-500" />
+                        <span className="text-xs text-emerald-400/70">Open Price</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="h-[250px] bg-black/30 border border-emerald-500/20 rounded-lg p-2">
+                  {isChartLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="w-8 h-8 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+                    </div>
+                  ) : selectedTicker.klineData && selectedTicker.klineData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart 
+                        data={selectedTicker.klineData}
+                        margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
+                        <XAxis 
+                          dataKey="timestamp" 
+                          tick={{ fill: '#10B981', fontSize: 10 }}
+                          tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                          stroke="#10B981"
+                        />
+                        <YAxis 
+                          tick={{ fill: '#10B981', fontSize: 10 }}
+                          stroke="#10B981"
+                          domain={['dataMin', 'dataMax']}
+                          tickFormatter={(value) => `$${value.toFixed(2)}`}
+                        />
+                        <Tooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-black/90 border border-emerald-500/30 p-2 rounded">
+                                  <p className="text-emerald-400 text-xs">
+                                    {new Date(label).toLocaleDateString()}
+                                  </p>
+                                  <div className="text-xs">
+                                    <p className="text-blue-400">Open: {formatPrice(data.open)}</p>
+                                    <p className="text-white">High: {formatPrice(data.high)}</p>
+                                    <p className="text-white">Low: {formatPrice(data.low)}</p>
+                                    <p className="text-emerald-400">Close: {formatPrice(data.close)}</p>
+                                    <p className="text-white">Volume: ${formatNumber(data.volume)}</p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="close" 
+                          name="Close Price" 
+                          stroke="#10B981" 
+                          dot={false}
+                          activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="open" 
+                          name="Open Price" 
+                          stroke="#0EA5E9" 
+                          dot={false}
+                          strokeDasharray="5 5"
+                          activeDot={{ r: 6, stroke: '#0EA5E9', strokeWidth: 2, fill: '#111' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      No chart data available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
