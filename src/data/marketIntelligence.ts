@@ -34,5 +34,41 @@ export const marketIntelligence = [
     impact: "BULLISH",
     timestamp: "2024-03-10T13:45:00Z",
     confidence: 90
+  },
+  {
+    id: 6,
+    message: "@MuroCrypto: Tomorrow is important as I said earlier it would be good to get a second bull pin-bar weekly candle close. Then retest, buy the next dip to the lows.",
+    impact: "BULLISH",
+    timestamp: "2025-03-08T23:08:18Z",
+    confidence: 88,
+    screenName: "MuroCrypto",
+    marketSymbol: "BTC",
+    isReply: false,
+    isQuote: true,
+    quoteTweet: "pin-bars on the weekly, would be good if the second one could close like this. Double Bull-Pin-Bar is probably the best reversal pattern."
+  },
+  {
+    id: 7,
+    message: "@I_Am_The_ICT: They can't pretend they discovered it or was using before I taught it. That is the entire thing in a nutshell really.",
+    impact: "NEUTRAL",
+    timestamp: "2025-03-08T23:05:30Z",
+    confidence: 70,
+    screenName: "I_Am_The_ICT",
+    marketSymbol: "FOREX",
+    isReply: true,
+    isQuote: false,
+    replyToTweet: "They want to market it as their own..."
+  },
+  {
+    id: 8,
+    message: "@Pentosh1: It did go a million x off the lows tho",
+    impact: "BULLISH",
+    timestamp: "2025-03-08T23:02:48Z",
+    confidence: 75,
+    screenName: "Pentosh1",
+    marketSymbol: "CRYPTO",
+    isReply: true,
+    isQuote: false,
+    replyToTweet: "Discussing market performance"
   }
 ];
