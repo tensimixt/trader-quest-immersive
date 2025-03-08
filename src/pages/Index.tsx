@@ -1,6 +1,6 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Eye, Network, Send, History, ArrowLeft,
   MessageCircle, Activity, Radio, Search, Loader,
@@ -30,6 +30,7 @@ import { formatJapanTime } from '@/utils/dateUtils';
 import { generatePerformanceData } from '@/utils/performanceUtils';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { publicKey, connected } = useWallet();
   const isMobile = useIsMobile();

@@ -8,6 +8,7 @@ import { SolanaWalletProvider } from "./components/WalletProvider";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import TweetAnalyzer from "./pages/TweetAnalyzer";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/tweet-analyzer" element={<TweetAnalyzer />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
