@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter } from 'lucide-react';
+import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter, Image as ImageIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,7 +26,23 @@ interface Tweet {
     text: string;
     author?: {
       userName: string;
+      name?: string;
+      profilePicture?: string;
     }
+  };
+  entities?: {
+    media?: {
+      type: string;
+      media_url_https: string;
+      expanded_url: string;
+    }[];
+  };
+  extendedEntities?: {
+    media?: {
+      type: string;
+      media_url_https: string;
+      expanded_url: string;
+    }[];
   };
 }
 
@@ -39,8 +56,14 @@ interface ClassifiedTweet {
   isQuote: boolean;
   isReply: boolean;
   quoteTweetText?: string;
+  quoteAuthor?: string;
   replyTweetText?: string;
   timestamp: string;
+  media?: {
+    type: string;
+    url: string;
+    expandedUrl: string;
+  }[];
 }
 
 interface TweetClassifierProps {
@@ -89,9 +112,13 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
           quoted_tweet: tweet.quoted_tweet ? {
             text: tweet.quoted_tweet.text,
             author: {
-              userName: tweet.quoted_tweet.author?.userName || "unknown"
+              userName: tweet.quoted_tweet.author?.userName || "unknown",
+              name: tweet.quoted_tweet.author?.name || "Unknown User",
+              profilePicture: tweet.quoted_tweet.author?.profilePicture
             }
-          } : undefined
+          } : undefined,
+          entities: tweet.entities,
+          extendedEntities: tweet.extendedEntities
         }));
         
         setRawTweets(formattedTweets);
@@ -114,6 +141,15 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getTweetMedia = (tweet: Tweet) => {
+    const mediaItems = tweet.extendedEntities?.media || tweet.entities?.media || [];
+    return mediaItems.map(media => ({
+      type: media.type,
+      url: media.media_url_https,
+      expandedUrl: media.expanded_url
+    }));
   };
 
   const classifyTweet = (tweet: Tweet): ClassifiedTweet => {
@@ -147,6 +183,9 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     
     confidence = Math.min(confidence, 95);
     
+    // Extract media items if any
+    const media = getTweetMedia(tweet);
+    
     return {
       id: tweet.id,
       market,
@@ -157,8 +196,10 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
       isQuote: tweet.isQuote,
       isReply: tweet.isReply,
       quoteTweetText: tweet.quoted_tweet?.text,
+      quoteAuthor: tweet.quoted_tweet?.author?.userName,
       replyTweetText: tweet.isReply ? "Reply context not available" : undefined,
-      timestamp: tweet.createdAt
+      timestamp: tweet.createdAt,
+      media: media.length > 0 ? media : undefined
     };
   };
 
@@ -222,6 +263,28 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     
     return passes;
   });
+
+  // Render media for a tweet
+  const renderMedia = (media?: { type: string; url: string; expandedUrl: string }[]) => {
+    if (!media || media.length === 0) return null;
+    
+    return (
+      <div className="mt-2 grid gap-2">
+        {media.map((item, index) => (
+          item.type === 'photo' && (
+            <div key={index} className="relative rounded overflow-hidden">
+              <img 
+                src={item.url} 
+                alt="Tweet media" 
+                className="w-full h-auto rounded border border-white/10"
+                loading="lazy"
+              />
+            </div>
+          )
+        ))}
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (rawTweets.length === 0 && !isLoading) {
@@ -312,6 +375,9 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                     
                     <p className="text-white/90 my-1">{tweet.text}</p>
                     
+                    {/* Display media if available */}
+                    {renderMedia(getTweetMedia(tweet))}
+                    
                     <div className="flex items-center gap-3 text-xs text-gray-400 mt-2">
                       <span>{new Date(tweet.createdAt).toLocaleString()}</span>
                       
@@ -328,14 +394,35 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                           Quote
                         </span>
                       )}
+                      
+                      {getTweetMedia(tweet).length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <ImageIcon className="w-3 h-3" />
+                          Media
+                        </span>
+                      )}
                     </div>
                     
                     {tweet.isQuote && tweet.quoted_tweet && (
                       <div className="mt-2 p-2 bg-white/5 rounded border border-white/10 text-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          {tweet.quoted_tweet.author?.profilePicture && (
+                            <img 
+                              src={tweet.quoted_tweet.author.profilePicture} 
+                              alt="Quote author" 
+                              className="w-5 h-5 rounded-full"
+                            />
+                          )}
+                          <div>
+                            {tweet.quoted_tweet.author?.name && (
+                              <span className="text-white/90 font-medium">{tweet.quoted_tweet.author.name}</span>
+                            )}
+                            {tweet.quoted_tweet.author?.userName && (
+                              <span className="text-xs text-emerald-400 ml-1">@{tweet.quoted_tweet.author.userName}</span>
+                            )}
+                          </div>
+                        </div>
                         <p className="text-white/70">{tweet.quoted_tweet.text}</p>
-                        {tweet.quoted_tweet.author && (
-                          <span className="text-xs text-emerald-400">@{tweet.quoted_tweet.author.userName}</span>
-                        )}
                       </div>
                     )}
                   </div>
@@ -443,15 +530,29 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                   <Badge variant="outline" className="bg-blue-500/20 text-blue-300">
                     Confidence: {tweet.confidence}%
                   </Badge>
+                  
+                  {tweet.media && tweet.media.length > 0 && (
+                    <Badge variant="outline" className="bg-purple-500/20 text-purple-300">
+                      <ImageIcon className="w-3 h-3 mr-1" />
+                      Media
+                    </Badge>
+                  )}
                 </div>
                 
                 <p className="text-white/90 my-2">{tweet.tweetText}</p>
+                
+                {/* Display media if available */}
+                {renderMedia(tweet.media)}
                 
                 {tweet.isQuote && tweet.quoteTweetText && (
                   <div className="mt-2 p-2 bg-white/5 rounded border border-white/10 text-sm">
                     <div className="flex items-center gap-1 mb-1 text-xs text-emerald-400">
                       <Quote className="w-3 h-3" />
-                      <span>Quote Tweet</span>
+                      {tweet.quoteAuthor ? (
+                        <span>Quote Tweet from @{tweet.quoteAuthor}</span>
+                      ) : (
+                        <span>Quote Tweet</span>
+                      )}
                     </div>
                     <p className="text-white/70">{tweet.quoteTweetText}</p>
                   </div>

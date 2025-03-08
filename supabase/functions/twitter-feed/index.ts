@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
-// Twitter crypto list ID - this is the correct list ID provided by the user
+// Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
 
 const corsHeaders = {
@@ -19,6 +19,7 @@ serve(async (req) => {
   try {
     console.log('Twitter feed function called');
     
+    // Include the list ID in the URL to fetch tweets from the specific list
     const url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
     console.log('Calling Twitter API with URL:', url);
     
@@ -48,6 +49,20 @@ serve(async (req) => {
     const data = await response.json();
     console.log('Twitter API response received successfully');
     
+    // Log whether the response contains media and quote tweets (for debugging)
+    const hasMedia = data.tweets?.some(tweet => 
+      tweet.extendedEntities?.media?.length > 0 || 
+      tweet.entities?.media?.length > 0
+    );
+    const hasQuoteTweets = data.tweets?.some(tweet => tweet.quoted_tweet);
+    
+    console.log(`Response contains media: ${hasMedia}, quote tweets: ${hasQuoteTweets}`);
+    
+    // The Twitter API response structure already includes:
+    // - quoted_tweet field for quote tweets
+    // - entities and extendedEntities fields for media like images
+    // We'll pass these through without modification
+
     return new Response(JSON.stringify(data), {
       headers: {
         ...corsHeaders,
