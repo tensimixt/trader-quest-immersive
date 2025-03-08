@@ -134,6 +134,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     'ETHUSDT': false,
     'BNBUSDT': false
   });
+  const lastValidPricesRef = useRef<{[key: string]: number}>({});
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -150,6 +151,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       const newPrices = pricesData.reduce((acc, curr) => {
         if (isValidPrice(curr.price)) {
           initialDataFetchedRef.current[curr.symbol] = true;
+          lastValidPricesRef.current[curr.symbol] = curr.price;
           return {
             ...acc,
             [curr.symbol]: curr.price
@@ -230,6 +232,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               const price = parseFloat(ticker.c);
               
               if (isValidPrice(price)) {
+                lastValidPricesRef.current[symbol] = price;
+                
                 const currentPrice = updatedPrices[symbol];
                 
                 if (isValidPrice(currentPrice)) {
@@ -266,6 +270,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 }
               } else {
                 console.warn(`Received invalid price for ${symbol}:`, ticker.c);
+                if (lastValidPricesRef.current[symbol] && isValidPrice(lastValidPricesRef.current[symbol])) {
+                  updatedPrices[symbol] = lastValidPricesRef.current[symbol];
+                }
               }
             }
           });
@@ -311,7 +318,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       const newPrices = pricesData.reduce((acc, curr) => {
         if (isValidPrice(curr.price)) {
           acc[curr.symbol] = curr.price;
+          lastValidPricesRef.current[curr.symbol] = curr.price;
           initialDataFetchedRef.current[curr.symbol] = true;
+        } else if (lastValidPricesRef.current[curr.symbol] && isValidPrice(lastValidPricesRef.current[curr.symbol])) {
+          acc[curr.symbol] = lastValidPricesRef.current[curr.symbol];
         }
         return acc;
       }, {} as {[key: string]: number});
@@ -499,8 +509,19 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const hasSymbolData = (symbol: string): boolean => {
     return (
       initialDataFetchedRef.current[symbol] === true && 
-      isValidPrice(prices[symbol])
+      (isValidPrice(prices[symbol]) || 
+       (lastValidPricesRef.current[symbol] && isValidPrice(lastValidPricesRef.current[symbol])))
     );
+  };
+
+  const getDisplayPrice = (symbol: string): number => {
+    if (isValidPrice(prices[symbol])) {
+      return prices[symbol];
+    }
+    if (lastValidPricesRef.current[symbol] && isValidPrice(lastValidPricesRef.current[symbol])) {
+      return lastValidPricesRef.current[symbol];
+    }
+    return 0;
   };
 
   return (
@@ -630,7 +651,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   <div className="price-container">
                     {hasSymbolData(symbol) ? (
                       <span className="price text-2xl font-bold font-mono">
-                        {formatPrice(prices[symbol])}
+                        {formatPrice(getDisplayPrice(symbol))}
                       </span>
                     ) : (
                       <span className="price text-2xl font-bold font-mono text-emerald-400/50">
