@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
@@ -149,7 +148,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       console.log('Initial prices fetched via HTTP:', pricesData);
       
       const newPrices = pricesData.reduce((acc, curr) => {
-        // Mark this symbol as having initial data
         initialDataFetchedRef.current[curr.symbol] = true;
         return {
           ...acc,
@@ -157,7 +155,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         };
       }, {});
       
-      // Only update non-zero values to prevent overwriting with zeros
       const validNewPrices = Object.entries(newPrices).reduce((acc, [symbol, price]) => {
         if (price && price > 0) {
           acc[symbol] = price;
@@ -165,7 +162,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         return acc;
       }, {} as {[key: string]: number});
       
-      // Only update if we have valid prices
       if (Object.keys(validNewPrices).length > 0) {
         setPrices(prev => ({...prev, ...validNewPrices}));
       }
@@ -186,7 +182,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             }
           });
           
-          // Only update non-zero values or specifically zero values from valid data
           if (Object.keys(changeData).length > 0) {
             setChanges(prev => ({...prev, ...changeData}));
           }
@@ -237,10 +232,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             if (trackingSymbols.includes(symbol)) {
               const price = parseFloat(ticker.c);
               
-              // Only update if price is valid and not zero
               if (!isNaN(price) && price > 0) {
-                if (prices[symbol] > 0) {
-                  newDirections[symbol] = price > prices[symbol] ? 'up' : 'down';
+                const currentPrice = prices[symbol];
+                if (typeof currentPrice === 'number' && currentPrice > 0) {
+                  newDirections[symbol] = price > currentPrice ? 'up' : 'down';
                   
                   if (flashTimeoutsRef.current[symbol]) {
                     clearTimeout(flashTimeoutsRef.current[symbol]);
@@ -256,13 +251,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   }, 2000);
                 }
                 
-                // Mark this symbol as having data
                 initialDataFetchedRef.current[symbol] = true;
                 
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                // Calculate 24h percent change if we have previous price data
                 if (previousPrices[symbol] && previousPrices[symbol] > 0) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
                   setChanges(prev => ({
@@ -275,7 +268,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           });
           
           if (pricesUpdated && isComponentMountedRef.current) {
-            // Store current prices as previous before updating
             setPreviousPrices(prices);
             setPrices(updatedPrices);
             setPriceChangeDirection(newDirections);
@@ -310,21 +302,17 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       if (pricesError) throw pricesError;
       if (!isComponentMountedRef.current) return;
 
-      // Store current prices before updating
       const currentPrices = {...prices};
       setPreviousPrices(currentPrices);
       
       const newPrices = pricesData.reduce((acc, curr) => {
-        // Only update if we have a valid price
         if (curr.price && curr.price > 0) {
           acc[curr.symbol] = curr.price;
-          // Mark as having initial data
           initialDataFetchedRef.current[curr.symbol] = true;
         }
         return acc;
       }, {} as {[key: string]: number});
       
-      // Only update if we have valid prices
       if (Object.keys(newPrices).length > 0) {
         setPrices(prev => ({...prev, ...newPrices}));
       }
@@ -340,7 +328,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         return acc;
       }, {} as {[key: string]: number});
       
-      // Only update if we have valid changes
       if (Object.keys(newChanges).length > 0) {
         setChanges(prev => ({...prev, ...newChanges}));
       }
@@ -453,22 +440,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     };
   }, [wsConnected, isInitialized]);
 
-  const formatPrice = (price: number): string => {
-    if (isNaN(price) || price === 0) return "$0.00";
-    
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(price);
-  };
-
-  const formatChange = (change: number): string => {
-    if (isNaN(change)) return "0.00%";
-    return change > 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
-  };
-
   const getIconForSymbol = (symbol: string) => {
     switch (symbol) {
       case 'BTCUSDT':
@@ -522,7 +493,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     setShowTopPerformers(false);
   };
 
-  // Check if a particular symbol has data loaded
   const hasSymbolData = (symbol: string): boolean => {
     return initialDataFetchedRef.current[symbol] && prices[symbol] > 0;
   };
@@ -662,7 +632,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>
                       {hasSymbolData(symbol) ? 
-                        `${changes[symbol] >= 0 ? '+' : ''}${changes[symbol].toFixed(2)}%` : 
+                        formatPercentage(changes[symbol]) : 
                         "-.--%" 
                       }
                     </span>
