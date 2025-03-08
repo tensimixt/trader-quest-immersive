@@ -116,11 +116,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [showTickerList, setShowTickerList] = useState(false);
   const [showTopPerformers, setShowTopPerformers] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
-  const [priceChangeDirection, setPriceChangeDirection] = useState<{[key: string]: 'up' | 'down' | null}>({
-    'BTCUSDT': null,
-    'ETHUSDT': null,
-    'BNBUSDT': null,
-  });
+  const updatedSymbolsRef = useRef<Set<string>>(new Set());
+  const tickerChangeDirectionRef = useRef<Map<string, 'up' | 'down'>>(new Map());
   
   const isComponentMountedRef = useRef<boolean>(true);
   const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
@@ -224,7 +221,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         if (Array.isArray(data)) {
           const updatedPrices = { ...prices };
           let pricesUpdated = false;
-          const newDirections: {[key: string]: 'up' | 'down' | null} = { ...priceChangeDirection };
           
           data.forEach((ticker: any) => {
             const symbol = ticker.s;
@@ -238,7 +234,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 
                 if (isValidPrice(currentPrice)) {
                   if (price !== currentPrice) {
-                    newDirections[symbol] = price > currentPrice ? 'up' : 'down';
+                    const direction = price > currentPrice ? 'up' : 'down';
+                    tickerChangeDirectionRef.current.set(symbol, direction);
+                    updatedSymbolsRef.current.add(symbol);
                     
                     if (flashTimeoutsRef.current[symbol]) {
                       clearTimeout(flashTimeoutsRef.current[symbol]);
@@ -246,10 +244,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                     
                     flashTimeoutsRef.current[symbol] = setTimeout(() => {
                       if (isComponentMountedRef.current) {
-                        setPriceChangeDirection(prev => ({
-                          ...prev,
-                          [symbol]: null
-                        }));
+                        updatedSymbolsRef.current.delete(symbol);
                       }
                     }, 2000);
                   }
@@ -280,7 +275,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           if (pricesUpdated && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
-            setPriceChangeDirection(newDirections);
           }
         }
       };
@@ -489,11 +483,17 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   const getPriceHighlightClass = (symbol: string): string => {
-    if (!priceChangeDirection[symbol]) return '';
+    if (!updatedSymbolsRef.current.has(symbol)) return 'hover:bg-emerald-500/5';
     
-    return priceChangeDirection[symbol] === 'up' 
-      ? 'flash-update-positive' 
-      : 'flash-update-negative';
+    const direction = tickerChangeDirectionRef.current.get(symbol);
+    if (direction === 'up') {
+      return 'bg-emerald-500/20'; // Green highlight for price up
+    } else if (direction === 'down') {
+      return 'bg-red-500/20'; // Red highlight for price down
+    }
+    
+    // Default highlight if direction is unknown
+    return 'bg-emerald-500/20';
   };
 
   const handleShowTopPerformers = () => {
