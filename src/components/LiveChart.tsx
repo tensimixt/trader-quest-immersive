@@ -157,7 +157,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [interval, setInterval] = useState<string>("15m");
+  const [interval, setInterval] = useState<string>("1m");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
   const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
