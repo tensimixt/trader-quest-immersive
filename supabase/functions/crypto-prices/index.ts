@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -67,6 +66,73 @@ async function fetch24hTickers() {
     }));
   } catch (error) {
     console.error('Error fetching 24h tickers:', error);
+    return [];
+  }
+}
+
+async function fetchTopPerformers(days = 7, limit = 10) {
+  try {
+    console.log(`Fetching top performers for ${days} days`);
+    // First get all USDT pairs from 24h data
+    const allTickers = await fetch24hTickers();
+    
+    // Take top 50 by volume to avoid low liquidity pairs
+    const topByVolume = allTickers.slice(0, 50);
+    
+    // For each of these, fetch kline data for the requested period
+    const interval = days <= 1 ? '1h' : '1d';
+    const klineLimit = days <= 1 ? days * 24 : days;
+    
+    console.log(`Fetching klines for top ${topByVolume.length} coins using interval ${interval} and limit ${klineLimit}`);
+    
+    const performanceData = await Promise.all(
+      topByVolume.map(async (ticker) => {
+        try {
+          const klines = await fetchBinanceKlines(ticker.symbol, interval, klineLimit);
+          
+          if (klines.length < 2) {
+            return {
+              symbol: ticker.symbol,
+              performance: 0,
+              priceData: [],
+              currentPrice: parseFloat(ticker.lastPrice)
+            };
+          }
+          
+          // Calculate performance (percentage change from first to last close price)
+          const firstPrice = klines[0].open;
+          const lastPrice = klines[klines.length - 1].close;
+          const performance = ((lastPrice - firstPrice) / firstPrice) * 100;
+          
+          return {
+            symbol: ticker.symbol,
+            performance,
+            priceData: klines.map(k => ({
+              timestamp: k.timestamp,
+              price: k.close
+            })),
+            currentPrice: lastPrice
+          };
+        } catch (error) {
+          console.error(`Error processing ${ticker.symbol}:`, error);
+          return {
+            symbol: ticker.symbol,
+            performance: 0,
+            priceData: [],
+            currentPrice: parseFloat(ticker.lastPrice)
+          };
+        }
+      })
+    );
+    
+    // Sort by performance (descending) and take top 'limit'
+    return performanceData
+      .filter(data => data.priceData.length > 0)
+      .sort((a, b) => b.performance - a.performance)
+      .slice(0, limit);
+    
+  } catch (error) {
+    console.error('Error fetching top performers:', error);
     return [];
   }
 }
@@ -307,6 +373,9 @@ serve(async (req) => {
     let getHistory = url.searchParams.get('history') === 'true';
     let interval = url.searchParams.get('interval') || '15m';
     let get24hTickers = url.searchParams.get('get24hTickers') === 'true';
+    let getTopPerformers = url.searchParams.get('getTopPerformers') === 'true';
+    let days = parseInt(url.searchParams.get('days') || '7', 10);
+    let limit = parseInt(url.searchParams.get('limit') || '10', 10);
     
     // If there's a request body, check for parameters there as well
     const contentType = req.headers.get('content-type') || '';
@@ -318,12 +387,25 @@ serve(async (req) => {
         getHistory = (body.history === 'true' || body.history === true) || getHistory;
         interval = body.interval || interval;
         get24hTickers = (body.get24hTickers === 'true' || body.get24hTickers === true) || get24hTickers;
+        getTopPerformers = (body.getTopPerformers === 'true' || body.getTopPerformers === true) || getTopPerformers;
+        days = body.days || days;
+        limit = body.limit || limit;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
       }
     }
     
-    if (get24hTickers) {
+    if (getTopPerformers) {
+      // Fetch top performing tokens
+      console.log(`Fetching top ${limit} performers for ${days} days`);
+      const topPerformers = await fetchTopPerformers(days, limit);
+      return new Response(JSON.stringify(topPerformers), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else if (get24hTickers) {
       // Fetch 24-hour tickers for multiple symbols
       const tickers = await fetch24hTickers();
       return new Response(JSON.stringify(tickers), {

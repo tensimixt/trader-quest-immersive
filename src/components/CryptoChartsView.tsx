@@ -1,12 +1,13 @@
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
+import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const LiveChart = lazy(() => import('./LiveChart'));
 const TickerList = lazy(() => import('./TickerList'));
+const TopPerformersChart = lazy(() => import('./TopPerformersChart'));
 
 const priceWsRegistry = {
   activeConnection: null as WebSocket | null,
@@ -112,6 +113,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
+  const [showTopPerformers, setShowTopPerformers] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [priceChangeDirection, setPriceChangeDirection] = useState<{[key: string]: 'up' | 'down' | null}>({
     'BTCUSDT': null,
@@ -477,6 +479,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         </div>
         <div className="flex items-center space-x-2">
           <button 
+            onClick={() => setShowTopPerformers(!showTopPerformers)} 
+            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            title="Show top performers"
+          >
+            <Award size={16} />
+          </button>
+          <button 
             onClick={() => setShowTickerList(!showTickerList)} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             title="Show all tickers"
@@ -501,7 +510,23 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       </div>
       
       <AnimatePresence mode="wait">
-        {showTickerList ? (
+        {showTopPerformers ? (
+          <motion.div
+            key="top-performers"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
+                <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            }>
+              <TopPerformersChart onClose={() => setShowTopPerformers(false)} />
+            </Suspense>
+          </motion.div>
+        ) : showTickerList ? (
           <motion.div
             key="ticker-list"
             initial={{ opacity: 0, height: 0 }}
