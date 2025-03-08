@@ -392,26 +392,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     return num.toFixed(2);
   };
 
-  const formatPrice = (price: string): string => {
-    const numericPrice = parseFloat(price);
-    
-    if (numericPrice < 0.01) {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 6, 
-        maximumFractionDigits: 8
-      }).format(numericPrice);
-    }
-    
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    }).format(numericPrice);
-  };
-
   const getTickerHighlightClass = (symbol: string): string => {
     if (!updatedTickersRef.current.has(symbol)) return 'hover:bg-emerald-500/5';
     
@@ -597,7 +577,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
                   <div className="text-gray-400 text-xs mb-1">Price Change</div>
                   <div className={`text-white font-mono text-lg ${parseFloat(selectedTicker.priceChange) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPrice(parseFloat(selectedTicker.priceChange))}
+                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPrice(selectedTicker.priceChange)}
                   </div>
                 </div>
               </div>
