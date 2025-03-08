@@ -20,7 +20,28 @@ const TweetAnalyzer = () => {
   
   useEffect(() => {
     // Initialize with sample data immediately to prevent blank screen
-    setTweetData(marketIntelligence.filter(item => item.screenName));
+    const initialTweets = marketIntelligence
+      .filter(item => item.screenName)
+      .map(item => ({
+        id: item.id.toString(),
+        text: item.message,
+        createdAt: item.timestamp,
+        author: {
+          userName: item.screenName || "unknown",
+          name: item.screenName || "Unknown User",
+          profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+        },
+        isReply: item.isReply || false,
+        isQuote: item.isQuote || false,
+        quoted_tweet: item.quoteTweet ? {
+          text: item.quoteTweet,
+          author: {
+            userName: item.screenName
+          }
+        } : undefined
+      }));
+    
+    setTweetData(initialTweets);
     // Then try to fetch real data
     fetchTweets();
   }, []);
