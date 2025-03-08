@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
@@ -133,6 +134,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   });
   const lastValidPricesRef = useRef<{[key: string]: number}>({});
   const lastValidChangesRef = useRef<{[key: string]: number}>({});
+  // Add reference to track when changes were last updated
+  const lastChangesUpdateTimeRef = useRef<{[key: string]: number}>({});
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -175,6 +178,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               if (!isNaN(percentChange)) {
                 changeData[ticker.symbol] = percentChange;
                 lastValidChangesRef.current[ticker.symbol] = percentChange;
+                lastChangesUpdateTimeRef.current[ticker.symbol] = Date.now();
                 initialDataFetchedRef.current[ticker.symbol] = true;
               }
             }
@@ -224,6 +228,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           const updatedPrices = { ...prices };
           const updatedChanges = { ...changes };
           let pricesUpdated = false;
+          let changesUpdated = false;
           
           data.forEach((ticker: any) => {
             const symbol = ticker.s;
@@ -257,11 +262,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                if (ticker.p && ticker.P) {
-                  const priceChange = parseFloat(ticker.P);
-                  if (!isNaN(priceChange)) {
-                    updatedChanges[symbol] = priceChange;
-                    lastValidChangesRef.current[symbol] = priceChange;
+                // Process 24h price change percent from WebSocket message
+                if (ticker.P) {
+                  const priceChangePercent = parseFloat(ticker.P);
+                  if (!isNaN(priceChangePercent)) {
+                    updatedChanges[symbol] = priceChangePercent;
+                    lastValidChangesRef.current[symbol] = priceChangePercent;
+                    lastChangesUpdateTimeRef.current[symbol] = Date.now();
+                    changesUpdated = true;
+                    console.log(`Updated ${symbol} change from WebSocket: ${priceChangePercent}%`);
                   }
                 }
               } else {
@@ -276,6 +285,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           if (pricesUpdated && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
+          }
+          
+          if (changesUpdated && isComponentMountedRef.current) {
             setChanges(updatedChanges);
           }
         }
@@ -339,11 +351,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               if (!isNaN(percentChange)) {
                 newChanges[ticker.symbol] = percentChange;
                 lastValidChangesRef.current[ticker.symbol] = percentChange;
+                lastChangesUpdateTimeRef.current[ticker.symbol] = Date.now();
               }
             }
           });
           
           if (Object.keys(newChanges).length > 0) {
+            console.log('Updated changes from HTTP refresh:', newChanges);
             setChanges(prev => ({...prev, ...newChanges}));
           }
         }
