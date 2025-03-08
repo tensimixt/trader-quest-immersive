@@ -236,14 +236,6 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
   const TokenDetailsDialog = () => {
     if (!selectedToken) return null;
     
-    const initialPrice = selectedToken.initialPrice || 
-                          (selectedToken.klineData?.length ? selectedToken.klineData[0].open : 
-                          getInitialPrice(selectedToken.priceData));
-    const daysAvailable = selectedToken.daysCovered || "N/A";
-    
-    const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
-    const dailyChange = lastKline ? getDailyChange(lastKline) : null;
-    
     return (
       <Dialog 
         open={tokenDetailsOpen} 
@@ -251,77 +243,18 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
       >
         <DialogContent 
           onClick={(e) => e.stopPropagation()} 
-          className="sm:max-w-[850px] bg-black/95 border border-emerald-500/30 text-white"
+          className="bg-black/95 border border-emerald-500/30 text-white"
         >
           <DialogHeader>
-            <DialogTitle className="text-emerald-400 flex items-center gap-2">
-              <Info size={18} />
-              {selectedToken.symbol.replace('USDT', '')} Performance Details
+            <DialogTitle className="text-emerald-400">
+              Test Dialog for {selectedToken.symbol}
             </DialogTitle>
-            <DialogDescription className="text-emerald-300/70">
-              {getTimeframeText(timeframe)} performance analysis
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-emerald-400 font-semibold">Current Price:</span>
-                  <span className="ml-2 text-white">{formatPrice(selectedToken.currentPrice)}</span>
-                  {dailyChange !== null && (
-                    <span className={`ml-2 ${dailyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {formatDailyChange(dailyChange)}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-emerald-400 font-semibold">Initial Price:</span>
-                  <span className="ml-2 text-white">{formatPrice(initialPrice)}</span>
-                  {selectedToken.isNewListing && (
-                    <span className="ml-2 text-amber-400">(from {daysAvailable} days ago)</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-emerald-400 font-semibold">Overall Performance:</span>
-                  <span className={`ml-2 ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatPercentage(selectedToken.performance)}
-                  </span>
-                </div>
-                {selectedToken.klineData && selectedToken.klineData.length > 0 && (
-                  <div>
-                    <span className="text-emerald-400 font-semibold">Calculation Method:</span>
-                    <span className="ml-2 text-white">
-                      Open price at start: {formatPrice(selectedToken.klineData[0].open)} → 
-                      Close price now: {formatPrice(selectedToken.klineData[selectedToken.klineData.length-1].close)}
-                    </span>
-                  </div>
-                )}
-                {selectedToken.isNewListing && (
-                  <div className="border border-amber-500/20 rounded p-2 bg-amber-500/10">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle size={16} className="text-amber-400 mt-0.5" />
-                      <div>
-                        <p className="text-amber-300 font-medium">New Listing</p>
-                        <p className="text-amber-200 text-xs mt-1">
-                          This token has only been available for trading for {daysAvailable} days, 
-                          which is less than the selected timeframe of {timeframe} days.
-                          The performance shown is calculated from its first trading day.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <h4 className="text-emerald-400 text-sm font-medium mb-2">{selectedToken.symbol} Price Chart</h4>
-                <TokenDetailChart 
-                  symbol={selectedToken.symbol} 
-                  interval={timeframe <= 1 ? '1h' : '1d'} 
-                  timeframe={timeframe}
-                />
-              </div>
-            </div>
+          <div className="p-4">
+            <p>This is a simplified test dialog.</p>
+            <p>Symbol: {selectedToken.symbol}</p>
+            <p>Current Price: {formatPrice(selectedToken.currentPrice)}</p>
+            <p>Performance: {formatPercentage(selectedToken.performance)}</p>
           </div>
         </DialogContent>
       </Dialog>
