@@ -232,9 +232,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               if (!isNaN(price) && price > 0) {
                 const currentPrice = updatedPrices[symbol];
                 
-                // Set direction only if we have a valid current price to compare with
                 if (typeof currentPrice === 'number' && currentPrice > 0) {
-                  // Only set direction if the price actually changed
                   if (price !== currentPrice) {
                     newDirections[symbol] = price > currentPrice ? 'up' : 'down';
                     
@@ -257,7 +255,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                // Only calculate and update percentage change if we have valid previous prices
                 if (previousPrices[symbol] && typeof previousPrices[symbol] === 'number' && previousPrices[symbol] > 0) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
                   if (!isNaN(change)) {
@@ -630,16 +627,22 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                     </div>
                   </div>
                   <div className="price-container">
-                    <span className="price">
-                      {formatPrice(hasSymbolData(symbol) ? prices[symbol] : 0)}
-                    </span>
+                    {hasSymbolData(symbol) ? (
+                      <span className="price text-2xl font-bold font-mono">
+                        {formatPrice(prices[symbol])}
+                      </span>
+                    ) : (
+                      <span className="price text-2xl font-bold font-mono text-emerald-400/50">
+                        Loading...
+                      </span>
+                    )}
                     <span className={`price-change ${
                       !hasSymbolData(symbol) ? 'text-emerald-400/50' : 
                       (typeof changes[symbol] === 'number' && changes[symbol] >= 0) ? 'text-emerald-400' : 'text-red-400'
                     }`}>
                       {hasSymbolData(symbol) && typeof changes[symbol] === 'number' ? 
                         formatPercentage(changes[symbol]) : 
-                        "+0.00%" 
+                        "Loading..." 
                       }
                     </span>
                   </div>
