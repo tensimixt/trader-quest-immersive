@@ -239,7 +239,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             const symbol = ticker.s;
             if (trackingSymbols.includes(symbol)) {
               const currentPrice = parseFloat(ticker.c || '0');
-              const changePercent = parseFloat(ticker.P || '0');
               
               if (isValidPrice(currentPrice)) {
                 const previousPrice = previousPricesRef.current.get(symbol);
@@ -263,11 +262,13 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = currentPrice;
                 hasUpdates = true;
                 
+                const existingTicker = tickersMapRef.current.get(symbol);
+                
                 tickersMapRef.current.set(symbol, {
                   s: symbol,
                   c: ticker.c || '0',
-                  P: ticker.P || '0',
-                  p: ticker.p || '0',
+                  P: existingTicker?.P || '0',
+                  p: existingTicker?.p || '0',
                   v: ticker.v || '0',
                   q: ticker.q || '0',
                   e: ticker.e || '',
@@ -276,18 +277,12 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 
                 initialDataFetchedRef.current[symbol] = true;
               }
-              
-              if (!isNaN(changePercent)) {
-                updatedChanges[symbol] = changePercent;
-                hasUpdates = true;
-              }
             }
           });
           
           if (hasUpdates && isComponentMountedRef.current) {
             setPreviousPrices(prices);
             setPrices(updatedPrices);
-            setChanges(updatedChanges);
           }
         }
       };
@@ -559,7 +554,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 
   const getDisplayChange = (symbol: string): number => {
     const ticker = tickersMapRef.current.get(symbol);
-    if (ticker && ticker.P) {
+    if (ticker) {
       const change = parseFloat(ticker.P);
       if (!isNaN(change)) {
         return change;
