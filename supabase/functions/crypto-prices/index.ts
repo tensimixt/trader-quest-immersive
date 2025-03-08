@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -28,6 +29,7 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
     
     const data = await response.json();
     
+    // Return with proper mapping
     return data.map((kline: any) => ({
       timestamp: kline[0],
       open: parseFloat(kline[1]),
@@ -39,11 +41,18 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
   } catch (error) {
     console.error(`Error fetching ${symbol} klines with interval ${interval}:`, error);
     
+    // Special handling for 1s interval since it might not be supported for all pairs
     if (interval === "1s") {
       console.log(`Falling back to 1m interval for ${symbol}`);
       try {
         const fallbackUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${limit}`;
+        console.log(`Trying fallback URL: ${fallbackUrl}`);
         const fallbackResponse = await fetch(fallbackUrl);
+        
+        if (!fallbackResponse.ok) {
+          throw new Error(`HTTP error in fallback! status: ${fallbackResponse.status}`);
+        }
+        
         const fallbackData = await fallbackResponse.json();
         
         return fallbackData.map((kline: any) => ({

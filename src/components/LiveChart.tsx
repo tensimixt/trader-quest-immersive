@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -38,6 +39,7 @@ interface KlineData {
   isNew?: boolean;
 }
 
+// WS Registry for sharing connections
 const wsRegistry = {
   activeConnections: new Map<string, WebSocket>(),
   connectionCounts: new Map<string, number>(),
@@ -115,6 +117,7 @@ const formatDate = (timestamp: number): string => {
     ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+// Available timeframe options - now including 1s
 const timeframeOptions = [
   { value: "1s", label: "1 Second" },
   { value: "1m", label: "1 Minute" },
@@ -133,11 +136,12 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [interval, setInterval] = useState<string>("15m");
+  const [interval, setInterval] = useState<string>("15m"); // Default to 15m
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
   const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
   
+  // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
@@ -455,32 +459,38 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const priceChange = getPriceChange();
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
+  // Timeframe selection component moved above chart
+  const TimeframeSelector = () => (
+    <div className="mb-4 flex items-center justify-between px-2 py-2 bg-black/40 rounded-lg border border-emerald-500/10">
+      <div className="flex items-center gap-2">
+        <Clock size={16} className="text-emerald-400" />
+        <span className="text-sm text-emerald-400 font-mono">Timeframe:</span>
+        <Select value={interval} onValueChange={handleIntervalChange}>
+          <SelectTrigger className="h-8 text-sm bg-black/60 border-emerald-500/30 w-32">
+            <SelectValue placeholder={timeframeOptions.find(opt => opt.value === interval)?.label || "Select"} />
+          </SelectTrigger>
+          <SelectContent className="bg-black border-emerald-500/30">
+            {timeframeOptions.map(option => (
+              <SelectItem key={option.value} value={option.value} className="text-sm">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="text-xs text-emerald-400/70 font-mono">
+        {data.length > 0 ? 
+          `${formatDate(data[0].timestamp)} - ${formatDate(data[data.length - 1].timestamp)}` : 
+          'No data'}
+      </div>
+    </div>
+  );
+
   const ChartContent = ({ height }: { height: number }) => (
     <div style={{ height }} className={`bg-black/40 rounded-lg p-2 ${isUpdating ? 
       isPriceDecreasingRef.current ? 'ring-2 ring-red-400 transition-all duration-300' : 'ring-2 ring-emerald-500 transition-all duration-300' 
       : ''}`}>
-      <div className="mb-2 flex items-center justify-between px-2">
-        <div className="text-xs text-emerald-400/70 font-mono flex items-center">
-          <Clock size={12} className="mr-1" />
-          <Select value={interval} onValueChange={handleIntervalChange}>
-            <SelectTrigger className="h-6 text-xs bg-black/60 border-emerald-500/30 w-20">
-              <SelectValue placeholder={getTimeframeLabel(interval)} />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-emerald-500/30">
-              {timeframeOptions.map(option => (
-                <SelectItem key={option.value} value={option.value} className="text-xs">
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="text-xs text-emerald-400/70 font-mono">
-          {data.length > 0 ? 
-            `${formatDate(data[0].timestamp)} - ${formatDate(data[data.length - 1].timestamp)}` : 
-            'No data'}
-        </div>
-      </div>
       {error ? (
         <div className="h-full flex items-center justify-center text-red-400 font-mono">
           {error}
@@ -582,7 +592,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
             <DialogContent className="sm:max-w-[90vw] sm:max-h-[90vh] bg-black/95 border-emerald-500/20">
               <DialogTitle className="sr-only">{getSymbolName(symbol)} Chart</DialogTitle>
               <div className="pt-6">
-                <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">{getSymbolName(symbol)} - {interval} Chart</h3>
+                <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">
+                  {getSymbolName(symbol)} - {timeframeOptions.find(opt => opt.value === interval)?.label || interval} Chart
+                </h3>
+                <TimeframeSelector />
                 <ChartContent height={600} />
               </div>
             </DialogContent>
@@ -638,6 +651,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           )}
         </div>
       </div>
+      
+      {/* Timeframe selector now appears above the chart */}
+      <TimeframeSelector />
       
       <ChartContent height={200} />
       
