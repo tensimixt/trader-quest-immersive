@@ -469,7 +469,7 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                       <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]">
                         <p className="font-bold mb-1">New Listing Alert!</p>
                         <p>{performer.symbol.replace('USDT', '')} has only {performer.daysCovered} days of data.</p>
-                        <p className="mt-1">Performance is calculated from its initial price of {formatPrice(initialPrice: performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}.</p>
+                        <p className="mt-1">Performance is calculated from its initial price of {formatPrice(performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}</p>
                       </TooltipContent>
                     </UITooltip>
                   </TooltipProvider>
