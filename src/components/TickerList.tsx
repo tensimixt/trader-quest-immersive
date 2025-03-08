@@ -392,7 +392,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     return num.toFixed(2);
   };
 
-  const formatPrice = (price: string): string => {
+  const formatPriceLocal = (price: string): string => {
     const numericPrice = parseFloat(price);
     
     if (numericPrice < 0.01) {
@@ -518,7 +518,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                         onClick={() => handleTickerClick(ticker)}
                       >
                         <td className="py-3 text-left font-mono">{ticker.symbol}</td>
-                        <td className="py-3 text-right font-mono">{formatPrice(ticker.lastPrice)}</td>
+                        <td className="py-3 text-right font-mono">{formatPriceLocal(ticker.lastPrice)}</td>
                         <td className={`py-3 text-right font-mono flex items-center justify-end ${
                           parseFloat(ticker.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
                         }`}>
@@ -572,7 +572,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
                   <div className="text-gray-400 text-xs mb-1">Current Price</div>
-                  <div className="text-white font-mono text-lg">{formatPrice(parseFloat(selectedTicker.lastPrice))}</div>
+                  <div className="text-white font-mono text-lg">{formatPriceLocal(selectedTicker.lastPrice)}</div>
                 </div>
                 
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
@@ -597,7 +597,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
                   <div className="text-gray-400 text-xs mb-1">Price Change</div>
                   <div className={`text-white font-mono text-lg ${parseFloat(selectedTicker.priceChange) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPrice(parseFloat(selectedTicker.priceChange))}
+                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPriceLocal(selectedTicker.priceChange)}
                   </div>
                 </div>
               </div>
@@ -653,10 +653,10 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                                     {new Date(label).toLocaleDateString()}
                                   </p>
                                   <div className="text-xs">
-                                    <p className="text-blue-400">Open: {formatPrice(data.open)}</p>
-                                    <p className="text-white">High: {formatPrice(data.high)}</p>
-                                    <p className="text-white">Low: {formatPrice(data.low)}</p>
-                                    <p className="text-emerald-400">Close: {formatPrice(data.close)}</p>
+                                    <p className="text-blue-400">Open: {formatPriceLocal(data.open.toString())}</p>
+                                    <p className="text-white">High: {formatPriceLocal(data.high.toString())}</p>
+                                    <p className="text-white">Low: {formatPriceLocal(data.low.toString())}</p>
+                                    <p className="text-emerald-400">Close: {formatPriceLocal(data.close.toString())}</p>
                                     <p className="text-white">Volume: ${formatNumber(data.volume)}</p>
                                   </div>
                                 </div>

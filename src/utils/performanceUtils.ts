@@ -1,4 +1,3 @@
-
 // Add this import at the top if it's not already there
 import { format as formatDate } from 'date-fns';
 
@@ -16,13 +15,14 @@ export const formatPercentage = (value: number): string => {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 };
 
-export const formatPrice = (price: number): string => {
+export const formatPrice = (price: string | number): string => {
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price);
+  }).format(numericPrice);
 };
 
 export const getInitialPrice = (priceData: Array<{ timestamp: number; price: number }>): number => {
