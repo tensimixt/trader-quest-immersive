@@ -60,21 +60,33 @@ serve(async (req) => {
     
     // Ensure each tweet has entities and extendedEntities objects to avoid undefined errors
     if (data.tweets && Array.isArray(data.tweets)) {
-      data.tweets = data.tweets.map(tweet => ({
-        ...tweet,
-        entities: tweet.entities || {},
-        extendedEntities: tweet.extendedEntities || {},
-        // Ensure quoted_tweet is properly structured if it exists
-        quoted_tweet: tweet.quoted_tweet ? {
-          ...tweet.quoted_tweet,
-          text: tweet.quoted_tweet.text || '',
-          author: tweet.quoted_tweet.author || { 
-            userName: 'unknown',
-            name: 'Unknown User',
-            profilePicture: ''
-          }
-        } : null
-      }));
+      data.tweets = data.tweets.map(tweet => {
+        const processedTweet = {
+          ...tweet,
+          entities: tweet.entities || {},
+          extendedEntities: tweet.extendedEntities || {},
+          // Process isQuote flag based on whether a quoted_tweet exists
+          isQuote: !!tweet.quoted_tweet,
+        };
+        
+        // If there's a quoted tweet, ensure it also has the necessary structure
+        if (tweet.quoted_tweet) {
+          processedTweet.quoted_tweet = {
+            ...tweet.quoted_tweet,
+            text: tweet.quoted_tweet.text || '',
+            author: tweet.quoted_tweet.author || { 
+              userName: 'unknown',
+              name: 'Unknown User',
+              profilePicture: ''
+            },
+            // Ensure quoted tweets also have entities and extendedEntities
+            entities: tweet.quoted_tweet.entities || {},
+            extendedEntities: tweet.quoted_tweet.extendedEntities || {}
+          };
+        }
+        
+        return processedTweet;
+      });
     }
 
     return new Response(JSON.stringify(data), {

@@ -27,7 +27,21 @@ interface Tweet {
       userName: string;
       name?: string;
       profilePicture?: string;
-    }
+    };
+    entities?: {
+      media?: {
+        type: string;
+        media_url_https: string;
+        expanded_url: string;
+      }[];
+    };
+    extendedEntities?: {
+      media?: {
+        type: string;
+        media_url_https: string;
+        expanded_url: string;
+      }[];
+    };
   };
   entities?: {
     media?: {
@@ -151,6 +165,19 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     }));
   };
 
+  const getQuoteTweetMedia = (tweet: any) => {
+    if (!tweet.quoted_tweet) return [];
+    
+    const quotedMedia = tweet.quoted_tweet.extendedEntities?.media || 
+                        tweet.quoted_tweet.entities?.media || [];
+    
+    return quotedMedia.map((media: any) => ({
+      type: media.type,
+      url: media.media_url_https,
+      expandedUrl: media.expanded_url
+    }));
+  };
+
   const classifyTweet = (tweet: Tweet): ClassifiedTweet => {
     let market = "UNKNOWN";
     let direction = "NEUTRAL";
@@ -182,9 +209,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     
     confidence = Math.min(confidence, 95);
     
-    // Extract media items if any
-    const media = getTweetMedia(tweet);
-    
     return {
       id: tweet.id,
       market,
@@ -198,7 +222,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
       quoteAuthor: tweet.quoted_tweet?.author?.userName,
       replyTweetText: tweet.isReply ? "Reply context not available" : undefined,
       timestamp: tweet.createdAt,
-      media: media.length > 0 ? media : undefined
+      media: getTweetMedia(tweet).length > 0 ? getTweetMedia(tweet) : undefined
     };
   };
 
@@ -285,7 +309,9 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
   };
 
   const renderQuoteTweet = (tweet: any) => {
-    if (!tweet.quoted_tweet || !tweet.isQuote) return null;
+    if (!tweet.quoted_tweet) return null;
+
+    const quotedMedia = getQuoteTweetMedia(tweet);
     
     return (
       <div className="mt-2 p-2 bg-white/5 rounded border border-white/10 text-sm">
@@ -308,13 +334,13 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
         </div>
         <p className="text-white/70">{tweet.quoted_tweet.text}</p>
         
-        {tweet.quoted_tweet.entities?.media?.length > 0 && (
+        {quotedMedia.length > 0 && (
           <div className="mt-2">
-            {tweet.quoted_tweet.entities.media.map((media: any, idx: number) => (
+            {quotedMedia.map((media: any, idx: number) => (
               media.type === 'photo' && (
                 <img 
                   key={idx}
-                  src={media.media_url_https} 
+                  src={media.url} 
                   alt="Quote media" 
                   className="w-full h-auto rounded border border-white/10 mt-1"
                   loading="lazy"
@@ -418,7 +444,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                     
                     {renderMedia(getTweetMedia(tweet))}
                     
-                    {renderQuoteTweet(tweet)}
+                    {tweet.quoted_tweet && renderQuoteTweet(tweet)}
                     
                     <div className="flex items-center gap-3 text-xs text-gray-400 mt-2">
                       <span>{new Date(tweet.createdAt).toLocaleString()}</span>
@@ -431,7 +457,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                       )}
                       
                       {tweet.isQuote && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-emerald-400">
                           <Quote className="w-3 h-3" />
                           Quote
                         </span>
