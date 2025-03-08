@@ -66,88 +66,48 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
   const fetchTweets = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('https://api.twitterapi.io/twitter/list/tweets', {
-        method: 'GET',
-        headers: {
-          'X-API-Key': '63b174ff7c2f44af89a86e7022509709',
-        }
-      }).catch(() => {
-        return new Response(JSON.stringify({
-          tweets: [
-            {
-              id: "1898511120907788709",
-              text: "Tomorrow is important as I said earlier it would be good to get a second bull pin-bar weekly candle close. Then retest, buy the next dip to the lows.",
-              createdAt: "Sat Mar 08 23:08:18 +0000 2025",
-              author: {
-                userName: "MuroCrypto",
-                name: "Muro",
-                profilePicture: "https://pbs.twimg.com/profile_images/1826994788505210880/dxG5dvYP_normal.jpg"
-              },
-              isReply: false,
-              isQuote: true,
-              quoted_tweet: {
-                text: "pin-bars on the weekly, would be good if the second one could close like this. Double Bull-Pin-Bar is probably the best reversal pattern.",
-                author: {
-                  userName: "MuroCrypto"
-                }
-              }
-            },
-            {
-              id: "1898510414155010201",
-              text: "They can't pretend they discovered it or was using before I taught it. That is the entire thing in a nutshell really.",
-              createdAt: "Sat Mar 08 23:05:30 +0000 2025",
-              author: {
-                userName: "I_Am_The_ICT",
-                name: "The Inner Circle Trader",
-                profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-              },
-              isReply: true,
-              isQuote: false,
-              inReplyToId: "1898508784328114578"
-            },
-            {
-              id: "1898509735738900864",
-              text: "It did go a million x off the lows tho",
-              createdAt: "Sat Mar 08 23:02:48 +0000 2025",
-              author: {
-                userName: "Pentosh1",
-                name: "🐧 Pentoshi",
-                profilePicture: "https://pbs.twimg.com/profile_images/1889187132151078912/Ea5ToaOZ_normal.jpg"
-              },
-              isReply: true,
-              isQuote: false,
-              inReplyToId: "1898509559234179461"
+      const { data, error } = await supabase.functions.invoke('twitter-feed');
+      
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
+      }
+      
+      console.log('Supabase function response:', data);
+      
+      if (data && data.tweets && Array.isArray(data.tweets)) {
+        const formattedTweets = data.tweets.map((tweet: any) => ({
+          id: tweet.id,
+          text: tweet.text,
+          createdAt: tweet.createdAt,
+          author: {
+            userName: tweet.author?.userName || "unknown",
+            name: tweet.author?.name || "Unknown User",
+            profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          },
+          isReply: tweet.isReply || false,
+          isQuote: tweet.isQuote || false,
+          quoted_tweet: tweet.quoted_tweet ? {
+            text: tweet.quoted_tweet.text,
+            author: {
+              userName: tweet.quoted_tweet.author?.userName || "unknown"
             }
-          ]
+          } : undefined
         }));
-      });
-      
-      const data = await response.json();
-      setRawTweets(data.tweets.map((tweet: any) => ({
-        id: tweet.id,
-        text: tweet.text,
-        createdAt: tweet.createdAt,
-        author: {
-          userName: tweet.author.userName,
-          name: tweet.author.name,
-          profilePicture: tweet.author.profilePicture
-        },
-        isReply: tweet.isReply,
-        isQuote: tweet.isQuote,
-        inReplyToId: tweet.inReplyToId,
-        quoted_tweet: tweet.quoted_tweet
-      })));
-      
-      toast({
-        title: "Tweets fetched successfully",
-        description: `Retrieved ${data.tweets.length} tweets for analysis`,
-        duration: 3000,
-      });
+        
+        setRawTweets(formattedTweets);
+        toast({
+          title: "Tweets loaded successfully",
+          description: `Retrieved ${formattedTweets.length} tweets`,
+          duration: 3000,
+        });
+      } else {
+        throw new Error('Invalid response format from function');
+      }
     } catch (error) {
-      console.error("Error fetching tweets:", error);
+      console.error('Error fetching tweets:', error);
       toast({
         title: "Error fetching tweets",
-        description: "Could not retrieve tweets from the API",
+        description: "Failed to load tweets from API, using sample data",
         variant: "destructive",
         duration: 3000,
       });
