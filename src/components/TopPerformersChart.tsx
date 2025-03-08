@@ -18,6 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { 
+  formatPercentage, 
+  formatPrice, 
+  getInitialPrice, 
+  getTimeframeText 
+} from '@/utils/performanceUtils';
 
 type PerformanceData = {
   symbol: string;
@@ -31,6 +37,7 @@ type PerformanceData = {
   dataPoints?: number;
   expectedDataPoints?: number;
   daysCovered?: string;
+  initialPrice?: number;
 }
 
 const COLORS = [
@@ -53,6 +60,8 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [limit, setLimit] = useState<number>(10);
   const [normalizedData, setNormalizedData] = useState<any[]>([]);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
+  const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
 
   useEffect(() => {
     fetchTopPerformers();
@@ -73,10 +82,17 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       if (error) throw error;
       
       console.log('Fetched top performers:', data);
-      setTopPerformers(data);
+      
+      // Add initial price to each performer for reference
+      const enhancedData = data.map((performer: PerformanceData) => ({
+        ...performer,
+        initialPrice: performer.priceData.length > 0 ? performer.priceData[0].price : 0
+      }));
+      
+      setTopPerformers(enhancedData);
       
       // Normalize data for charting
-      normalizeDataForChart(data);
+      normalizeDataForChart(enhancedData);
       
     } catch (error) {
       console.error('Error fetching top performers:', error);
@@ -182,16 +198,70 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <span className="font-bold">How performance is calculated:</span>
       </p>
       <ul className="list-disc pl-4 space-y-1">
-        <li>For tokens with complete data history, performance is measured from the beginning of the selected time period.</li>
+        <li>For tokens with complete data history, performance is measured from the beginning of the selected time period ({getTimeframeText(timeframe)}).</li>
         <li>For new listings with incomplete data, performance is calculated from the earliest available price point.</li>
         <li>Tokens marked with <AlertTriangle size={12} className="inline text-amber-400 mx-1" /> are new listings with less than complete data for the selected timeframe.</li>
         <li>The number beside the warning icon (e.g., "16d") indicates the number of days of data available for that token.</li>
       </ul>
       <p className="mt-2">
-        This approach ensures fair comparison while also highlighting tokens that might show higher volatility due to recent listing.
+        For example, if a token was listed 16 days ago at $0.10 and is now worth $1.55, it will show a performance of +1450% even in the 30-day view.
       </p>
     </div>
   );
+
+  const TokenDetailsDialog = () => {
+    if (!selectedToken) return null;
+    
+    const initialPrice = selectedToken.initialPrice || getInitialPrice(selectedToken.priceData);
+    const daysAvailable = selectedToken.daysCovered || "N/A";
+    
+    return (
+      <Dialog open={tokenDetailsOpen} onOpenChange={setTokenDetailsOpen}>
+        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-400 flex items-center gap-2">
+              <Info size={18} />
+              {selectedToken.symbol.replace('USDT', '')} Performance Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="text-emerald-400 font-semibold">Current Price:</span>
+              <span className="ml-2 text-white">{formatPrice(selectedToken.currentPrice)}</span>
+            </div>
+            <div>
+              <span className="text-emerald-400 font-semibold">Initial Price:</span>
+              <span className="ml-2 text-white">{formatPrice(initialPrice)}</span>
+              {selectedToken.isNewListing && (
+                <span className="ml-2 text-amber-400">(from {daysAvailable} days ago)</span>
+              )}
+            </div>
+            <div>
+              <span className="text-emerald-400 font-semibold">Performance:</span>
+              <span className={`ml-2 ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {formatPercentage(selectedToken.performance)}
+              </span>
+            </div>
+            {selectedToken.isNewListing && (
+              <div className="border border-amber-500/20 rounded p-2 bg-amber-500/10">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="text-amber-300 font-medium">New Listing</p>
+                    <p className="text-amber-200 text-xs mt-1">
+                      This token has only been available for trading for {daysAvailable} days, 
+                      which is less than the selected timeframe of {timeframe} days.
+                      The performance shown is calculated from its first trading day.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   return (
     <motion.div
@@ -301,7 +371,11 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         {topPerformers.map((performer, index) => (
           <div 
             key={performer.symbol} 
-            className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col"
+            className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
+            onClick={() => {
+              setSelectedToken(performer);
+              setTokenDetailsOpen(true);
+            }}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-emerald-400 font-mono text-xs font-bold">
@@ -320,8 +394,10 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                           <AlertTriangle size={12} className="text-amber-400" />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[200px]">
-                        New listing with {performer.daysCovered} days of data
+                      <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]">
+                        <p className="font-bold mb-1">New Listing Alert!</p>
+                        <p>{performer.symbol.replace('USDT', '')} has only {performer.daysCovered} days of data.</p>
+                        <p className="mt-1">Performance is calculated from its initial price of {formatPrice(getInitialPrice(performer.priceData))}.</p>
                       </TooltipContent>
                     </UITooltip>
                   </TooltipProvider>
@@ -363,6 +439,8 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </DialogDescription>
         </DialogContent>
       </Dialog>
+      
+      <TokenDetailsDialog />
     </motion.div>
   );
 };
