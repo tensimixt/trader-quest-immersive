@@ -452,8 +452,22 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     }
   };
 
-  const priceChange = getPriceChange();
-  const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
+  const getNewDataLabel = (): string => {
+    switch (interval) {
+      case "1s":
+        return "New data (1s)";
+      case "15m":
+        return "New data (15m)";
+      case "1h":
+        return "New data (1h)";
+      case "4h":
+        return "New data (4h)";
+      case "1d":
+        return "New data (1d)";
+      default:
+        return "New data (30s)";
+    }
+  };
 
   const TimeframeSelector = () => (
     <div className="mb-4">
@@ -559,6 +573,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       )}
     </div>
   );
+
+  const priceChange = getPriceChange();
+  const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
   return (
     <motion.div
@@ -668,7 +685,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
         <div className="flex items-center space-x-1">
           <div className="w-3 h-3 rounded-full bg-purple-500" />
-          <span className="text-xs text-emerald-400/70 font-mono">New data (30s)</span>
+          <span className="text-xs text-emerald-400/70 font-mono">{getNewDataLabel()}</span>
         </div>
         {isPriceDecreasingRef.current && (
           <div className="flex items-center space-x-1">
