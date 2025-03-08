@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
@@ -129,9 +128,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
     window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
   const flashTimeoutsRef = useRef<{[key: string]: NodeJS.Timeout}>({});
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const wsReconnectAttempts = useRef<number>(0);
-  const maxReconnectAttempts = 5;
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -145,31 +141,12 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 
       console.log('Initial prices fetched via HTTP:', pricesData);
       
-      // Only update if we have valid data
-      const newPrices = pricesData.reduce((acc, curr) => {
-        // Skip if price is 0 or invalid
-        if (!curr.price || curr.price <= 0) {
-          console.warn(`Received invalid price for ${curr.symbol}:`, curr.price);
-          return acc;
-        }
-        return {
-          ...acc,
-          [curr.symbol]: curr.price
-        };
-      }, {});
+      const newPrices = pricesData.reduce((acc, curr) => ({
+        ...acc,
+        [curr.symbol]: curr.price
+      }), {});
       
-      // Only update prices if we have valid data
-      if (Object.keys(newPrices).length > 0) {
-        // For each tracking symbol, update only if we have a valid price
-        trackingSymbols.forEach(symbol => {
-          if (newPrices[symbol] && newPrices[symbol] > 0) {
-            setPrices(prev => ({
-              ...prev,
-              [symbol]: newPrices[symbol]
-            }));
-          }
-        });
-      }
+      setPrices(newPrices);
       
       try {
         const { data: tickersData, error: tickersError } = await supabase.functions.invoke('crypto-prices', {
@@ -231,12 +208,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             if (trackingSymbols.includes(symbol)) {
               const price = parseFloat(ticker.c);
               
-              // Skip invalid/zero prices
-              if (isNaN(price) || price <= 0) {
-                console.warn(`Received invalid price for ${symbol}:`, price);
-                return;
-              }
-              
               if (prices[symbol] !== price) {
                 if (prices[symbol] > 0) {
                   newDirections[symbol] = price > prices[symbol] ? 'up' : 'down';
@@ -258,7 +229,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                if (previousPrices[symbol] && previousPrices[symbol] > 0) {
+                if (previousPrices[symbol]) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
                   setChanges(prev => ({
                     ...prev,
@@ -270,10 +241,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           });
           
           if (pricesUpdated && isComponentMountedRef.current) {
-            // Reset reconnect attempts on successful data
-            wsReconnectAttempts.current = 0;
-            
-            // Save previous prices and update with new ones
             setPreviousPrices(prices);
             setPrices(updatedPrices);
             setPriceChangeDirection(newDirections);
@@ -285,7 +252,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       webSocketRef.current = priceWsRegistry.getConnection(onMessage);
       
-      // WebSocket is now connected
       setWsConnected(true);
       setIsLoading(false);
       
@@ -295,23 +261,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         setWsConnected(false);
         setIsLoading(false);
         fetchInitialPrices();
-        
-        // Attempt to reconnect with exponential backoff
-        if (wsReconnectAttempts.current < maxReconnectAttempts) {
-          wsReconnectAttempts.current++;
-          const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts.current), 30000);
-          console.log(`WebSocket reconnect attempt ${wsReconnectAttempts.current} in ${delay}ms`);
-          
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (isComponentMountedRef.current) {
-              connectWebSocket();
-            }
-          }, delay);
-        }
       }
     }
   };
@@ -328,36 +277,21 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 
       setPreviousPrices({...prices});
       
-      // Only update with valid prices
-      const validPrices = pricesData.filter(item => item.price && item.price > 0);
+      const newPrices = pricesData.reduce((acc, curr) => ({
+        ...acc,
+        [curr.symbol]: curr.price
+      }), {});
       
-      if (validPrices.length > 0) {
-        const newPrices = validPrices.reduce((acc, curr) => ({
-          ...acc,
-          [curr.symbol]: curr.price
-        }), {});
+      const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
+        const previousPrice = previousPrices[symbol] || prices[symbol];
+        if (!previousPrice) return {...acc, [symbol]: 0};
         
-        // Add existing prices for any symbols not in the response
-        trackingSymbols.forEach(symbol => {
-          if (!newPrices[symbol] && prices[symbol] && prices[symbol] > 0) {
-            newPrices[symbol] = prices[symbol];
-          }
-        });
-        
-        const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
-          const previousPrice = previousPrices[symbol] || prices[symbol];
-          if (!previousPrice || previousPrice <= 0) return {...acc, [symbol]: 0};
-          
-          const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
-          return {...acc, [symbol]: change};
-        }, {});
-        
-        setPrices(newPrices);
-        setChanges(newChanges);
-      } else {
-        console.warn('No valid prices received from API');
-      }
+        const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
+        return {...acc, [symbol]: change};
+      }, {});
       
+      setPrices(newPrices);
+      setChanges(newChanges);
       if (!isInitialized && isComponentMountedRef.current) {
         setIsInitialized(true);
       }

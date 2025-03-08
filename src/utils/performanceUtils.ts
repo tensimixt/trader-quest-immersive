@@ -1,122 +1,142 @@
-// Add this import at the top if it's not already there
-import { format as formatDate } from 'date-fns';
-
-// Add this export if not already present
-export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+type MarketCall = {
+  timestamp: string;
+  roi: number;
 };
 
-export const formatPercentage = (value: number): string => {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+export const generatePerformanceData = (calls: MarketCall[], year: string) => {
+  const filteredCalls = calls.filter(call => call.timestamp.startsWith(year));
+  const totalCalls = filteredCalls.length;
+  const winningCalls = filteredCalls.filter(call => call.roi > 0).length;
+  const overallWinRate = totalCalls > 0 ? (winningCalls / totalCalls) * 100 : 0;
+
+  const monthlyData = Array(12).fill(null).map((_, i) => {
+    const month = String(i + 1).padStart(2, '0');
+    const monthCalls = calls.filter(call => call.timestamp.startsWith(`${year}-${month}`));
+    const totalMonthCalls = monthCalls.length;
+    const winningMonthCalls = monthCalls.filter(call => call.roi > 0).length;
+    const winRate = totalMonthCalls > 0 ? (winningMonthCalls / totalMonthCalls) * 100 : 0;
+    return { month: month, winRate: parseFloat(winRate.toFixed(2)) };
+  });
+
+  return {
+    overall: parseFloat(overallWinRate.toFixed(2)),
+    monthlyData: monthlyData,
+    totalTrades: totalCalls,
+    wins: winningCalls
+  };
 };
 
-export const formatPrice = (price: string | number): string => {
-  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(numericPrice);
-};
-
-export const getInitialPrice = (priceData: Array<{ timestamp: number; price: number }>): number => {
-  if (!priceData || priceData.length === 0) return 0;
-  return priceData[0].price;
-};
-
-export const getTimeframeText = (days: number): string => {
-  switch (days) {
-    case 1:
-      return '24 hours';
-    case 7:
-      return '7 days';
-    case 30:
-      return '30 days';
-    default:
-      return `${days} days`;
-  }
-};
-
-export const calculateOpenClosePerformance = (klineData: Array<any>): number => {
-  if (!klineData || klineData.length < 2) return 0;
+// New utility function to normalize price data for charts
+export const normalizeChartData = (priceData: Array<{timestamp: number, price: number}>) => {
+  if (!priceData.length) return [];
   
-  const firstOpen = klineData[0].open;
-  const lastClose = klineData[klineData.length - 1].close;
+  const initialPrice = priceData[0].price;
+  
+  return priceData.map(point => ({
+    timestamp: point.timestamp,
+    formattedDate: new Date(point.timestamp).toLocaleDateString(),
+    percentChange: ((point.price - initialPrice) / initialPrice) * 100,
+    price: point.price
+  }));
+};
+
+// Function to detect if a token is likely a new listing
+export const isLikelyNewListing = (
+  priceData: Array<{timestamp: number, price: number}>, 
+  expectedDays: number
+) => {
+  if (priceData.length < 2) return false;
+  
+  const firstTimestamp = priceData[0].timestamp;
+  const lastTimestamp = priceData[priceData.length - 1].timestamp;
+  const daysCovered = (lastTimestamp - firstTimestamp) / (1000 * 60 * 60 * 24);
+  
+  return daysCovered < (expectedDays * 0.8);
+};
+
+// Calculate percentage change for display
+export const formatPercentage = (value: number): string => {
+  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+};
+
+// Format price based on its value
+export const formatPrice = (price: number): string => {
+  if (price < 0.01) return `$${price.toFixed(6)}`;
+  if (price < 1) return `$${price.toFixed(4)}`;
+  if (price < 1000) return `$${price.toFixed(2)}`;
+  return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+};
+
+// Function to get the initial price for a token
+export const getInitialPrice = (priceData: Array<{timestamp: number, price: number}>): number => {
+  return priceData.length > 0 ? priceData[0].price : 0;
+};
+
+// Function to get readable timeframe text
+export const getTimeframeText = (days: number): string => {
+  if (days === 1) return "24 hours";
+  if (days === 7) return "7 days";
+  if (days === 30) return "30 days";
+  return `${days} days`;
+};
+
+// Calculate performance based on open vs close prices (for OHLC data)
+export const calculateOpenClosePerformance = (
+  klines: Array<{
+    timestamp: number, 
+    open: number, 
+    high: number, 
+    low: number, 
+    close: number,
+    volume: number
+  }>
+): number => {
+  if (klines.length < 2) return 0;
+  
+  const firstOpen = klines[0].open;
+  const lastClose = klines[klines.length - 1].close;
   
   return ((lastClose - firstOpen) / firstOpen) * 100;
 };
 
-export const normalizeOHLCChartData = (klineData: Array<any>): Array<any> => {
-  if (!klineData || klineData.length === 0) return [];
+// Normalize OHLC data for charts (showing open to close performance)
+export const normalizeOHLCChartData = (
+  klines: Array<{
+    timestamp: number, 
+    open: number, 
+    high: number, 
+    low: number, 
+    close: number,
+    volume: number
+  }>
+) => {
+  if (!klines.length) return [];
   
-  return klineData.map(kline => ({
-    time: new Date(kline.timestamp).toISOString().split('T')[0],
+  const initialOpen = klines[0].open;
+  
+  return klines.map(kline => ({
+    timestamp: kline.timestamp,
+    formattedDate: new Date(kline.timestamp).toLocaleDateString(),
+    percentChange: ((kline.close - initialOpen) / initialOpen) * 100,
     open: kline.open,
-    high: kline.high,
-    low: kline.low,
     close: kline.close,
-    volume: kline.volume
+    high: kline.high,
+    low: kline.low
   }));
 };
 
-export const getDailyChange = (kline: any): number => {
-  if (!kline) return 0;
+// Get daily change (close vs open of same day)
+export const getDailyChange = (
+  kline: {
+    open: number, 
+    close: number
+  }
+): number => {
   return ((kline.close - kline.open) / kline.open) * 100;
 };
 
+// Format daily change with arrow indicator
 export const formatDailyChange = (change: number): string => {
-  return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%`;
-};
-
-// Add the missing generatePerformanceData function
-export const generatePerformanceData = (marketCalls: Array<any>, year: string): any => {
-  // Filter calls for the specified year
-  const yearCalls = marketCalls.filter(call => {
-    const callYear = new Date(call.timestamp).getFullYear().toString();
-    return callYear === year;
-  });
-  
-  // Initialize monthly data
-  const monthlyData = Array(12).fill(0).map((_, idx) => ({
-    month: new Date(Number(year), idx).toLocaleString('default', { month: 'short' }),
-    winRate: 0,
-    calls: 0
-  }));
-  
-  // Process calls by month
-  yearCalls.forEach(call => {
-    const callDate = new Date(call.timestamp);
-    const monthIndex = callDate.getMonth();
-    
-    // Count call
-    monthlyData[monthIndex].calls += 1;
-    
-    // If positive ROI, count as win
-    if (call.roi > 0) {
-      monthlyData[monthIndex].winRate += 1;
-    }
-  });
-  
-  // Calculate win rate percentages
-  monthlyData.forEach(month => {
-    if (month.calls > 0) {
-      month.winRate = (month.winRate / month.calls) * 100;
-    }
-  });
-  
-  // Calculate overall win rate
-  const totalCalls = yearCalls.length;
-  const totalWins = yearCalls.filter(call => call.roi > 0).length;
-  const overall = totalCalls > 0 ? Math.round((totalWins / totalCalls) * 100) : 0;
-  
-  return {
-    monthlyData,
-    overall
-  };
+  const arrow = change >= 0 ? '↑' : '↓';
+  return `${arrow} ${Math.abs(change).toFixed(2)}%`;
 };
