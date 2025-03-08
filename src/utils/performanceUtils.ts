@@ -26,7 +26,6 @@ export const generatePerformanceData = (calls: MarketCall[], year: string) => {
   };
 };
 
-// New utility function to normalize price data for charts
 export const normalizeChartData = (priceData: Array<{timestamp: number, price: number}>) => {
   if (!priceData.length) return [];
   
@@ -40,7 +39,6 @@ export const normalizeChartData = (priceData: Array<{timestamp: number, price: n
   }));
 };
 
-// Function to detect if a token is likely a new listing
 export const isLikelyNewListing = (
   priceData: Array<{timestamp: number, price: number}>, 
   expectedDays: number
@@ -54,12 +52,10 @@ export const isLikelyNewListing = (
   return daysCovered < (expectedDays * 0.8);
 };
 
-// Calculate percentage change for display
 export const formatPercentage = (value: number): string => {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 };
 
-// Format price based on its value
 export const formatPrice = (price: number): string => {
   if (price < 0.01) return `$${price.toFixed(6)}`;
   if (price < 1) return `$${price.toFixed(4)}`;
@@ -67,12 +63,12 @@ export const formatPrice = (price: number): string => {
   return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 };
 
-// Function to get the initial price for a token
+export const formatCurrency = formatPrice;
+
 export const getInitialPrice = (priceData: Array<{timestamp: number, price: number}>): number => {
   return priceData.length > 0 ? priceData[0].price : 0;
 };
 
-// Function to get readable timeframe text
 export const getTimeframeText = (days: number): string => {
   if (days === 1) return "24 hours";
   if (days === 7) return "7 days";
@@ -80,7 +76,6 @@ export const getTimeframeText = (days: number): string => {
   return `${days} days`;
 };
 
-// Calculate performance based on open vs close prices (for OHLC data)
 export const calculateOpenClosePerformance = (
   klines: Array<{
     timestamp: number, 
@@ -99,7 +94,6 @@ export const calculateOpenClosePerformance = (
   return ((lastClose - firstOpen) / firstOpen) * 100;
 };
 
-// Normalize OHLC data for charts (showing open to close performance)
 export const normalizeOHLCChartData = (
   klines: Array<{
     timestamp: number, 
@@ -125,7 +119,6 @@ export const normalizeOHLCChartData = (
   }));
 };
 
-// Get daily change (close vs open of same day)
 export const getDailyChange = (
   kline: {
     open: number, 
@@ -135,7 +128,6 @@ export const getDailyChange = (
   return ((kline.close - kline.open) / kline.open) * 100;
 };
 
-// Format daily change with arrow indicator
 export const formatDailyChange = (change: number): string => {
   const arrow = change >= 0 ? '↑' : '↓';
   return `${arrow} ${Math.abs(change).toFixed(2)}%`;

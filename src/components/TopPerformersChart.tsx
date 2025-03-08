@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,10 +39,13 @@ interface TokenPrice {
   price: number;
 }
 
+interface TopPerformersChartProps {
+  onClose?: () => void;
+}
+
 const DEFAULT_DAYS = 7;
 const DEFAULT_LIMIT = 10;
 
-// Color palettes
 const performanceColors = {
   positive: {
     primary: "#10B981",
@@ -60,7 +62,6 @@ const formatTimestamp = (timestamp: number): string => {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-// Format number as compact
 const formatCompact = (value: number): string => {
   return new Intl.NumberFormat('en-US', {
     notation: 'compact',
@@ -68,7 +69,7 @@ const formatCompact = (value: number): string => {
   }).format(value);
 };
 
-const TopPerformersChart = () => {
+const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
   const [days, setDays] = useState(DEFAULT_DAYS);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
@@ -78,42 +79,33 @@ const TopPerformersChart = () => {
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState<{[key: string]: boolean}>({});
   
-  // Refs to control dialog behavior
   const dialogActionInProgressRef = useRef(false);
   const pendingTokenRef = useRef<PerformanceData | null>(null);
   
   const openTokenDetails = (token: PerformanceData, e?: React.MouseEvent) => {
-    // Stop event propagation to prevent bubbling
     if (e) {
       e.stopPropagation();
     }
     
-    // If an action is already in progress, store this token to be processed later
     if (dialogActionInProgressRef.current) {
       pendingTokenRef.current = token;
       return;
     }
     
-    // Mark that we're starting a dialog action
     dialogActionInProgressRef.current = true;
     console.log(`Opening dialog for ${token.symbol}`);
     
-    // Clear any previous selection to prevent flashing of old content
     setTokenDetailsOpen(false);
     
-    // Set the new token after a small delay
     setTimeout(() => {
       setSelectedToken(token);
       
-      // Open the dialog after the token is set
       setTimeout(() => {
         setTokenDetailsOpen(true);
         
-        // Release the lock after a delay to allow animations to complete
         setTimeout(() => {
           dialogActionInProgressRef.current = false;
           
-          // Process any pending token requests
           if (pendingTokenRef.current) {
             const pendingToken = pendingTokenRef.current;
             pendingTokenRef.current = null;
@@ -129,7 +121,6 @@ const TopPerformersChart = () => {
   }, [days, limit]);
 
   useEffect(() => {
-    // Handle tab changes
     if (activeTab === '1d') {
       setDays(1);
     } else if (activeTab === '7d') {
@@ -170,7 +161,6 @@ const TopPerformersChart = () => {
     }));
   };
 
-  // Custom tooltip for the recharts component
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -206,7 +196,6 @@ const TopPerformersChart = () => {
             const isPositive = token.performance >= 0;
             const colorScheme = isPositive ? performanceColors.positive : performanceColors.negative;
             
-            // Get first and last price points
             const firstPoint = token.priceData[0];
             const lastPoint = token.priceData[token.priceData.length - 1];
             
@@ -284,7 +273,6 @@ const TopPerformersChart = () => {
         </div>
       )}
       
-      {/* Dialog for token details */}
       {selectedToken && (
         <Dialog
           open={tokenDetailsOpen}
@@ -295,12 +283,10 @@ const TopPerformersChart = () => {
               
               setTokenDetailsOpen(false);
               
-              // Only clear the selected token after the dialog closes
               setTimeout(() => {
                 setSelectedToken(null);
                 dialogActionInProgressRef.current = false;
                 
-                // Process any pending token requests
                 if (pendingTokenRef.current) {
                   const pendingToken = pendingTokenRef.current;
                   pendingTokenRef.current = null;
