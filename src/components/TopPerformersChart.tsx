@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,16 +81,14 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
   
-  // Create refs to help manage state and prevent recursive updates
   const isDialogTransitioning = useRef(false);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingTokenSelectionRef = useRef<PerformanceData | null>(null);
   const lastClickTimeRef = useRef(0);
+  const detailsDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchTopPerformers();
     
-    // Cleanup function
     return () => {
       if (clickTimeoutRef.current) {
         clearTimeout(clickTimeoutRef.current);
@@ -219,53 +216,38 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     }
   };
 
-  // Improved token card click handler with debouncing and state management
   const handleTokenCardClick = (performer: PerformanceData, event: React.MouseEvent) => {
-    // Prevent event bubbling
+    event.preventDefault();
     event.stopPropagation();
     
-    // Debounce rapid clicks
     const now = Date.now();
     if (now - lastClickTimeRef.current < 500) {
-      console.log('Debounced rapid click');
+      console.log('Debouncing rapid click');
       return;
     }
     lastClickTimeRef.current = now;
     
-    // Check if dialog is already in transition
     if (isDialogTransitioning.current) {
       console.log('Dialog is already transitioning, ignoring click');
       return;
     }
     
     console.log('Token card clicked:', performer.symbol);
-    
-    // Set the transitioning flag to prevent multiple triggers
     isDialogTransitioning.current = true;
     
-    // Store the pending token selection
-    pendingTokenSelectionRef.current = performer;
-    
-    // Clear any existing timeout
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
     }
     
-    // Update the selected token
     setSelectedToken(performer);
     
-    // Use a timeout to separate state updates
     clickTimeoutRef.current = setTimeout(() => {
-      if (pendingTokenSelectionRef.current === performer) {
-        console.log('Opening dialog for:', performer.symbol);
-        setTokenDetailsOpen(true);
-        
-        // Reset the transitioning flag after dialog is fully opened
-        setTimeout(() => {
-          isDialogTransitioning.current = false;
-          console.log('Dialog transition complete');
-        }, 300);
-      }
+      setTokenDetailsOpen(true);
+      
+      setTimeout(() => {
+        isDialogTransitioning.current = false;
+        console.log('Dialog transition complete');
+      }, 500);
     }, 50);
   };
 
@@ -298,19 +280,20 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
     const dailyChange = lastKline ? getDailyChange(lastKline) : null;
     
-    // Handler for dialog state change to properly manage closing
     const handleOpenChange = (open: boolean) => {
       console.log('Dialog open change:', open);
+      
       if (!open && !isDialogTransitioning.current) {
         isDialogTransitioning.current = true;
         setTokenDetailsOpen(false);
         
-        // Add delay before clearing the selected token to allow for animation
         setTimeout(() => {
-          setSelectedToken(null);
+          if (!tokenDetailsOpen) {
+            setSelectedToken(null);
+          }
           isDialogTransitioning.current = false;
           console.log('Dialog fully closed');
-        }, 300);
+        }, 500);
       }
     };
     
@@ -319,7 +302,11 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
         open={tokenDetailsOpen} 
         onOpenChange={handleOpenChange}
       >
-        <DialogContent className="sm:max-w-[850px] bg-black/95 border border-emerald-500/30 text-white">
+        <DialogContent 
+          ref={detailsDialogRef}
+          onClick={(e) => e.stopPropagation()} 
+          className="sm:max-w-[850px] bg-black/95 border border-emerald-500/30 text-white"
+        >
           <DialogHeader>
             <DialogTitle className="text-emerald-400 flex items-center gap-2">
               <Info size={18} />
@@ -571,7 +558,10 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
           setInfoDialogOpen(open);
         }}
       >
-        <DialogContent className="bg-black/95 border border-amber-500/30 text-white">
+        <DialogContent 
+          onClick={(e) => e.stopPropagation()} 
+          className="bg-black/95 border border-amber-500/30 text-white"
+        >
           <DialogHeader>
             <DialogTitle className="text-amber-400 flex items-center gap-2">
               <Info size={18} />
