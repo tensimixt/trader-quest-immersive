@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -15,6 +15,10 @@ type PerformanceData = {
     price: number;
   }>;
   currentPrice: number;
+  isNewListing?: boolean;
+  dataPoints?: number;
+  expectedDataPoints?: number;
+  daysCovered?: string;
 }
 
 const COLORS = [
@@ -267,22 +271,36 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               <span className="text-emerald-400 font-mono text-xs font-bold">
                 {performer.symbol.replace('USDT', '')}
               </span>
-              <div 
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-              />
+              <div className="flex items-center">
+                <div 
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                />
+                {performer.isNewListing && (
+                  <div className="ml-1" title={`New listing or incomplete data (${performer.daysCovered}/${timeframe} days)`}>
+                    <AlertTriangle size={12} className="text-amber-400" />
+                  </div>
+                )}
+              </div>
             </div>
             <span className="text-white text-sm font-mono">
               {formatPrice(performer.currentPrice)}
             </span>
-            <span className={`text-xs font-mono ${performer.performance >= 0 ? 'text-emerald-400 flex items-center' : 'text-red-400 flex items-center'}`}>
-              {performer.performance >= 0 ? (
-                <TrendingUp className="w-3 h-3 mr-1" />
-              ) : (
-                <TrendingDown className="w-3 h-3 mr-1" />
+            <div className="flex justify-between items-center">
+              <span className={`text-xs font-mono ${performer.performance >= 0 ? 'text-emerald-400 flex items-center' : 'text-red-400 flex items-center'}`}>
+                {performer.performance >= 0 ? (
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                ) : (
+                  <TrendingDown className="w-3 h-3 mr-1" />
+                )}
+                {formatPercentage(performer.performance)}
+              </span>
+              {performer.isNewListing && (
+                <span className="text-amber-400 text-xs font-mono">
+                  {performer.daysCovered}d
+                </span>
               )}
-              {formatPercentage(performer.performance)}
-            </span>
+            </div>
           </div>
         ))}
       </div>

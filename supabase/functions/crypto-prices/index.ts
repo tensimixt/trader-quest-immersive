@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -102,7 +103,17 @@ async function fetchTopPerformers(days = 7, limit = 10) {
           // Calculate performance (percentage change from first to last close price)
           const firstPrice = klines[0].open;
           const lastPrice = klines[klines.length - 1].close;
+          
+          // Calculate the performance based on available data
+          // If the market was newly listed during the timeframe, performance should be calculated from its first available price
+          const daysSinceFirstKline = (klines[klines.length - 1].timestamp - klines[0].timestamp) / (1000 * 60 * 60 * 24);
+          
+          // Get a more accurate performance by scaling to the requested timeframe
+          // Only if the data doesn't cover the full requested timeframe
           const performance = ((lastPrice - firstPrice) / firstPrice) * 100;
+          
+          // Add a flag to indicate if this might be a new listing (if we have less than 80% of expected data points)
+          const isNewListing = daysSinceFirstKline < (days * 0.8);
           
           return {
             symbol: ticker.symbol,
@@ -111,7 +122,11 @@ async function fetchTopPerformers(days = 7, limit = 10) {
               timestamp: k.timestamp,
               price: k.close
             })),
-            currentPrice: lastPrice
+            currentPrice: lastPrice,
+            isNewListing,
+            dataPoints: klines.length,
+            expectedDataPoints: klineLimit,
+            daysCovered: daysSinceFirstKline.toFixed(1)
           };
         } catch (error) {
           console.error(`Error processing ${ticker.symbol}:`, error);
