@@ -4,7 +4,7 @@ import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarC
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { formatPrice, formatPercentage } from '@/utils/performanceUtils';
+import { formatPrice, formatPercentage, isValidPrice } from '@/utils/performanceUtils';
 
 const LiveChart = lazy(() => import('./LiveChart'));
 const TickerList = lazy(() => import('./TickerList'));
@@ -148,7 +148,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       console.log('Initial prices fetched via HTTP:', pricesData);
       
       const newPrices = pricesData.reduce((acc, curr) => {
-        if (curr.price && typeof curr.price === 'number' && curr.price > 0) {
+        if (isValidPrice(curr.price)) {
           initialDataFetchedRef.current[curr.symbol] = true;
           return {
             ...acc,
@@ -229,10 +229,10 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             if (trackingSymbols.includes(symbol)) {
               const price = parseFloat(ticker.c);
               
-              if (!isNaN(price) && price > 0) {
+              if (isValidPrice(price)) {
                 const currentPrice = updatedPrices[symbol];
                 
-                if (typeof currentPrice === 'number' && currentPrice > 0) {
+                if (isValidPrice(currentPrice)) {
                   if (price !== currentPrice) {
                     newDirections[symbol] = price > currentPrice ? 'up' : 'down';
                     
@@ -255,7 +255,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                if (previousPrices[symbol] && typeof previousPrices[symbol] === 'number' && previousPrices[symbol] > 0) {
+                if (isValidPrice(previousPrices[symbol])) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
                   if (!isNaN(change)) {
                     setChanges(prev => ({
@@ -264,6 +264,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                     }));
                   }
                 }
+              } else {
+                console.warn(`Received invalid price for ${symbol}:`, ticker.c);
               }
             }
           });
@@ -307,7 +309,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       setPreviousPrices(currentPrices);
       
       const newPrices = pricesData.reduce((acc, curr) => {
-        if (curr.price && curr.price > 0) {
+        if (isValidPrice(curr.price)) {
           acc[curr.symbol] = curr.price;
           initialDataFetchedRef.current[curr.symbol] = true;
         }
@@ -320,7 +322,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       const newChanges = Object.keys(newPrices).reduce((acc, symbol) => {
         const previousPrice = previousPrices[symbol] || currentPrices[symbol];
-        if (!previousPrice || previousPrice <= 0) return acc;
+        if (!isValidPrice(previousPrice)) return acc;
         
         const change = ((newPrices[symbol] - previousPrice) / previousPrice) * 100;
         if (!isNaN(change)) {
@@ -497,8 +499,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const hasSymbolData = (symbol: string): boolean => {
     return (
       initialDataFetchedRef.current[symbol] === true && 
-      typeof prices[symbol] === 'number' && 
-      prices[symbol] > 0
+      isValidPrice(prices[symbol])
     );
   };
 

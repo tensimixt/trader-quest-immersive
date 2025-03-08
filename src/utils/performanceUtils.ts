@@ -43,6 +43,15 @@ export const formatPrice = (value: number | string | undefined | null): string =
   }).format(numericValue);
 };
 
+// Add a new function to validate price values
+export const isValidPrice = (price: any): boolean => {
+  if (price === undefined || price === null) return false;
+  
+  const numericValue = typeof price === 'string' ? parseFloat(price) : price;
+  
+  return !isNaN(numericValue) && numericValue > 0;
+};
+
 export const getInitialPrice = (priceData: Array<{ timestamp: number; price: number }>): number => {
   if (!priceData || priceData.length === 0) return 0;
   return priceData[0].price;
