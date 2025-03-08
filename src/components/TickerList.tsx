@@ -347,20 +347,29 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     setTickerDialogOpen(true);
     
     try {
+      console.log(`Fetching kline data for ${ticker.symbol}`);
       // Fetch historical data for the selected ticker
       const { data, error } = await supabase.functions.invoke('crypto-prices', {
         body: { 
-          getTickerHistory: true,
           symbol: ticker.symbol,
+          getTickerHistory: true,
           days: 7 // Default to 7 days
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error from function:', error);
+        throw error;
+      }
+      
+      console.log('Response from crypto-prices function:', data);
       
       if (data && data.klineData) {
         setTickerChartData(data.klineData);
         setSelectedTicker(prev => prev ? {...prev, klineData: data.klineData} : null);
+      } else {
+        console.error('No kline data received:', data);
+        toast.error('No chart data available for this ticker');
       }
     } catch (error) {
       console.error('Failed to fetch ticker history:', error);
@@ -553,6 +562,9 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                 </>
               )}
             </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              View detailed price information and historical data
+            </DialogDescription>
           </DialogHeader>
           
           {selectedTicker && (
@@ -560,7 +572,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
                   <div className="text-gray-400 text-xs mb-1">Current Price</div>
-                  <div className="text-white font-mono text-lg">{formatPrice(selectedTicker.lastPrice)}</div>
+                  <div className="text-white font-mono text-lg">{formatPrice(parseFloat(selectedTicker.lastPrice))}</div>
                 </div>
                 
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
@@ -585,7 +597,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                 <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
                   <div className="text-gray-400 text-xs mb-1">Price Change</div>
                   <div className={`text-white font-mono text-lg ${parseFloat(selectedTicker.priceChange) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPrice(selectedTicker.priceChange)}
+                    {parseFloat(selectedTicker.priceChange) >= 0 ? '+' : ''}{formatPrice(parseFloat(selectedTicker.priceChange))}
                   </div>
                 </div>
               </div>
@@ -593,7 +605,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
               <div className="mt-4">
                 <div className="text-sm text-gray-300 mb-2 flex items-center justify-between">
                   <span>Price History (7D)</span>
-                  {selectedTicker.klineData && (
+                  {selectedTicker.klineData && selectedTicker.klineData.length > 0 && (
                     <div className="flex items-center space-x-3">
                       <div className="flex items-center space-x-1">
                         <div className="w-3 h-3 rounded-full bg-emerald-500" />
@@ -655,14 +667,6 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                         />
                         <Line 
                           type="monotone" 
-                          dataKey="close" 
-                          name="Close Price" 
-                          stroke="#10B981" 
-                          dot={false}
-                          activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
-                        />
-                        <Line 
-                          type="monotone" 
                           dataKey="open" 
                           name="Open Price" 
                           stroke="#0EA5E9" 
@@ -670,11 +674,20 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                           strokeDasharray="5 5"
                           activeDot={{ r: 6, stroke: '#0EA5E9', strokeWidth: 2, fill: '#111' }}
                         />
+                        <Line 
+                          type="monotone" 
+                          dataKey="close" 
+                          name="Close Price" 
+                          stroke="#10B981" 
+                          dot={false}
+                          activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                      No chart data available
+                    <div className="flex items-center justify-center h-full text-gray-400 flex-col gap-2">
+                      <AlertTriangle size={24} className="text-yellow-500" />
+                      <p>No chart data available</p>
                     </div>
                   )}
                 </div>

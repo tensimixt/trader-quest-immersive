@@ -358,6 +358,7 @@ serve(async (req) => {
     let interval = url.searchParams.get('interval') || '15m';
     let get24hTickers = url.searchParams.get('get24hTickers') === 'true';
     let getTopPerformers = url.searchParams.get('getTopPerformers') === 'true';
+    let getTickerHistory = url.searchParams.get('getTickerHistory') === 'true';
     let days = parseInt(url.searchParams.get('days') || '7', 10);
     let limit = parseInt(url.searchParams.get('limit') || '10', 10);
     let useOHLC = url.searchParams.get('useOHLC') === 'true';
@@ -371,6 +372,7 @@ serve(async (req) => {
         interval = body.interval || interval;
         get24hTickers = (body.get24hTickers === 'true' || body.get24hTickers === true) || get24hTickers;
         getTopPerformers = (body.getTopPerformers === 'true' || body.getTopPerformers === true) || getTopPerformers;
+        getTickerHistory = (body.getTickerHistory === 'true' || body.getTickerHistory === true) || getTickerHistory;
         days = body.days || days;
         limit = body.limit || limit;
         useOHLC = (body.useOHLC === 'true' || body.useOHLC === true) || useOHLC;
@@ -379,7 +381,20 @@ serve(async (req) => {
       }
     }
     
-    if (getTopPerformers) {
+    if (getTickerHistory && symbol) {
+      console.log(`Fetching history for ticker: ${symbol}, interval: ${interval}, days: ${days}`);
+      const klineInterval = days <= 1 ? '1h' : '1d';
+      const klineLimit = days <= 1 ? days * 24 : days;
+      
+      const klineData = await fetchBinanceKlines(symbol, klineInterval, klineLimit);
+      
+      return new Response(JSON.stringify({ symbol, klineData }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else if (getTopPerformers) {
       console.log(`Fetching top ${limit} performers for ${days} days (useOHLC: ${useOHLC})`);
       const topPerformers = await fetchTopPerformers(days, limit, useOHLC);
       return new Response(JSON.stringify(topPerformers), {
