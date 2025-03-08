@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
@@ -208,9 +209,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
             if (trackingSymbols.includes(symbol)) {
               const price = parseFloat(ticker.c);
               
-              if (prices[symbol] !== price) {
-                if (prices[symbol] > 0) {
-                  newDirections[symbol] = price > prices[symbol] ? 'up' : 'down';
+              if (updatedPrices[symbol] !== price) {
+                if (updatedPrices[symbol] > 0) {
+                  newDirections[symbol] = price > updatedPrices[symbol] ? 'up' : 'down';
                   
                   if (flashTimeoutsRef.current[symbol]) {
                     clearTimeout(flashTimeoutsRef.current[symbol]);
@@ -228,20 +229,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
-                
-                if (previousPrices[symbol]) {
-                  const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
-                  setChanges(prev => ({
-                    ...prev,
-                    [symbol]: change
-                  }));
-                }
               }
             }
           });
           
           if (pricesUpdated && isComponentMountedRef.current) {
-            setPreviousPrices(prices);
             setPrices(updatedPrices);
             setPriceChangeDirection(newDirections);
           }
@@ -628,3 +620,4 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
 };
 
 export default CryptoChartsView;
+

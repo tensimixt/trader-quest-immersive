@@ -16,13 +16,17 @@ export const formatPercentage = (value: number): string => {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 };
 
-export const formatPrice = (price: number): string => {
+export const formatPrice = (price: number | string): string => {
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+  
+  if (isNaN(numericPrice) || numericPrice === 0) return "$0.00";
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price);
+  }).format(numericPrice);
 };
 
 export const getInitialPrice = (priceData: Array<{ timestamp: number; price: number }>): number => {
