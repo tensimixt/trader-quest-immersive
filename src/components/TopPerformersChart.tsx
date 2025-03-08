@@ -76,6 +76,13 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState<{[key: string]: boolean}>({});
 
+  const openTokenDetails = (token: PerformanceData) => {
+    setSelectedToken(token);
+    setTimeout(() => {
+      setTokenDetailsOpen(true);
+    }, 10);
+  };
+
   useEffect(() => {
     fetchTopPerformers();
   }, [timeframe, limit]);
@@ -274,8 +281,14 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
     const dailyChange = lastKline ? getDailyChange(lastKline) : null;
     
+    const handleOpenChange = (open: boolean) => {
+      if (!open) {
+        setTokenDetailsOpen(false);
+      }
+    };
+    
     return (
-      <Dialog open={tokenDetailsOpen} onOpenChange={setTokenDetailsOpen}>
+      <Dialog open={tokenDetailsOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="bg-black/95 border border-emerald-500/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-emerald-400 flex items-center gap-2">
@@ -452,9 +465,9 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <div 
             key={performer.symbol} 
             className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
-            onClick={() => {
-              setSelectedToken(performer);
-              setTokenDetailsOpen(true);
+            onClick={(e) => {
+              e.stopPropagation();
+              openTokenDetails(performer);
             }}
           >
             <div className="flex items-center justify-between mb-1">
