@@ -148,22 +148,18 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       console.log('Initial prices fetched via HTTP:', pricesData);
       
       const newPrices = pricesData.reduce((acc, curr) => {
-        initialDataFetchedRef.current[curr.symbol] = true;
-        return {
-          ...acc,
-          [curr.symbol]: curr.price
-        };
-      }, {});
-      
-      const validNewPrices = Object.entries(newPrices).reduce((acc, [symbol, price]) => {
-        if (price && price > 0) {
-          acc[symbol] = price;
+        if (curr.price && typeof curr.price === 'number' && curr.price > 0) {
+          initialDataFetchedRef.current[curr.symbol] = true;
+          return {
+            ...acc,
+            [curr.symbol]: curr.price
+          };
         }
         return acc;
-      }, {} as {[key: string]: number});
+      }, {});
       
-      if (Object.keys(validNewPrices).length > 0) {
-        setPrices(prev => ({...prev, ...validNewPrices}));
+      if (Object.keys(newPrices).length > 0) {
+        setPrices(prev => ({...prev, ...newPrices}));
       }
       
       try {
@@ -178,6 +174,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               const percentChange = parseFloat(ticker.priceChangePercent);
               if (!isNaN(percentChange)) {
                 changeData[ticker.symbol] = percentChange;
+                initialDataFetchedRef.current[ticker.symbol] = true;
               }
             }
           });
@@ -233,7 +230,8 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               const price = parseFloat(ticker.c);
               
               if (!isNaN(price) && price > 0) {
-                const currentPrice = prices[symbol];
+                const currentPrice = updatedPrices[symbol];
+                
                 if (typeof currentPrice === 'number' && currentPrice > 0) {
                   newDirections[symbol] = price > currentPrice ? 'up' : 'down';
                   
@@ -252,16 +250,17 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 }
                 
                 initialDataFetchedRef.current[symbol] = true;
-                
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
-                if (previousPrices[symbol] && previousPrices[symbol] > 0) {
+                if (previousPrices[symbol] && typeof previousPrices[symbol] === 'number' && previousPrices[symbol] > 0) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
-                  setChanges(prev => ({
-                    ...prev,
-                    [symbol]: change
-                  }));
+                  if (!isNaN(change)) {
+                    setChanges(prev => ({
+                      ...prev,
+                      [symbol]: change
+                    }));
+                  }
                 }
               }
             }
@@ -494,7 +493,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   };
 
   const hasSymbolData = (symbol: string): boolean => {
-    return initialDataFetchedRef.current[symbol] && prices[symbol] > 0;
+    return (
+      initialDataFetchedRef.current[symbol] === true && 
+      typeof prices[symbol] === 'number' && 
+      prices[symbol] > 0
+    );
   };
 
   return (
@@ -603,35 +606,33 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <div className="text-emerald-400">
-                        {symbol === 'BTCUSDT' ? <Bitcoin className="w-5 h-5" /> : 
-                         symbol === 'ETHUSDT' ? <Coins className="w-5 h-5" /> : 
-                         <BarChart2 className="w-5 h-5" />}
+                        {getIconForSymbol(symbol)}
                       </div>
                       <span className="font-mono text-sm text-emerald-400">
-                        {symbol === 'BTCUSDT' ? 'Bitcoin' : 
-                         symbol === 'ETHUSDT' ? 'Ethereum' : 
-                         'Binance Coin'}
+                        {getNameForSymbol(symbol)}
                       </span>
                     </div>
                     <div className="flex items-center space-x-1">
                       {hasSymbolData(symbol) && (
-                        changes[symbol] >= 0 ? (
-                          <TrendingUp size={16} className="text-emerald-400" />
-                        ) : (
-                          <TrendingDown size={16} className="text-red-400" />
+                        (typeof changes[symbol] === 'number') && (
+                          changes[symbol] >= 0 ? (
+                            <TrendingUp size={16} className="text-emerald-400" />
+                          ) : (
+                            <TrendingDown size={16} className="text-red-400" />
+                          )
                         )
                       )}
                     </div>
                   </div>
                   <div className="price-container">
                     <span className="price">
-                      {hasSymbolData(symbol) ? formatPrice(prices[symbol]) : "$-.--"}
+                      {formatPrice(hasSymbolData(symbol) ? prices[symbol] : null)}
                     </span>
                     <span className={`price-change ${
                       !hasSymbolData(symbol) ? 'text-emerald-400/50' : 
-                      changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
+                      (typeof changes[symbol] === 'number' && changes[symbol] >= 0) ? 'text-emerald-400' : 'text-red-400'
                     }`}>
-                      {hasSymbolData(symbol) ? 
+                      {hasSymbolData(symbol) && typeof changes[symbol] === 'number' ? 
                         formatPercentage(changes[symbol]) : 
                         "-.--%" 
                       }
