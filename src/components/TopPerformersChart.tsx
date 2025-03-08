@@ -462,14 +462,19 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   <TooltipProvider>
                     <UITooltip>
                       <TooltipTrigger asChild>
-                        <div className="ml-1 cursor-help">
+                        <div 
+                          className="ml-1 cursor-help"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the card click
+                          }}
+                        >
                           <AlertTriangle size={12} className="text-amber-400" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]">
                         <p className="font-bold mb-1">New Listing Alert!</p>
-                        <p>{performer.symbol.replace('USDT', '')} has only {performer.daysCovered} days of data.</p>
-                        <p className="mt-1">Performance is calculated from its initial price of {formatPrice(performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}</p>
+                        <p className="mb-1">{performer.symbol.replace('USDT', '')} was listed <span className="text-amber-400 font-bold">{performer.daysCovered}</span> days ago.</p>
+                        <p>Performance is calculated from its initial price of {formatPrice(performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}</p>
                       </TooltipContent>
                     </UITooltip>
                   </TooltipProvider>
@@ -479,7 +484,7 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <span className="text-white text-sm font-mono">
               {formatPrice(performer.currentPrice)}
             </span>
-            <div className="flex justify-between items-center">
+            <div className="flex items-center">
               <span className={`text-xs font-mono ${performer.performance >= 0 ? 'text-emerald-400 flex items-center' : 'text-red-400 flex items-center'}`}>
                 {performer.performance >= 0 ? (
                   <TrendingUp className="w-3 h-3 mr-1" />
@@ -488,11 +493,6 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 )}
                 {formatPercentage(performer.performance)}
               </span>
-              {performer.isNewListing && (
-                <span className="text-amber-400 text-xs font-mono">
-                  {performer.daysCovered}d
-                </span>
-              )}
             </div>
           </div>
         ))}
