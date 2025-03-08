@@ -108,6 +108,8 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
   
   const tickersMapRef = useRef<Map<string, TickerData>>(new Map());
   const updatedTickersRef = useRef<Set<string>>(new Set());
+  const tickerChangeDirectionRef = useRef<Map<string, 'up' | 'down'>>(new Map());
+  const previousPricesRef = useRef<Map<string, number>>(new Map());
   const isComponentMountedRef = useRef<boolean>(true);
   const webSocketRef = useRef<WebSocket | null>(null);
   const onMessageCallbackRef = useRef<(data: any) => void>(() => {});
@@ -168,8 +170,10 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
           // Process the data into our ticker format
           data.forEach((ticker) => {
             if (ticker.s && ticker.s.endsWith('USDT')) {
+              const symbol = ticker.s;
+              const currentPrice = parseFloat(ticker.c || '0');
               const tickerData: TickerData = {
-                symbol: ticker.s,
+                symbol: symbol,
                 priceChange: ticker.p || '0',
                 priceChangePercent: ticker.P || '0',
                 lastPrice: ticker.c || '0',
@@ -177,6 +181,18 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                 quoteVolume: ticker.q || '0'
               };
               
+              // Determine price change direction
+              const previousPrice = previousPricesRef.current.get(symbol);
+              if (previousPrice !== undefined && currentPrice !== previousPrice) {
+                // Only update direction if price actually changed
+                const direction = currentPrice > previousPrice ? 'up' : 'down';
+                tickerChangeDirectionRef.current.set(symbol, direction);
+              }
+              
+              // Update previous price
+              previousPricesRef.current.set(symbol, currentPrice);
+              
+              // Update ticker data
               tickersMapRef.current.set(tickerData.symbol, tickerData);
               updatedTickersRef.current.add(tickerData.symbol);
               
@@ -321,6 +337,20 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }).format(numericPrice);
   };
 
+  const getTickerHighlightClass = (symbol: string): string => {
+    if (!updatedTickersRef.current.has(symbol)) return 'hover:bg-emerald-500/5';
+    
+    const direction = tickerChangeDirectionRef.current.get(symbol);
+    if (direction === 'up') {
+      return 'bg-emerald-500/20'; // Green highlight for price up
+    } else if (direction === 'down') {
+      return 'bg-red-500/20'; // Red highlight for price down
+    }
+    
+    // Default highlight if direction is unknown
+    return 'bg-emerald-500/20';
+  };
+
   const filteredTickers = tickers.filter(ticker => 
     ticker.symbol.toLowerCase().includes(searchInput.toLowerCase())
   );
@@ -408,7 +438,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
                       <tr 
                         key={ticker.symbol} 
                         className={`border-b border-white/5 transition-colors ${
-                          isUpdated ? 'bg-emerald-500/20' : 'hover:bg-emerald-500/5'
+                          getTickerHighlightClass(ticker.symbol)
                         }`}
                       >
                         <td className="py-3 text-left font-mono">{ticker.symbol}</td>
