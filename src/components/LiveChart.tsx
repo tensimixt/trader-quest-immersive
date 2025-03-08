@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, TooltipProps } from 'recharts';
 import { motion } from 'framer-motion';
 import { RefreshCw, X, Maximize2, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,6 +118,38 @@ const timeframeOptions = [
   { value: "1d", label: "1d" },
 ];
 
+const StableTooltip = (props: TooltipProps<number, string>) => {
+  const { active, payload, label } = props;
+  
+  if (!active || !payload || !payload.length) {
+    return null;
+  }
+  
+  const price = payload[0].value as number;
+  const formattedPrice = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price);
+  
+  const time = new Date(label).toLocaleTimeString();
+  
+  return (
+    <div className="custom-tooltip" style={{ 
+      backgroundColor: 'rgba(0,0,0,0.9)', 
+      border: '1px solid #10B981',
+      borderRadius: '8px',
+      padding: '8px 12px',
+      color: '#10B981',
+      pointerEvents: 'none'
+    }}>
+      <p className="label" style={{ margin: '0 0 4px 0', fontSize: '12px' }}>{time}</p>
+      <p className="price" style={{ margin: 0, fontWeight: 'bold' }}>{formattedPrice}</p>
+    </div>
+  );
+};
+
 const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [data, setData] = useState<KlineData[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
@@ -129,6 +161,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
   const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
+  const [activeTooltipIndex, setActiveTooltipIndex] = useState<number | null>(null);
   
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
@@ -512,8 +545,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         <>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={data}
+              data={chartData}
               margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
               <XAxis 
@@ -531,14 +566,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
                 width={40}
               />
               <Tooltip 
-                formatter={(value: number) => [formatPrice(value), 'Price']}
-                labelFormatter={formatTime}
-                contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.9)', 
-                  border: '1px solid #10B981',
-                  borderRadius: '8px',
-                  color: '#10B981'
-                }}
+                content={<StableTooltip />}
+                isAnimationActive={false}
+                wrapperStyle={{ pointerEvents: 'none' }}
+                cursor={{ stroke: '#10B981', strokeWidth: 1, strokeDasharray: '5 5' }}
+                position={{ x: 0, y: 0 }}
               />
               <Line 
                 type="monotone" 
@@ -556,8 +588,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
                 dot={{ r: 3, fill: isPriceDecreasingRef.current ? "#ea384c" : "#8B5CF6" }}
                 strokeWidth={3}
                 connectNulls
-                isAnimationActive={true}
-                animationDuration={500}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>
