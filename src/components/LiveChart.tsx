@@ -178,6 +178,24 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const maxDataPointsRef = useRef<number>(interval === "1s" ? 900 : 30);
   const lastKnownTimestampRef = useRef<number | null>(null);
 
+  const chartData = useMemo(() => {
+    return data.map(point => ({
+      ...point,
+      timestamp: point.timestamp,
+      close: point.close
+    }));
+  }, [data]);
+
+  const handleMouseMove = (e: any) => {
+    if (e.activeTooltipIndex !== undefined) {
+      setActiveTooltipIndex(e.activeTooltipIndex);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setActiveTooltipIndex(null);
+  };
+
   const fetchCryptoData = async () => {
     if (!isComponentMountedRef.current) return;
     
