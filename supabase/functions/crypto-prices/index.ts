@@ -41,11 +41,13 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
   } catch (error) {
     console.error(`Error fetching ${symbol} klines with interval ${interval}:`, error);
     
-    // Special handling for 1s interval since it might not be supported for all pairs
+    // Special handling for 1s interval since it might not be available for all pairs
     if (interval === "1s") {
       console.log(`Falling back to 1m interval for ${symbol}`);
       try {
-        const fallbackUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${limit}`;
+        // If 1s fails, try fallback to 1m with a higher limit (to get roughly the same time period)
+        const adjustedLimit = Math.min(Math.ceil(limit / 60), 1000);
+        const fallbackUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${adjustedLimit}`;
         console.log(`Trying fallback URL: ${fallbackUrl}`);
         const fallbackResponse = await fetch(fallbackUrl);
         
@@ -397,8 +399,13 @@ serve(async (req) => {
     let getTopPerformers = url.searchParams.get('getTopPerformers') === 'true';
     let getTickerHistory = url.searchParams.get('getTickerHistory') === 'true';
     let days = parseInt(url.searchParams.get('days') || '7', 10);
-    let limit = parseInt(url.searchParams.get('limit') || '10', 10);
+    let limit = parseInt(url.searchParams.get('limit') || '30', 10);
     let useOHLC = url.searchParams.get('useOHLC') === 'true';
+    
+    // If interval is 1s, limit shouldn't exceed 1000 (Binance API max)
+    if (interval === '1s' && limit > 1000) {
+      limit = 1000;
+    }
     
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
@@ -412,6 +419,12 @@ serve(async (req) => {
         getTickerHistory = (body.getTickerHistory === 'true' || body.getTickerHistory === true) || getTickerHistory;
         days = body.days || days;
         limit = body.limit || limit;
+        
+        // Same limit check for request body
+        if (interval === '1s' && limit > 1000) {
+          limit = 1000;
+        }
+        
         useOHLC = (body.useOHLC === 'true' || body.useOHLC === true) || useOHLC;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
@@ -453,7 +466,7 @@ serve(async (req) => {
       
       let history = [];
       if (getHistory) {
-        history = await fetchBinanceKlines(symbol, interval);
+        history = await fetchBinanceKlines(symbol, interval, limit);
       }
       
       return new Response(JSON.stringify({ symbol, price, history }), {

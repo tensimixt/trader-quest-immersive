@@ -1,23 +1,16 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { RefreshCw, X, Maximize2, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface LiveChartProps {
   symbol: string;
@@ -117,16 +110,13 @@ const formatDate = (timestamp: number): string => {
     ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-// Available timeframe options - now including 1s
+// Available timeframe options - now focused on 1s, 15m, 1h, 4h, 1d
 const timeframeOptions = [
-  { value: "1s", label: "1 Second" },
-  { value: "1m", label: "1 Minute" },
-  { value: "5m", label: "5 Minutes" },
-  { value: "15m", label: "15 Minutes" },
-  { value: "30m", label: "30 Minutes" },
-  { value: "1h", label: "1 Hour" },
-  { value: "4h", label: "4 Hours" },
-  { value: "1d", label: "1 Day" },
+  { value: "1s", label: "1s" },
+  { value: "15m", label: "15m" },
+  { value: "1h", label: "1h" },
+  { value: "4h", label: "4h" },
+  { value: "1d", label: "1d" },
 ];
 
 const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
@@ -164,8 +154,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       
       console.log(`Fetching data for ${symbol} with interval ${interval}`);
       
+      // For 1s interval, we'll request up to 900 points
+      const limit = interval === "1s" ? 900 : 30;
+      
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
-        body: { symbol, history: 'true', interval }
+        body: { symbol, history: 'true', interval, limit }
       });
       
       if (fetchError) throw fetchError;
@@ -437,17 +430,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   };
 
   const getTimeframeLabel = (interval: string): string => {
-    switch (interval) {
-      case "1s": return "1 sec";
-      case "1m": return "1 min";
-      case "5m": return "5 min";
-      case "15m": return "15 min";
-      case "30m": return "30 min";
-      case "1h": return "1 hr";
-      case "4h": return "4 hr";
-      case "1d": return "1 day";
-      default: return interval;
-    }
+    return interval;
   };
 
   const handleIntervalChange = (newInterval: string) => {
@@ -459,24 +442,25 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const priceChange = getPriceChange();
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
-  // Timeframe selection component moved above chart
+  // Timeframe selection component using buttons instead of dropdown
   const TimeframeSelector = () => (
     <div className="mb-4 flex items-center justify-between px-2 py-2 bg-black/40 rounded-lg border border-emerald-500/10">
       <div className="flex items-center gap-2">
         <Clock size={16} className="text-emerald-400" />
         <span className="text-sm text-emerald-400 font-mono">Timeframe:</span>
-        <Select value={interval} onValueChange={handleIntervalChange}>
-          <SelectTrigger className="h-8 text-sm bg-black/60 border-emerald-500/30 w-32">
-            <SelectValue placeholder={timeframeOptions.find(opt => opt.value === interval)?.label || "Select"} />
-          </SelectTrigger>
-          <SelectContent className="bg-black border-emerald-500/30">
-            {timeframeOptions.map(option => (
-              <SelectItem key={option.value} value={option.value} className="text-sm">
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex space-x-1">
+          {timeframeOptions.map(option => (
+            <Button
+              key={option.value}
+              variant={interval === option.value ? "crypto" : "outline"}
+              size="xs"
+              onClick={() => handleIntervalChange(option.value)}
+              className={interval === option.value ? "" : "border-emerald-500/50 text-emerald-400"}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
       </div>
       
       <div className="text-xs text-emerald-400/70 font-mono">
@@ -593,7 +577,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
               <DialogTitle className="sr-only">{getSymbolName(symbol)} Chart</DialogTitle>
               <div className="pt-6">
                 <h3 className="text-lg font-bold text-white font-mono tracking-wider mb-4">
-                  {getSymbolName(symbol)} - {timeframeOptions.find(opt => opt.value === interval)?.label || interval} Chart
+                  {getSymbolName(symbol)} - {interval} Chart
                 </h3>
                 <TimeframeSelector />
                 <ChartContent height={600} />
@@ -636,7 +620,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           <div className="flex items-center mt-1">
             <span className={`text-sm font-mono ${priceChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
-              <span className="ml-1 text-xs opacity-70">({getTimeframeLabel(interval)})</span>
+              <span className="ml-1 text-xs opacity-70">({interval})</span>
             </span>
           </div>
         </div>
@@ -652,7 +636,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
       </div>
       
-      {/* Timeframe selector now appears above the chart */}
+      {/* Timeframe selector now appears above the chart and won't be affected by chart updates */}
       <TimeframeSelector />
       
       <ChartContent height={200} />
