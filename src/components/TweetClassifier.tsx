@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter, Image as ImageIcon } from 'lucide-react';
@@ -264,7 +263,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     return passes;
   });
 
-  // Render media for a tweet
   const renderMedia = (media?: { type: string; url: string; expandedUrl: string }[]) => {
     if (!media || media.length === 0) return null;
     
@@ -282,6 +280,49 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             </div>
           )
         ))}
+      </div>
+    );
+  };
+
+  const renderQuoteTweet = (tweet: any) => {
+    if (!tweet.quoted_tweet || !tweet.isQuote) return null;
+    
+    return (
+      <div className="mt-2 p-2 bg-white/5 rounded border border-white/10 text-sm">
+        <div className="flex items-center gap-2 mb-1">
+          {tweet.quoted_tweet.author?.profilePicture && (
+            <img 
+              src={tweet.quoted_tweet.author.profilePicture} 
+              alt="Quote author" 
+              className="w-5 h-5 rounded-full"
+            />
+          )}
+          <div>
+            {tweet.quoted_tweet.author?.name && (
+              <span className="text-white/90 font-medium">{tweet.quoted_tweet.author.name}</span>
+            )}
+            {tweet.quoted_tweet.author?.userName && (
+              <span className="text-xs text-emerald-400 ml-1">@{tweet.quoted_tweet.author.userName}</span>
+            )}
+          </div>
+        </div>
+        <p className="text-white/70">{tweet.quoted_tweet.text}</p>
+        
+        {tweet.quoted_tweet.entities?.media?.length > 0 && (
+          <div className="mt-2">
+            {tweet.quoted_tweet.entities.media.map((media: any, idx: number) => (
+              media.type === 'photo' && (
+                <img 
+                  key={idx}
+                  src={media.media_url_https} 
+                  alt="Quote media" 
+                  className="w-full h-auto rounded border border-white/10 mt-1"
+                  loading="lazy"
+                />
+              )
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -375,8 +416,9 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                     
                     <p className="text-white/90 my-1">{tweet.text}</p>
                     
-                    {/* Display media if available */}
                     {renderMedia(getTweetMedia(tweet))}
+                    
+                    {renderQuoteTweet(tweet)}
                     
                     <div className="flex items-center gap-3 text-xs text-gray-400 mt-2">
                       <span>{new Date(tweet.createdAt).toLocaleString()}</span>
@@ -402,29 +444,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                         </span>
                       )}
                     </div>
-                    
-                    {tweet.isQuote && tweet.quoted_tweet && (
-                      <div className="mt-2 p-2 bg-white/5 rounded border border-white/10 text-sm">
-                        <div className="flex items-center gap-2 mb-1">
-                          {tweet.quoted_tweet.author?.profilePicture && (
-                            <img 
-                              src={tweet.quoted_tweet.author.profilePicture} 
-                              alt="Quote author" 
-                              className="w-5 h-5 rounded-full"
-                            />
-                          )}
-                          <div>
-                            {tweet.quoted_tweet.author?.name && (
-                              <span className="text-white/90 font-medium">{tweet.quoted_tweet.author.name}</span>
-                            )}
-                            {tweet.quoted_tweet.author?.userName && (
-                              <span className="text-xs text-emerald-400 ml-1">@{tweet.quoted_tweet.author.userName}</span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-white/70">{tweet.quoted_tweet.text}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </motion.div>
@@ -541,7 +560,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                 
                 <p className="text-white/90 my-2">{tweet.tweetText}</p>
                 
-                {/* Display media if available */}
                 {renderMedia(tweet.media)}
                 
                 {tweet.isQuote && tweet.quoteTweetText && (

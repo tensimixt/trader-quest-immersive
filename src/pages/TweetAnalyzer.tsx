@@ -37,7 +37,9 @@ const TweetAnalyzer = () => {
         quoted_tweet: item.quoteTweet ? {
           text: item.quoteTweet,
           author: {
-            userName: item.screenName
+            userName: item.screenName,
+            name: item.screenName || "Unknown User",
+            profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
           }
         } : undefined,
         // Add empty media arrays to ensure the structure is consistent
@@ -77,8 +79,12 @@ const TweetAnalyzer = () => {
           quoted_tweet: tweet.quoted_tweet ? {
             text: tweet.quoted_tweet.text,
             author: {
-              userName: tweet.quoted_tweet.author?.userName || "unknown"
-            }
+              userName: tweet.quoted_tweet.author?.userName || "unknown",
+              name: tweet.quoted_tweet.author?.name || "Unknown User",
+              profilePicture: tweet.quoted_tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+            },
+            entities: tweet.quoted_tweet.entities || { media: [] },
+            extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
           } : undefined,
           // Ensure we properly capture the media entities
           entities: tweet.entities || { media: [] },
@@ -111,7 +117,9 @@ const TweetAnalyzer = () => {
           quoted_tweet: item.quoteTweet ? {
             text: item.quoteTweet,
             author: {
-              userName: item.screenName
+              userName: item.screenName,
+              name: item.screenName || "Unknown User",
+              profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
             }
           } : undefined,
           // Add empty media arrays to ensure the structure is consistent
@@ -134,14 +142,16 @@ const TweetAnalyzer = () => {
     if (tweet.text) {
       return (
         tweet.text.toLowerCase().includes(searchLower) ||
-        (tweet.author?.userName || '').toLowerCase().includes(searchLower)
+        (tweet.author?.userName || '').toLowerCase().includes(searchLower) ||
+        (tweet.quoted_tweet?.text || '').toLowerCase().includes(searchLower)
       );
     }
     
     // If using the marketIntelligence format
     return (
       (tweet.message || '').toLowerCase().includes(searchLower) ||
-      (tweet.screenName || '').toLowerCase().includes(searchLower)
+      (tweet.screenName || '').toLowerCase().includes(searchLower) ||
+      (tweet.quoteTweet || '').toLowerCase().includes(searchLower)
     );
   });
 

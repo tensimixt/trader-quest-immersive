@@ -63,7 +63,17 @@ serve(async (req) => {
       data.tweets = data.tweets.map(tweet => ({
         ...tweet,
         entities: tweet.entities || {},
-        extendedEntities: tweet.extendedEntities || {}
+        extendedEntities: tweet.extendedEntities || {},
+        // Ensure quoted_tweet is properly structured if it exists
+        quoted_tweet: tweet.quoted_tweet ? {
+          ...tweet.quoted_tweet,
+          text: tweet.quoted_tweet.text || '',
+          author: tweet.quoted_tweet.author || { 
+            userName: 'unknown',
+            name: 'Unknown User',
+            profilePicture: ''
+          }
+        } : null
       }));
     }
 
