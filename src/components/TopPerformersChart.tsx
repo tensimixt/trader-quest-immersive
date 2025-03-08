@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
+import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -224,6 +225,20 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     </div>
   );
 
+  // Helper function to format large numbers with K, M, B suffixes
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000000) {
+      return (num / 1000000000).toFixed(2) + 'B';
+    }
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(2) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(2) + 'K';
+    }
+    return num.toFixed(2);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -403,21 +418,165 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
         open={tokenDetailsOpen} 
         onOpenChange={setTokenDetailsOpen}
       >
-        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white">
+        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white max-w-2xl w-full">
           <DialogHeader>
-            <DialogTitle className="text-emerald-400">
-              {selectedToken?.symbol.replace('USDT', '')} Details
+            <DialogTitle className="text-emerald-400 flex items-center gap-2">
+              {selectedToken && (
+                <>
+                  <div 
+                    className="w-4 h-4 rounded-full"
+                    style={{ 
+                      backgroundColor: COLORS[topPerformers.findIndex(p => p.symbol === selectedToken.symbol) % COLORS.length] 
+                    }}
+                  />
+                  {selectedToken.symbol.replace('USDT', '')} Details
+                </>
+              )}
             </DialogTitle>
           </DialogHeader>
-          <div className="p-4">
-            {selectedToken && (
-              <div className="space-y-2">
-                <p>Symbol: {selectedToken.symbol}</p>
-                <p>Current Price: {formatPrice(selectedToken.currentPrice)}</p>
-                <p>Performance: {formatPercentage(selectedToken.performance)}</p>
+          
+          {selectedToken && (
+            <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">Current Price</div>
+                  <div className="text-white font-mono text-lg">{formatPrice(selectedToken.currentPrice)}</div>
+                </div>
+                
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">Performance ({timeframe}D)</div>
+                  <div className={`font-mono text-lg flex items-center ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {selectedToken.performance >= 0 ? (
+                      <ArrowUp className="mr-1" size={18} />
+                    ) : (
+                      <ArrowDown className="mr-1" size={18} />
+                    )}
+                    {formatPercentage(selectedToken.performance)}
+                  </div>
+                </div>
+                
+                <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="text-gray-400 text-xs mb-1">Initial Price ({timeframe}D)</div>
+                  <div className="text-white font-mono text-lg">
+                    {formatPrice(selectedToken.initialPrice || 0)}
+                  </div>
+                </div>
+                
+                {selectedToken.klineData && selectedToken.klineData.length > 0 && (
+                  <>
+                    <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                      <div className="text-gray-400 text-xs mb-1">24h Volume</div>
+                      <div className="text-white font-mono text-lg">
+                        ${formatNumber(selectedToken.klineData[selectedToken.klineData.length - 1].volume)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                      <div className="text-gray-400 text-xs mb-1">24h High</div>
+                      <div className="text-white font-mono text-lg">
+                        {formatPrice(selectedToken.klineData[selectedToken.klineData.length - 1].high)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                      <div className="text-gray-400 text-xs mb-1">24h Low</div>
+                      <div className="text-white font-mono text-lg">
+                        {formatPrice(selectedToken.klineData[selectedToken.klineData.length - 1].low)}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
-          </div>
+              
+              <div className="mt-4">
+                <div className="text-sm text-gray-300 mb-2">Price History ({timeframe}D)</div>
+                <div className="h-[250px] bg-black/30 border border-emerald-500/20 rounded-lg p-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart 
+                      data={selectedToken.klineData || selectedToken.priceData}
+                      margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(16, 185, 129, 0.1)" />
+                      <XAxis 
+                        dataKey="timestamp" 
+                        tick={{ fill: '#10B981', fontSize: 10 }}
+                        tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                        stroke="#10B981"
+                      />
+                      <YAxis 
+                        tick={{ fill: '#10B981', fontSize: 10 }}
+                        stroke="#10B981"
+                        domain={['dataMin', 'dataMax']}
+                        tickFormatter={(value) => `$${value.toFixed(2)}`}
+                      />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-black/90 border border-emerald-500/30 p-2 rounded">
+                                <p className="text-emerald-400 text-xs">
+                                  {new Date(label).toLocaleDateString()}
+                                </p>
+                                {data.open !== undefined ? (
+                                  <div className="text-xs">
+                                    <p className="text-white">Open: {formatPrice(data.open)}</p>
+                                    <p className="text-white">High: {formatPrice(data.high)}</p>
+                                    <p className="text-white">Low: {formatPrice(data.low)}</p>
+                                    <p className="text-white">Close: {formatPrice(data.close)}</p>
+                                    <p className="text-white">Volume: ${formatNumber(data.volume)}</p>
+                                  </div>
+                                ) : (
+                                  <p className="text-white text-xs">
+                                    Price: {formatPrice(data.price)}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      {selectedToken.klineData ? (
+                        <Line 
+                          type="monotone" 
+                          dataKey="close" 
+                          name="Price" 
+                          stroke="#10B981" 
+                          dot={false}
+                          activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
+                        />
+                      ) : (
+                        <Line 
+                          type="monotone" 
+                          dataKey="price" 
+                          name="Price" 
+                          stroke="#10B981" 
+                          dot={false}
+                          activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              {selectedToken.isNewListing && (
+                <div className="bg-amber-950/30 border border-amber-500/30 p-3 rounded-lg mt-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={16} className="text-amber-400 mt-0.5" />
+                    <div>
+                      <p className="text-amber-400 text-sm font-bold">New Listing</p>
+                      <p className="text-amber-200 text-xs mt-1">
+                        {selectedToken.symbol.replace('USDT', '')} was listed {selectedToken.daysCovered} days ago.
+                        Performance data might be incomplete compared to the selected {timeframe}-day timeframe.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </motion.div>
