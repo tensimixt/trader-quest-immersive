@@ -62,64 +62,75 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      // Connect directly to Binance WebSocket for all USDT ticker updates
-      const wsUrl = 'wss://stream.binance.com:9443/ws/!ticker@arr';
+      // Connect to our Supabase edge function WebSocket instead of directly to Binance
+      const host = window.location.host.includes('localhost') 
+        ? 'localhost:54321' 
+        : window.location.host;
       
-      console.log('Connecting to Binance WebSocket URL:', wsUrl);
+      const isSecure = window.location.protocol === 'https:';
+      const wsProtocol = isSecure ? 'wss' : 'ws';
+      const wsUrl = `${wsProtocol}://${host}/functions/v1/crypto-prices`;
+      
+      console.log('Connecting to edge function WebSocket for tickers:', wsUrl);
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
 
       ws.onopen = () => {
-        console.log('Binance WebSocket connected successfully');
+        console.log('WebSocket connected to edge function for tickers');
         setIsWebSocketConnected(true);
         toast.success('Live ticker updates connected');
         reconnectAttempts.current = 0;
+        
+        // Request all tickers
+        ws.send(JSON.stringify({
+          type: 'allTickers'
+        }));
       };
 
       ws.onmessage = (event) => {
         try {
-          const tickerData = JSON.parse(event.data);
+          const data = JSON.parse(event.data);
           
-          if (Array.isArray(tickerData)) {
-            // Process ticker array updates
-            const usdtTickers = tickerData.filter(ticker => 
-              ticker.s && ticker.s.endsWith('USDT')
-            );
-            
-            let updated = false;
-            
-            usdtTickers.forEach(ticker => {
-              const formattedTicker: TickerData = {
-                symbol: ticker.s,
-                priceChange: ticker.p,
-                priceChangePercent: ticker.P,
-                lastPrice: ticker.c,
-                volume: ticker.v,
-                quoteVolume: ticker.q  // Quote volume in USDT
-              };
+          if (data.type === 'initial' || data.type === 'refresh') {
+            // Full ticker list update
+            if (Array.isArray(data.data)) {
+              data.data.forEach((ticker: TickerData) => {
+                tickersMapRef.current.set(ticker.symbol, ticker);
+              });
               
-              tickersMapRef.current.set(formattedTicker.symbol, formattedTicker);
-              updatedTickersRef.current.add(formattedTicker.symbol);
-              
-              // Clear the highlight after 2 seconds
-              setTimeout(() => {
-                updatedTickersRef.current.delete(formattedTicker.symbol);
-              }, 2000);
-              
-              updated = true;
-            });
-            
-            if (updated) {
               // Sort tickers by volume and update state
-              const updatedTickers = Array.from(tickersMapRef.current.values())
+              const sortedTickers = Array.from(tickersMapRef.current.values())
                 .sort((a, b) => {
                   const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
                   const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
                   return bVolume - aVolume;
                 });
               
-              setTickers(updatedTickers);
+              setTickers(sortedTickers);
+              setLastUpdateTime(new Date());
+            }
+          } else if (data.type === 'ticker') {
+            // Single ticker update
+            const ticker = data.data;
+            if (ticker && ticker.symbol) {
+              tickersMapRef.current.set(ticker.symbol, ticker);
+              updatedTickersRef.current.add(ticker.symbol);
+              
+              // Clear the highlight after 2 seconds
+              setTimeout(() => {
+                updatedTickersRef.current.delete(ticker.symbol);
+              }, 2000);
+              
+              // Update state with sorted tickers
+              const sortedTickers = Array.from(tickersMapRef.current.values())
+                .sort((a, b) => {
+                  const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
+                  const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
+                  return bVolume - aVolume;
+                });
+              
+              setTickers(sortedTickers);
               setLastUpdateTime(new Date());
             }
           }
@@ -129,14 +140,14 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       };
 
       ws.onclose = () => {
-        console.log('WebSocket disconnected');
+        console.log('WebSocket disconnected for tickers');
         setIsWebSocketConnected(false);
         
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current += 1;
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
+          console.log(`Attempting to reconnect ticker WebSocket in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             if (document.visibilityState === 'visible') {
@@ -144,18 +155,18 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
             }
           }, delay);
         } else {
-          console.log('Maximum reconnection attempts reached');
+          console.log('Maximum reconnection attempts reached for tickers');
           toast.error('Connection lost, falling back to manual updates');
         }
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('WebSocket error for tickers:', error);
         toast.error('Connection error, trying to reconnect...');
         setIsWebSocketConnected(false);
       };
     } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
+      console.error('Error creating WebSocket connection for tickers:', error);
       toast.error('Failed to establish WebSocket connection');
       setIsWebSocketConnected(false);
     }

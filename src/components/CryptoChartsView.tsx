@@ -101,29 +101,54 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     setIsLoading(true);
     
     try {
-      const streams = trackingSymbols.map(symbol => `${symbol.toLowerCase()}@ticker`).join('/');
-      const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+      const host = window.location.host.includes('localhost') 
+        ? 'localhost:54321' 
+        : window.location.host;
       
-      console.log('Connecting to Binance WebSocket:', wsUrl);
+      const isSecure = window.location.protocol === 'https:';
+      const wsProtocol = isSecure ? 'wss' : 'ws';
+      const wsUrl = `${wsProtocol}://${host}/functions/v1/crypto-prices`;
+      
+      console.log('Connecting to edge function WebSocket:', wsUrl);
       
       const ws = new WebSocket(wsUrl);
       webSocketRef.current = ws;
       
       ws.onopen = () => {
-        console.log('Binance WebSocket connection established');
+        console.log('WebSocket connection established with edge function');
         setWsConnected(true);
         setIsLoading(false);
         toast.success('Connected to live price updates');
         reconnectAttempts.current = 0;
+        
+        ws.send(JSON.stringify({
+          type: 'subscribe',
+          symbols: trackingSymbols
+        }));
+        
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+        }
+        
+        pingIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+          }
+        }, 30000);
       };
       
       ws.onmessage = (event) => {
         try {
-          const response = JSON.parse(event.data);
+          const data = JSON.parse(event.data);
           
-          if (response && response.data) {
-            const ticker: TickerStreamData = response.data;
-            const symbol = ticker.s;
+          if (data.type === 'ping' || data.type === 'pong') {
+            console.log(`Received ${data.type} from server`);
+            return;
+          }
+          
+          if (data.type === 'price') {
+            const symbol = data.symbol;
+            const price = data.price;
             
             if (trackingSymbols.includes(symbol)) {
               setPrices(prevPrices => {
@@ -138,18 +163,20 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 
                 return {
                   ...prevPrices,
-                  [symbol]: parseFloat(ticker.c)
+                  [symbol]: price
                 };
               });
               
-              setChanges(prevChanges => ({
-                ...prevChanges,
-                [symbol]: parseFloat(ticker.P)
-              }));
+              if (data.change) {
+                setChanges(prevChanges => ({
+                  ...prevChanges,
+                  [symbol]: parseFloat(data.change)
+                }));
+              }
               
               const element = document.querySelector(`.crypto-card[data-symbol="${symbol}"]`);
               if (element) {
-                const isPriceUp = parseFloat(ticker.c) > (previousPrices[symbol] || 0);
+                const isPriceUp = price > (previousPrices[symbol] || 0);
                 
                 element.classList.remove('flash-update-positive', 'flash-update-negative');
                 
@@ -160,6 +187,22 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                 }, 2000);
               }
             }
+          } else if (data.type === 'prices' && data.data) {
+            const newPrices = data.data;
+            setPrices(prev => ({
+              ...prev,
+              ...newPrices
+            }));
+            
+            if (data.changes) {
+              setChanges(prev => ({
+                ...prev,
+                ...data.changes
+              }));
+            }
+          } else if (data.type === 'error') {
+            console.error('WebSocket error from server:', data.message);
+            toast.error(data.message || 'Error from server');
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
@@ -173,10 +216,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         toast.error('WebSocket connection error');
       };
       
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
+      ws.onclose = (event) => {
+        console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
         setWsConnected(false);
         setIsLoading(false);
+        
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
         
         if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current += 1;
