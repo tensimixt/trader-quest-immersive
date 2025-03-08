@@ -111,6 +111,7 @@ const formatDate = (timestamp: number): string => {
 
 const timeframeOptions = [
   { value: "1s", label: "1s" },
+  { value: "1m", label: "1m" },
   { value: "15m", label: "15m" },
   { value: "1h", label: "1h" },
   { value: "4h", label: "4h" },
@@ -456,6 +457,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     switch (interval) {
       case "1s":
         return "New data (1s)";
+      case "1m":
+        return "New data (1m)";
       case "15m":
         return "New data (15m)";
       case "1h":
