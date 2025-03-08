@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
@@ -38,7 +39,10 @@ const TweetAnalyzer = () => {
           author: {
             userName: item.screenName
           }
-        } : undefined
+        } : undefined,
+        // Add empty media arrays to ensure the structure is consistent
+        entities: { media: [] },
+        extendedEntities: { media: [] }
       }));
     
     setTweetData(initialTweets);
@@ -75,7 +79,10 @@ const TweetAnalyzer = () => {
             author: {
               userName: tweet.quoted_tweet.author?.userName || "unknown"
             }
-          } : undefined
+          } : undefined,
+          // Ensure we properly capture the media entities
+          entities: tweet.entities || { media: [] },
+          extendedEntities: tweet.extendedEntities || { media: [] }
         }));
         
         setTweetData(formattedTweets);
@@ -106,7 +113,10 @@ const TweetAnalyzer = () => {
             author: {
               userName: item.screenName
             }
-          } : undefined
+          } : undefined,
+          // Add empty media arrays to ensure the structure is consistent
+          entities: { media: [] },
+          extendedEntities: { media: [] }
         }));
       
       setTweetData(sampleTweets);

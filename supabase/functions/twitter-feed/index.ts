@@ -58,10 +58,14 @@ serve(async (req) => {
     
     console.log(`Response contains media: ${hasMedia}, quote tweets: ${hasQuoteTweets}`);
     
-    // The Twitter API response structure already includes:
-    // - quoted_tweet field for quote tweets
-    // - entities and extendedEntities fields for media like images
-    // We'll pass these through without modification
+    // Ensure each tweet has entities and extendedEntities objects to avoid undefined errors
+    if (data.tweets && Array.isArray(data.tweets)) {
+      data.tweets = data.tweets.map(tweet => ({
+        ...tweet,
+        entities: tweet.entities || {},
+        extendedEntities: tweet.extendedEntities || {}
+      }));
+    }
 
     return new Response(JSON.stringify(data), {
       headers: {
