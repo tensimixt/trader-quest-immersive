@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import TokenDetailChart from './TokenDetailChart';
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -25,11 +24,7 @@ import {
   getInitialPrice, 
   getTimeframeText,
   calculateOpenClosePerformance,
-  normalizeOHLCChartData,
-  getDailyChange,
-  formatDailyChange,
   formatCurrency,
-  generatePerformanceData
 } from '@/utils/performanceUtils';
 
 type PerformanceData = {
@@ -206,11 +201,7 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     }
   };
 
-  const handleTokenCardClick = (performer: PerformanceData, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    console.log('Token card clicked:', performer.symbol);
+  const handleTokenCardClick = (performer: PerformanceData) => {
     setSelectedToken(performer);
     setTokenDetailsOpen(true);
   };
@@ -233,34 +224,6 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     </div>
   );
 
-  const TokenDetailsDialog = () => {
-    if (!selectedToken) return null;
-    
-    return (
-      <Dialog 
-        open={tokenDetailsOpen} 
-        onOpenChange={setTokenDetailsOpen}
-      >
-        <DialogContent 
-          onClick={(e) => e.stopPropagation()} 
-          className="bg-black/95 border border-emerald-500/30 text-white"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-emerald-400">
-              Test Dialog for {selectedToken.symbol}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-4">
-            <p>This is a simplified test dialog.</p>
-            <p>Symbol: {selectedToken.symbol}</p>
-            <p>Current Price: {formatPrice(selectedToken.currentPrice)}</p>
-            <p>Performance: {formatPercentage(selectedToken.performance)}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -268,7 +231,6 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
       exit={{ opacity: 0, y: -20 }}
       className="top-performers-view glass-card rounded-xl border border-emerald-500/20 p-4 relative"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
-      onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-white font-mono tracking-wider">
@@ -276,29 +238,20 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
         </h3>
         <div className="flex items-center space-x-2">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setInfoDialogOpen(true);
-            }}
+            onClick={() => setInfoDialogOpen(true)}
             className="p-1.5 rounded-lg bg-black/40 text-amber-400 hover:bg-amber-500/20 transition-colors"
           >
             <Info size={16} />
           </button>
           <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              fetchTopPerformers();
-            }} 
+            onClick={fetchTopPerformers} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>
           <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }} 
+            onClick={onClose} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
           >
             <X size={16} />
@@ -380,7 +333,7 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
           <div 
             key={performer.symbol} 
             className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
-            onClick={(e) => handleTokenCardClick(performer, e)}
+            onClick={() => handleTokenCardClick(performer)}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-emerald-400 font-mono text-xs font-bold">
@@ -397,9 +350,7 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
                       <TooltipTrigger asChild>
                         <div 
                           className="ml-1 cursor-help"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent triggering the card click
-                          }}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <AlertTriangle size={12} className="text-amber-400" />
                         </div>
@@ -433,15 +384,9 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
 
       <Dialog 
         open={infoDialogOpen} 
-        onOpenChange={(open) => {
-          console.log('Info dialog open change:', open);
-          setInfoDialogOpen(open);
-        }}
+        onOpenChange={setInfoDialogOpen}
       >
-        <DialogContent 
-          onClick={(e) => e.stopPropagation()} 
-          className="bg-black/95 border border-amber-500/30 text-white"
-        >
+        <DialogContent className="bg-black/95 border border-amber-500/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-amber-400 flex items-center gap-2">
               <Info size={18} />
@@ -454,7 +399,27 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
         </DialogContent>
       </Dialog>
       
-      <TokenDetailsDialog />
+      <Dialog 
+        open={tokenDetailsOpen} 
+        onOpenChange={setTokenDetailsOpen}
+      >
+        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-400">
+              {selectedToken?.symbol.replace('USDT', '')} Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            {selectedToken && (
+              <div className="space-y-2">
+                <p>Symbol: {selectedToken.symbol}</p>
+                <p>Current Price: {formatPrice(selectedToken.currentPrice)}</p>
+                <p>Performance: {formatPercentage(selectedToken.performance)}</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
