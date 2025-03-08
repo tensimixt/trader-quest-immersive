@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +28,8 @@ import {
   calculateOpenClosePerformance,
   normalizeOHLCChartData,
   getDailyChange,
-  formatDailyChange
+  formatDailyChange,
+  formatCurrency
 } from '@/utils/performanceUtils';
 
 type PerformanceData = {
@@ -80,12 +82,21 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
   
-  const dialogOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const dialogActionsInProgressRef = useRef(false);
+  // Create refs to help manage state and prevent recursive updates
+  const isDialogTransitioning = useRef(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingTokenSelectionRef = useRef<PerformanceData | null>(null);
   const lastClickTimeRef = useRef(0);
 
   useEffect(() => {
     fetchTopPerformers();
+    
+    // Cleanup function
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
   }, [timeframe, limit]);
 
   const fetchTopPerformers = async () => {
@@ -208,39 +219,55 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     }
   };
 
-  const handleTokenCardClick = (performer: PerformanceData) => {
+  // Improved token card click handler with debouncing and state management
+  const handleTokenCardClick = (performer: PerformanceData, event: React.MouseEvent) => {
+    // Prevent event bubbling
+    event.stopPropagation();
+    
+    // Debounce rapid clicks
     const now = Date.now();
     if (now - lastClickTimeRef.current < 500) {
-      console.log('Debouncing rapid token card clicks');
+      console.log('Debounced rapid click');
       return;
     }
     lastClickTimeRef.current = now;
     
-    if (dialogActionsInProgressRef.current) {
-      console.log('Dialog action already in progress, ignoring click');
+    // Check if dialog is already in transition
+    if (isDialogTransitioning.current) {
+      console.log('Dialog is already transitioning, ignoring click');
       return;
     }
     
-    dialogActionsInProgressRef.current = true;
+    console.log('Token card clicked:', performer.symbol);
     
+    // Set the transitioning flag to prevent multiple triggers
+    isDialogTransitioning.current = true;
+    
+    // Store the pending token selection
+    pendingTokenSelectionRef.current = performer;
+    
+    // Clear any existing timeout
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+    
+    // Update the selected token
     setSelectedToken(performer);
     
-    setTimeout(() => {
-      setTokenDetailsOpen(true);
-      
-      setTimeout(() => {
-        dialogActionsInProgressRef.current = false;
-      }, 100);
+    // Use a timeout to separate state updates
+    clickTimeoutRef.current = setTimeout(() => {
+      if (pendingTokenSelectionRef.current === performer) {
+        console.log('Opening dialog for:', performer.symbol);
+        setTokenDetailsOpen(true);
+        
+        // Reset the transitioning flag after dialog is fully opened
+        setTimeout(() => {
+          isDialogTransitioning.current = false;
+          console.log('Dialog transition complete');
+        }, 300);
+      }
     }, 50);
   };
-
-  useEffect(() => {
-    return () => {
-      if (dialogOpenTimerRef.current) {
-        clearTimeout(dialogOpenTimerRef.current);
-      }
-    };
-  }, []);
 
   const InfoNote = () => (
     <div className="text-amber-200 text-xs leading-relaxed">
@@ -271,15 +298,26 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
     const dailyChange = lastKline ? getDailyChange(lastKline) : null;
     
+    // Handler for dialog state change to properly manage closing
+    const handleOpenChange = (open: boolean) => {
+      console.log('Dialog open change:', open);
+      if (!open && !isDialogTransitioning.current) {
+        isDialogTransitioning.current = true;
+        setTokenDetailsOpen(false);
+        
+        // Add delay before clearing the selected token to allow for animation
+        setTimeout(() => {
+          setSelectedToken(null);
+          isDialogTransitioning.current = false;
+          console.log('Dialog fully closed');
+        }, 300);
+      }
+    };
+    
     return (
       <Dialog 
         open={tokenDetailsOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            setTokenDetailsOpen(false);
-            setTimeout(() => setSelectedToken(null), 300);
-          } 
-        }}
+        onOpenChange={handleOpenChange}
       >
         <DialogContent className="sm:max-w-[850px] bg-black/95 border border-emerald-500/30 text-white">
           <DialogHeader>
@@ -371,20 +409,29 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
         </h3>
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setInfoDialogOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setInfoDialogOpen(true);
+            }}
             className="p-1.5 rounded-lg bg-black/40 text-amber-400 hover:bg-amber-500/20 transition-colors"
           >
             <Info size={16} />
           </button>
           <button 
-            onClick={fetchTopPerformers} 
+            onClick={(e) => {
+              e.stopPropagation();
+              fetchTopPerformers();
+            }} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
             disabled={isLoading}
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>
           <button 
-            onClick={onClose} 
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }} 
             className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
           >
             <X size={16} />
@@ -466,7 +513,7 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
           <div 
             key={performer.symbol} 
             className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
-            onClick={() => handleTokenCardClick(performer)}
+            onClick={(e) => handleTokenCardClick(performer, e)}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-emerald-400 font-mono text-xs font-bold">
@@ -517,7 +564,13 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
         ))}
       </div>
 
-      <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
+      <Dialog 
+        open={infoDialogOpen} 
+        onOpenChange={(open) => {
+          console.log('Info dialog open change:', open);
+          setInfoDialogOpen(open);
+        }}
+      >
         <DialogContent className="bg-black/95 border border-amber-500/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-amber-400 flex items-center gap-2">
