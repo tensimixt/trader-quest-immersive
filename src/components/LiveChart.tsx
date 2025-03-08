@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -144,6 +145,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const isComponentMountedRef = useRef<boolean>(true);
   const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
     window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
+  const maxDataPointsRef = useRef<number>(interval === "1s" ? 900 : 30);
+  const lastKnownTimestampRef = useRef<number | null>(null);
 
   const fetchCryptoData = async () => {
     if (!isComponentMountedRef.current) return;
@@ -156,6 +159,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       
       // For 1s interval, we'll request up to 900 points
       const limit = interval === "1s" ? 900 : 30;
+      maxDataPointsRef.current = limit;
       
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
         body: { symbol, history: 'true', interval, limit }
@@ -201,6 +205,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         
         if (sortedData.length > 0) {
           setLastDataPoint(sortedData[sortedData.length - 1]);
+          lastKnownTimestampRef.current = sortedData[sortedData.length - 1].timestamp;
         }
         
         setData(sortedData);
@@ -269,7 +274,13 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           setIsUpdating(true);
           setLastUpdated(new Date());
           
-          newDataPointsTimestampsRef.current.add(timestamp);
+          // Check if this is a new timestamp we should add
+          const isNewTimestamp = !dataMapRef.current.has(timestamp);
+          
+          // For 1s timeframe, we want to track if it's truly a new kline
+          if (isNewTimestamp) {
+            newDataPointsTimestampsRef.current.add(timestamp);
+          }
           
           const thirtySecondsAgo = Date.now() - 30000;
           for (const ts of newDataPointsTimestampsRef.current) {
@@ -289,7 +300,14 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           };
           
           setLastDataPoint(newKline);
+          
+          // Store this kline in our map
           dataMapRef.current.set(timestamp, newKline);
+          
+          // Update lastKnownTimestamp if this is newer
+          if (lastKnownTimestampRef.current === null || timestamp > lastKnownTimestampRef.current) {
+            lastKnownTimestampRef.current = timestamp;
+          }
           
           const now = Date.now();
           if (now - lastFullRefreshRef.current > 5 * 60 * 1000) {
@@ -300,15 +318,19 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           
           if (isComponentMountedRef.current) {
             setData(prevData => {
-              const updatedData = Array.from(dataMapRef.current.values())
-                .sort((a, b) => a.timestamp - b.timestamp)
-                .map(point => ({
-                  ...point,
-                  isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
-                }));
+              // Get all values from the map and sort them by timestamp
+              const allValues = Array.from(dataMapRef.current.values());
+              const sortedValues = allValues.sort((a, b) => a.timestamp - b.timestamp);
               
-              if (updatedData.length > 30) {
-                return updatedData.slice(updatedData.length - 30);
+              // Mark new data points
+              const updatedData = sortedValues.map(point => ({
+                ...point,
+                isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
+              }));
+              
+              // If we have more points than our limit, trim from the beginning
+              if (updatedData.length > maxDataPointsRef.current) {
+                return updatedData.slice(updatedData.length - maxDataPointsRef.current);
               }
               
               return updatedData;
@@ -382,6 +404,10 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     prevPriceRef.current = null;
     dataMapRef.current = new Map();
     newDataPointsTimestampsRef.current = new Set();
+    lastKnownTimestampRef.current = null;
+    
+    // Update max data points based on interval
+    maxDataPointsRef.current = interval === "1s" ? 900 : 30;
     
     currentSymbolRef.current = symbol;
     currentIntervalRef.current = interval;
