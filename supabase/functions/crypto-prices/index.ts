@@ -23,8 +23,6 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
     const response = await fetch(url);
     const data = await response.json();
     
-    // Format klines data
-    // Klines format: [openTime, open, high, low, close, volume, closeTime, ...]
     return data.map((kline: any) => ({
       timestamp: kline[0],
       open: parseFloat(kline[1]),
@@ -48,21 +46,19 @@ async function fetch24hTickers() {
     }
     const data = await response.json();
     
-    // Only include USDT pairs for simplicity and sort by volume
     const filteredData = data
       .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
       .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
     
     console.log(`Fetched ${filteredData.length} USDT pairs from Binance`);
     
-    // Return all USDT pairs with enhanced volume data
     return filteredData.map((ticker: any) => ({
       symbol: ticker.symbol,
       priceChange: ticker.priceChange,
       priceChangePercent: ticker.priceChangePercent,
       lastPrice: ticker.lastPrice,
       volume: ticker.volume,
-      quoteVolume: ticker.quoteVolume, // This is the USD equivalent volume
+      quoteVolume: ticker.quoteVolume,
     }));
   } catch (error) {
     console.error('Error fetching 24h tickers:', error);
@@ -70,15 +66,95 @@ async function fetch24hTickers() {
   }
 }
 
+async function fetchTopPerformers(days = 7, limit = 10, useOHLC = false) {
+  try {
+    console.log(`Fetching top performers for ${days} days (useOHLC: ${useOHLC})`);
+    const allTickers = await fetch24hTickers();
+    
+    const topByVolume = allTickers.slice(0, 50);
+    
+    const interval = days <= 1 ? '1h' : '1d';
+    const klineLimit = days <= 1 ? days * 24 : days;
+    
+    console.log(`Fetching klines for top ${topByVolume.length} coins using interval ${interval} and limit ${klineLimit}`);
+    
+    const performanceData = await Promise.all(
+      topByVolume.map(async (ticker) => {
+        try {
+          const klines = await fetchBinanceKlines(ticker.symbol, interval, klineLimit);
+          
+          if (klines.length < 2) {
+            return {
+              symbol: ticker.symbol,
+              performance: 0,
+              priceData: [],
+              currentPrice: parseFloat(ticker.lastPrice)
+            };
+          }
+          
+          const firstPrice = klines[0].open;
+          const lastPrice = klines[klines.length - 1].close;
+          
+          const daysSinceFirstKline = (klines[klines.length - 1].timestamp - klines[0].timestamp) / (1000 * 60 * 60 * 24);
+          
+          const isNewListing = daysSinceFirstKline < (days * 0.8);
+          
+          const performance = ((lastPrice - firstPrice) / firstPrice) * 100;
+          
+          const priceData = klines.map(k => ({
+            timestamp: k.timestamp,
+            price: k.close
+          }));
+
+          const result = {
+            symbol: ticker.symbol,
+            performance,
+            priceData,
+            currentPrice: lastPrice,
+            isNewListing,
+            dataPoints: klines.length,
+            expectedDataPoints: klineLimit,
+            daysCovered: daysSinceFirstKline.toFixed(1)
+          };
+          
+          if (useOHLC) {
+            result.klineData = klines;
+          }
+          
+          return result;
+        } catch (error) {
+          console.error(`Error processing ${ticker.symbol}:`, error);
+          return {
+            symbol: ticker.symbol,
+            performance: 0,
+            priceData: [],
+            currentPrice: parseFloat(ticker.lastPrice)
+          };
+        }
+      })
+    );
+    
+    return performanceData
+      .filter(data => data.priceData.length > 0)
+      .sort((a, b) => b.performance - a.performance)
+      .slice(0, limit);
+    
+  } catch (error) {
+    console.error('Error fetching top performers:', error);
+    return [];
+  }
+}
+
+const websocketClients = new Map();
+
 function setupHeartbeat(socket: WebSocket) {
   const interval = setInterval(() => {
     if (socket.readyState === WebSocket.OPEN) {
-      // Send ping message
       socket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
     } else {
       clearInterval(interval);
     }
-  }, 30000); // Send ping every 30 seconds
+  }, 30000);
 
   return interval;
 }
@@ -86,7 +162,6 @@ function setupHeartbeat(socket: WebSocket) {
 serve(async (req) => {
   console.log(`Received request: ${req.method} ${new URL(req.url).pathname}`);
   
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight request');
     return new Response(null, { 
@@ -95,22 +170,27 @@ serve(async (req) => {
     });
   }
   
-  // Check if WebSocket upgrade is requested
   const upgradeHeader = req.headers.get('upgrade') || '';
   
   if (upgradeHeader.toLowerCase() === 'websocket') {
-    // Handle WebSocket connection
     console.log('WebSocket connection request received');
     
     try {
       const { socket, response } = Deno.upgradeWebSocket(req);
       console.log('WebSocket upgrade successful');
       
-      // Set up event handlers for WebSocket
+      const clientId = crypto.randomUUID();
+      
       socket.onopen = () => {
-        console.log('WebSocket connection established');
+        console.log(`WebSocket connection established (${clientId})`);
         
-        // Immediately send initial data to client
+        websocketClients.set(clientId, {
+          socket,
+          subscribedSymbols: [],
+          heartbeatInterval: setupHeartbeat(socket),
+          lastActivity: Date.now()
+        });
+        
         Promise.all([
           fetchBinancePrice('BTCUSDT'),
           fetchBinancePrice('ETHUSDT'),
@@ -118,7 +198,6 @@ serve(async (req) => {
           fetch24hTickers()
         ]).then(([btcPrice, ethPrice, bnbPrice, tickers]) => {
           if (socket.readyState === WebSocket.OPEN) {
-            // Send initial cryptocurrency prices
             socket.send(JSON.stringify({
               type: 'prices',
               data: {
@@ -133,7 +212,6 @@ serve(async (req) => {
               }
             }));
             
-            // Also send full ticker list
             socket.send(JSON.stringify({
               type: 'initial',
               data: tickers
@@ -141,119 +219,119 @@ serve(async (req) => {
           }
         }).catch(error => {
           console.error('Error sending initial data:', error);
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Failed to fetch initial data'
+            }));
+          }
         });
-        
-        // Setup heartbeat for connection keepalive
-        const heartbeatInterval = setupHeartbeat(socket);
-        
-        // Instead of trying to connect to Binance WebSocket, we'll use fetch polling
-        const topSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
-        
-        // Setup interval to fetch prices every few seconds
-        const priceUpdateInterval = setInterval(async () => {
-          if (socket.readyState !== WebSocket.OPEN) {
-            clearInterval(priceUpdateInterval);
+      };
+      
+      socket.onmessage = async (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log(`Received message from client ${clientId}:`, message.type);
+          
+          if (websocketClients.has(clientId)) {
+            websocketClients.get(clientId).lastActivity = Date.now();
+          }
+          
+          if (message.type === 'pong') {
+            console.log(`Received pong from client ${clientId}`);
             return;
           }
           
-          try {
-            // Fetch current prices
-            const prices = await Promise.all(
-              topSymbols.map(async symbol => {
-                const price = await fetchBinancePrice(symbol);
-                return { symbol, price };
-              })
-            );
-            
-            // Send updates to client
-            prices.forEach(({ symbol, price }) => {
-              if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                  type: 'price',
-                  symbol: symbol,
-                  price: price,
-                  change: '0' // We don't have change data in this simplified version
-                }));
-              }
-            });
-          } catch (error) {
-            console.error('Error fetching price updates:', error);
-          }
-        }, 5000); // Every 5 seconds
-        
-        // Periodically refresh the full ticker list
-        const tickerRefreshInterval = setInterval(async () => {
-          if (socket.readyState !== WebSocket.OPEN) {
-            clearInterval(tickerRefreshInterval);
-            return;
-          }
-          
-          try {
-            console.log('Refreshing full ticker list');
-            const tickers = await fetch24hTickers();
-            
+          if (message.type === 'ping') {
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(JSON.stringify({
-                type: 'refresh',
+                type: 'pong',
+                timestamp: Date.now()
+              }));
+            }
+            return;
+          }
+          
+          if (message.type === 'subscribe' && Array.isArray(message.symbols)) {
+            if (websocketClients.has(clientId)) {
+              websocketClients.get(clientId).subscribedSymbols = message.symbols;
+              console.log(`Client ${clientId} subscribed to:`, message.symbols);
+              
+              const prices = await Promise.all(
+                message.symbols.map(async (symbol: string) => ({
+                  symbol,
+                  price: await fetchBinancePrice(symbol)
+                }))
+              );
+              
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                  type: 'prices',
+                  data: prices.reduce((acc, { symbol, price }) => ({
+                    ...acc,
+                    [symbol]: price
+                  }), {})
+                }));
+              }
+            }
+            return;
+          }
+          
+          if (message.type === 'allTickers') {
+            const tickers = await fetch24hTickers();
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'initial',
                 data: tickers
               }));
-              
-              // Update price changes for main coins
-              const changes = {
-                BTCUSDT: tickers.find((t: any) => t.symbol === 'BTCUSDT')?.priceChangePercent || '0',
-                ETHUSDT: tickers.find((t: any) => t.symbol === 'ETHUSDT')?.priceChangePercent || '0',
-                BNBUSDT: tickers.find((t: any) => t.symbol === 'BNBUSDT')?.priceChangePercent || '0',
-              };
-              
-              socket.send(JSON.stringify({
-                type: 'prices',
-                changes: changes
-              }));
             }
-          } catch (error) {
-            console.error('Error refreshing ticker list:', error);
+            return;
           }
-        }, 60000); // Every minute
-        
-        // Clean up intervals when client disconnects
-        socket.onclose = (event) => {
-          console.log(`Client WebSocket closed with code: ${event.code}, reason: ${event.reason}`);
-          clearInterval(heartbeatInterval);
-          clearInterval(priceUpdateInterval);
-          clearInterval(tickerRefreshInterval);
-        };
-        
-        // Handle pong from client
-        socket.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            if (message.type === 'pong') {
-              console.log('Received pong from client');
+          
+          if (message.type === 'kline' && message.symbol) {
+            try {
+              const klines = await fetchBinanceKlines(
+                message.symbol, 
+                message.interval || '15m'
+              );
+              
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                  type: 'klineData',
+                  symbol: message.symbol,
+                  data: klines
+                }));
+              }
+            } catch (error) {
+              console.error('Error fetching klines:', error);
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: `Failed to fetch klines for ${message.symbol}`
+                }));
+              }
             }
-            
-            // Handle kline requests
-            if (message.type === 'kline' && message.symbol) {
-              fetchBinanceKlines(message.symbol, message.interval || '15m')
-                .then(klines => {
-                  if (socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                      type: 'klineData',
-                      symbol: message.symbol,
-                      data: klines
-                    }));
-                  }
-                }).catch(error => {
-                  console.error('Error fetching klines:', error);
-                });
-            }
-          } catch (error) {
-            console.error('Error handling client message:', error);
+            return;
           }
-        };
+        } catch (error) {
+          console.error(`Error handling client ${clientId} message:`, error);
+        }
+      };
+      
+      socket.onclose = (event) => {
+        console.log(`Client ${clientId} WebSocket closed with code: ${event.code}, reason: ${event.reason}`);
         
-        socket.onerror = (error) => {
-          console.error('Client WebSocket error:', error);
-        };
+        if (websocketClients.has(clientId)) {
+          const client = websocketClients.get(clientId);
+          if (client.heartbeatInterval) {
+            clearInterval(client.heartbeatInterval);
+          }
+          websocketClients.delete(clientId);
+        }
+      };
+      
+      socket.onerror = (error) => {
+        console.error(`Client ${clientId} WebSocket error:`, error);
       };
       
       return response;
@@ -269,36 +347,63 @@ serve(async (req) => {
     }
   }
 
-  // Handle regular HTTP requests as before
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Handle both URL parameters and body parameters
     const url = new URL(req.url);
     let symbol = url.searchParams.get('symbol');
     let getHistory = url.searchParams.get('history') === 'true';
     let interval = url.searchParams.get('interval') || '15m';
     let get24hTickers = url.searchParams.get('get24hTickers') === 'true';
+    let getTopPerformers = url.searchParams.get('getTopPerformers') === 'true';
+    let getTickerHistory = url.searchParams.get('getTickerHistory') === 'true';
+    let days = parseInt(url.searchParams.get('days') || '7', 10);
+    let limit = parseInt(url.searchParams.get('limit') || '10', 10);
+    let useOHLC = url.searchParams.get('useOHLC') === 'true';
     
-    // If there's a request body, check for parameters there as well
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       try {
         const body = await req.json();
-        // Body parameters take precedence over URL parameters
         symbol = body.symbol || symbol;
         getHistory = (body.history === 'true' || body.history === true) || getHistory;
         interval = body.interval || interval;
         get24hTickers = (body.get24hTickers === 'true' || body.get24hTickers === true) || get24hTickers;
+        getTopPerformers = (body.getTopPerformers === 'true' || body.getTopPerformers === true) || getTopPerformers;
+        getTickerHistory = (body.getTickerHistory === 'true' || body.getTickerHistory === true) || getTickerHistory;
+        days = body.days || days;
+        limit = body.limit || limit;
+        useOHLC = (body.useOHLC === 'true' || body.useOHLC === true) || useOHLC;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
       }
     }
     
-    if (get24hTickers) {
-      // Fetch 24-hour tickers for multiple symbols
+    if (getTickerHistory && symbol) {
+      console.log(`Fetching history for ticker: ${symbol}, interval: ${interval}, days: ${days}`);
+      const klineInterval = days <= 1 ? '1h' : '1d';
+      const klineLimit = days <= 1 ? days * 24 : days;
+      
+      const klineData = await fetchBinanceKlines(symbol, klineInterval, klineLimit);
+      
+      return new Response(JSON.stringify({ symbol, klineData }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else if (getTopPerformers) {
+      console.log(`Fetching top ${limit} performers for ${days} days (useOHLC: ${useOHLC})`);
+      const topPerformers = await fetchTopPerformers(days, limit, useOHLC);
+      return new Response(JSON.stringify(topPerformers), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    } else if (get24hTickers) {
       const tickers = await fetch24hTickers();
       return new Response(JSON.stringify(tickers), {
         headers: {
@@ -307,7 +412,6 @@ serve(async (req) => {
         },
       });
     } else if (symbol) {
-      // Single symbol request with optional history
       const price = await fetchBinancePrice(symbol);
       
       let history = [];
@@ -322,7 +426,6 @@ serve(async (req) => {
         },
       });
     } else {
-      // Multiple symbols request (default behavior)
       const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
       const prices = await Promise.all(
         symbols.map(async symbol => ({

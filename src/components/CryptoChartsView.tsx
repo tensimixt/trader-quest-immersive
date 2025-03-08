@@ -1,12 +1,88 @@
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List } from 'lucide-react';
+import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const LiveChart = lazy(() => import('./LiveChart'));
 const TickerList = lazy(() => import('./TickerList'));
+const TopPerformersChart = lazy(() => import('./TopPerformersChart'));
+
+const priceWsRegistry = {
+  activeConnection: null as WebSocket | null,
+  connectionCount: 0,
+  subscribers: new Set<(data: any) => void>(),
+  
+  getConnection(onMessage: (data: any) => void): WebSocket {
+    if (this.activeConnection && this.activeConnection.readyState === WebSocket.OPEN) {
+      this.subscribers.add(onMessage);
+      this.connectionCount++;
+      console.log(`Reusing price WebSocket, count: ${this.connectionCount}`);
+      return this.activeConnection;
+    } else {
+      console.log('Creating new price WebSocket');
+      
+      const wsUrl = 'wss://stream.binance.com:9443/ws/!miniTicker@arr';
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('Price WebSocket connected');
+        toast.success('Connected to price updates');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.subscribers.forEach(subscriber => subscriber(data));
+        } catch (error) {
+          console.error('Error parsing WebSocket data:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('Price WebSocket error:', error);
+        toast.error('Connection error');
+        this.activeConnection = null;
+      };
+      
+      ws.onclose = () => {
+        console.log('Price WebSocket disconnected');
+        this.activeConnection = null;
+        
+        setTimeout(() => {
+          if (this.subscribers.size > 0 && document.visibilityState === 'visible') {
+            console.log('Attempting to reconnect price WebSocket');
+            this.getConnection((data) => {
+              // This is just to trigger reconnection, the actual subscribers will be re-added
+            });
+          }
+        }, 5000);
+      };
+      
+      this.activeConnection = ws;
+      
+      this.subscribers.add(onMessage);
+      this.connectionCount++;
+      
+      return ws;
+    }
+  },
+  
+  releaseConnection(onMessage: (data: any) => void): void {
+    if (this.subscribers.has(onMessage)) {
+      this.subscribers.delete(onMessage);
+      this.connectionCount--;
+      console.log(`Released price WebSocket subscription, count: ${this.connectionCount}`);
+      
+      if (this.subscribers.size === 0 && this.activeConnection) {
+        console.log('No more subscribers, closing price WebSocket');
+        this.activeConnection.close();
+        this.activeConnection = null;
+      }
+    }
+  }
+};
 
 type TickerStreamData = {
   e: string; // Event type
@@ -37,21 +113,31 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [liveChartKey, setLiveChartKey] = useState<string>('initial');
   const [showTickerList, setShowTickerList] = useState(false);
+  const [showTopPerformers, setShowTopPerformers] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [priceChangeDirection, setPriceChangeDirection] = useState<{[key: string]: 'up' | 'down' | null}>({
+    'BTCUSDT': null,
+    'ETHUSDT': null,
+    'BNBUSDT': null,
+  });
   
-  const webSocketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const isComponentMountedRef = useRef<boolean>(true);
   const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
+  const onMessageCallbackRef = useRef<(data: any) => void>(() => {});
+  const webSocketRef = useRef<WebSocket | null>(null);
+  const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
+    window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
+  const flashTimeoutsRef = useRef<{[key: string]: NodeJS.Timeout}>({});
 
   const fetchInitialPrices = async () => {
+    if (!isComponentMountedRef.current) return;
+    
     setIsLoading(true);
     try {
       const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
       if (pricesError) throw pricesError;
+      if (!isComponentMountedRef.current) return;
 
       console.log('Initial prices fetched via HTTP:', pricesData);
       
@@ -67,7 +153,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           body: { get24hTickers: true }
         });
         
-        if (!tickersError && tickersData) {
+        if (!tickersError && tickersData && isComponentMountedRef.current) {
           const changeData = {};
           tickersData.forEach(ticker => {
             if (ticker.symbol && ticker.priceChangePercent) {
@@ -82,136 +168,112 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         console.error('Failed to fetch ticker changes:', err);
       }
       
-      if (!isInitialized) setIsInitialized(true);
+      if (isComponentMountedRef.current && !isInitialized) {
+        setIsInitialized(true);
+      }
       
     } catch (error) {
       console.error('Failed to fetch initial crypto prices:', error);
-      toast.error('Failed to load initial prices');
+      if (isComponentMountedRef.current) {
+        toast.error('Failed to load initial prices');
+      }
     } finally {
-      setIsLoading(false);
+      if (isComponentMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const connectWebSocket = () => {
+    if (!isComponentMountedRef.current) return;
+    
     if (webSocketRef.current) {
-      webSocketRef.current.close();
+      priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
     }
     
     setWsConnected(false);
     setIsLoading(true);
     
     try {
-      const streams = trackingSymbols.map(symbol => `${symbol.toLowerCase()}@ticker`).join('/');
-      const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
-      
-      console.log('Connecting to Binance WebSocket:', wsUrl);
-      
-      const ws = new WebSocket(wsUrl);
-      webSocketRef.current = ws;
-      
-      ws.onopen = () => {
-        console.log('Binance WebSocket connection established');
-        setWsConnected(true);
-        setIsLoading(false);
-        toast.success('Connected to live price updates');
-        reconnectAttempts.current = 0;
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const response = JSON.parse(event.data);
+      const onMessage = (data: any) => {
+        if (!isComponentMountedRef.current) return;
+        
+        if (Array.isArray(data)) {
+          const updatedPrices = { ...prices };
+          let pricesUpdated = false;
+          const newDirections: {[key: string]: 'up' | 'down' | null} = { ...priceChangeDirection };
           
-          if (response && response.data) {
-            const ticker: TickerStreamData = response.data;
+          data.forEach((ticker: any) => {
             const symbol = ticker.s;
-            
             if (trackingSymbols.includes(symbol)) {
-              setPrices(prevPrices => {
-                const previousPrice = prevPrices[symbol] || 0;
-                
-                if (previousPrice > 0) {
-                  setPreviousPrices(prev => ({
-                    ...prev,
-                    [symbol]: previousPrice
-                  }));
+              const price = parseFloat(ticker.c);
+              
+              if (prices[symbol] !== price) {
+                if (prices[symbol] > 0) {
+                  newDirections[symbol] = price > prices[symbol] ? 'up' : 'down';
+                  
+                  if (flashTimeoutsRef.current[symbol]) {
+                    clearTimeout(flashTimeoutsRef.current[symbol]);
+                  }
+                  
+                  flashTimeoutsRef.current[symbol] = setTimeout(() => {
+                    if (isComponentMountedRef.current) {
+                      setPriceChangeDirection(prev => ({
+                        ...prev,
+                        [symbol]: null
+                      }));
+                    }
+                  }, 2000);
                 }
                 
-                return {
-                  ...prevPrices,
-                  [symbol]: parseFloat(ticker.c)
-                };
-              });
-              
-              setChanges(prevChanges => ({
-                ...prevChanges,
-                [symbol]: parseFloat(ticker.P)
-              }));
-              
-              const element = document.querySelector(`.crypto-card[data-symbol="${symbol}"]`);
-              if (element) {
-                const isPriceUp = parseFloat(ticker.c) > (previousPrices[symbol] || 0);
+                updatedPrices[symbol] = price;
+                pricesUpdated = true;
                 
-                element.classList.remove('flash-update-positive', 'flash-update-negative');
-                
-                element.classList.add(isPriceUp ? 'flash-update-positive' : 'flash-update-negative');
-                
-                setTimeout(() => {
-                  element.classList.remove('flash-update-positive', 'flash-update-negative');
-                }, 2000);
+                if (previousPrices[symbol]) {
+                  const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
+                  setChanges(prev => ({
+                    ...prev,
+                    [symbol]: change
+                  }));
+                }
               }
             }
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setWsConnected(false);
-        setIsLoading(false);
-        toast.error('WebSocket connection error');
-      };
-      
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
-        setWsConnected(false);
-        setIsLoading(false);
-        
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          reconnectAttempts.current += 1;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
-          toast.info(`Connection lost. Reconnecting in ${delay/1000}s...`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (document.visibilityState === 'visible') {
-              connectWebSocket();
-            }
-          }, delay);
-        } else {
-          console.log('Maximum reconnection attempts reached');
-          toast.error('Could not establish WebSocket connection', {
-            description: 'Falling back to regular updates'
           });
-          fetchInitialPrices();
+          
+          if (pricesUpdated && isComponentMountedRef.current) {
+            setPreviousPrices(prices);
+            setPrices(updatedPrices);
+            setPriceChangeDirection(newDirections);
+          }
         }
       };
+      
+      onMessageCallbackRef.current = onMessage;
+      
+      webSocketRef.current = priceWsRegistry.getConnection(onMessage);
+      
+      setWsConnected(true);
+      setIsLoading(false);
+      
     } catch (error) {
       console.error('Error setting up WebSocket:', error);
-      setWsConnected(false);
-      setIsLoading(false);
-      fetchInitialPrices();
+      if (isComponentMountedRef.current) {
+        setWsConnected(false);
+        setIsLoading(false);
+        fetchInitialPrices();
+      }
     }
   };
 
   const refreshPrices = async () => {
+    if (!isComponentMountedRef.current) return;
+    
     setIsLoading(true);
     try {
       const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
       if (pricesError) throw pricesError;
+      if (!isComponentMountedRef.current) return;
 
       setPreviousPrices({...prices});
       
@@ -230,27 +292,78 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       setPrices(newPrices);
       setChanges(newChanges);
-      if (!isInitialized) setIsInitialized(true);
+      if (!isInitialized && isComponentMountedRef.current) {
+        setIsInitialized(true);
+      }
       
       toast.success('Prices updated');
     } catch (error) {
       console.error('Failed to fetch crypto prices:', error);
-      toast.error('Failed to fetch crypto prices');
+      if (isComponentMountedRef.current) {
+        toast.error('Failed to fetch crypto prices');
+      }
     } finally {
-      setIsLoading(false);
+      if (isComponentMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    const handleResize = () => {
+      const newScreenSize = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+      if (screenSizeRef.current !== newScreenSize) {
+        console.log(`Screen size changed from ${screenSizeRef.current} to ${newScreenSize}`);
+        screenSizeRef.current = newScreenSize;
+        
+        if (wsConnected) {
+          if (webSocketRef.current) {
+            priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
+            webSocketRef.current = null;
+          }
+          
+          setTimeout(() => {
+            if (isComponentMountedRef.current) {
+              connectWebSocket();
+            }
+          }, 300);
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [wsConnected]);
+
+  useEffect(() => {
+    isComponentMountedRef.current = true;
+    
     fetchInitialPrices().then(() => {
       const timeoutId = setTimeout(() => {
-        connectWebSocket();
+        if (isComponentMountedRef.current) {
+          connectWebSocket();
+        }
       }, isMobile ? 300 : 0);
       
       return () => {
         clearTimeout(timeoutId);
       };
     });
+    
+    return () => {
+      isComponentMountedRef.current = false;
+      
+      Object.values(flashTimeoutsRef.current).forEach(timeout => {
+        clearTimeout(timeout);
+      });
+      
+      if (webSocketRef.current) {
+        priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
+        webSocketRef.current = null;
+      }
+    };
   }, [isMobile]);
   
   useEffect(() => {
@@ -267,21 +380,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      if (webSocketRef.current) {
-        webSocketRef.current.close();
-        webSocketRef.current = null;
-      }
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = null;
-      }
     };
   }, []);
   
@@ -290,7 +388,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     
     if (isInitialized && !wsConnected) {
       console.log('WebSocket not connected, falling back to HTTP updates');
-      interval = setInterval(refreshPrices, 10000);
+      interval = setInterval(() => {
+        if (isComponentMountedRef.current) {
+          refreshPrices();
+        }
+      }, 10000);
     }
     
     return () => {
@@ -349,6 +451,24 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const getPriceHighlightClass = (symbol: string): string => {
+    if (!priceChangeDirection[symbol]) return '';
+    
+    return priceChangeDirection[symbol] === 'up' 
+      ? 'flash-update-positive' 
+      : 'flash-update-negative';
+  };
+
+  const handleShowTopPerformers = () => {
+    setShowTopPerformers(true);
+    setShowTickerList(false);
+  };
+
+  const handleShowTickerList = () => {
+    setShowTickerList(true);
+    setShowTopPerformers(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -369,8 +489,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         </div>
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => setShowTickerList(!showTickerList)} 
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            onClick={handleShowTopPerformers} 
+            className={`p-1.5 rounded-lg ${showTopPerformers ? 'bg-emerald-500/30' : 'bg-black/40'} text-emerald-400 hover:bg-emerald-500/20 transition-colors`}
+            title="Show top performers"
+          >
+            <Award size={16} />
+          </button>
+          <button 
+            onClick={handleShowTickerList} 
+            className={`p-1.5 rounded-lg ${showTickerList ? 'bg-emerald-500/30' : 'bg-black/40'} text-emerald-400 hover:bg-emerald-500/20 transition-colors`}
             title="Show all tickers"
           >
             <List size={16} />
@@ -393,7 +520,23 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       </div>
       
       <AnimatePresence mode="wait">
-        {showTickerList ? (
+        {showTopPerformers ? (
+          <motion.div
+            key="top-performers"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-40 border border-dashed border-emerald-500/20 rounded-lg">
+                <div className="w-6 h-6 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            }>
+              <TopPerformersChart onClose={() => setShowTopPerformers(false)} />
+            </Suspense>
+          </motion.div>
+        ) : showTickerList ? (
           <motion.div
             key="ticker-list"
             initial={{ opacity: 0, height: 0 }}
@@ -423,7 +566,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   data-symbol={symbol}
                   className={`crypto-card p-4 rounded-lg border ${
                     activeSymbol === symbol ? 'border-emerald-500' : 'border-emerald-500/20'
-                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors overflow-hidden`}
+                  } bg-black/40 cursor-pointer hover:bg-black/60 transition-colors overflow-hidden ${getPriceHighlightClass(symbol)}`}
                   onClick={() => handleSymbolSelect(symbol)}
                   whileHover={{ scale: isMobile ? 1 : 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -444,9 +587,9 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-lg font-bold text-white font-mono">{formatPrice(prices[symbol])}</span>
-                    <span className={`text-sm font-mono ${
+                  <div className="price-container">
+                    <span className="price">{formatPrice(prices[symbol])}</span>
+                    <span className={`price-change ${
                       isNaN(changes[symbol]) ? 'text-emerald-400/50' : 
                       changes[symbol] >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>

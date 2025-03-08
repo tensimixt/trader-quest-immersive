@@ -25,22 +25,6 @@
   }
 }
 
-/* Purple accents for Top Performers */
-.flash-update-purple {
-  animation: price-flash-purple 2s ease-out;
-}
-
-@keyframes price-flash-purple {
-  0% {
-    background-color: rgba(147, 51, 234, 0.3);
-    box-shadow: 0 0 20px rgba(147, 51, 234, 0.2);
-  }
-  100% {
-    background-color: transparent;
-    box-shadow: none;
-  }
-}
-
 .prediction-card {
   @apply bg-[#0D1117]/95 backdrop-blur-sm border border-emerald-500/10 p-6 rounded-xl mb-4;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36),
