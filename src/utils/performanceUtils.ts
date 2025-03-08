@@ -25,7 +25,7 @@ export const formatPercentage = (value: number | string): string => {
 
 export const formatPrice = (value: number | string | undefined | null): string => {
   // Handle undefined/null explicitly
-  if (value === undefined || value === null) return "$-.--";
+  if (value === undefined || value === null) return "$0.00";
   
   const numericValue = typeof value === 'string' ? parseFloat(value) : value;
   
@@ -33,7 +33,7 @@ export const formatPrice = (value: number | string | undefined | null): string =
   if (numericValue === 0) return "$0.00";
   
   // Return placeholder for NaN
-  if (isNaN(numericValue)) return "$-.--";
+  if (isNaN(numericValue)) return "$0.00";
   
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

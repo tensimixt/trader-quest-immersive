@@ -156,7 +156,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           };
         }
         return acc;
-      }, {});
+      }, {} as {[key: string]: number});
       
       if (Object.keys(newPrices).length > 0) {
         setPrices(prev => ({...prev, ...newPrices}));
@@ -232,27 +232,32 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               if (!isNaN(price) && price > 0) {
                 const currentPrice = updatedPrices[symbol];
                 
+                // Set direction only if we have a valid current price to compare with
                 if (typeof currentPrice === 'number' && currentPrice > 0) {
-                  newDirections[symbol] = price > currentPrice ? 'up' : 'down';
-                  
-                  if (flashTimeoutsRef.current[symbol]) {
-                    clearTimeout(flashTimeoutsRef.current[symbol]);
-                  }
-                  
-                  flashTimeoutsRef.current[symbol] = setTimeout(() => {
-                    if (isComponentMountedRef.current) {
-                      setPriceChangeDirection(prev => ({
-                        ...prev,
-                        [symbol]: null
-                      }));
+                  // Only set direction if the price actually changed
+                  if (price !== currentPrice) {
+                    newDirections[symbol] = price > currentPrice ? 'up' : 'down';
+                    
+                    if (flashTimeoutsRef.current[symbol]) {
+                      clearTimeout(flashTimeoutsRef.current[symbol]);
                     }
-                  }, 2000);
+                    
+                    flashTimeoutsRef.current[symbol] = setTimeout(() => {
+                      if (isComponentMountedRef.current) {
+                        setPriceChangeDirection(prev => ({
+                          ...prev,
+                          [symbol]: null
+                        }));
+                      }
+                    }, 2000);
+                  }
                 }
                 
                 initialDataFetchedRef.current[symbol] = true;
                 updatedPrices[symbol] = price;
                 pricesUpdated = true;
                 
+                // Only calculate and update percentage change if we have valid previous prices
                 if (previousPrices[symbol] && typeof previousPrices[symbol] === 'number' && previousPrices[symbol] > 0) {
                   const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
                   if (!isNaN(change)) {
@@ -626,7 +631,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                   </div>
                   <div className="price-container">
                     <span className="price">
-                      {formatPrice(hasSymbolData(symbol) ? prices[symbol] : null)}
+                      {formatPrice(hasSymbolData(symbol) ? prices[symbol] : 0)}
                     </span>
                     <span className={`price-change ${
                       !hasSymbolData(symbol) ? 'text-emerald-400/50' : 
@@ -634,7 +639,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
                     }`}>
                       {hasSymbolData(symbol) && typeof changes[symbol] === 'number' ? 
                         formatPercentage(changes[symbol]) : 
-                        "-.--%" 
+                        "+0.00%" 
                       }
                     </span>
                   </div>
