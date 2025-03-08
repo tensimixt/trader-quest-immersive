@@ -74,6 +74,7 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     fetchTopPerformers();
@@ -335,6 +336,13 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
   };
 
+  const handleTooltipOpenChange = (symbol: string, isOpen: boolean) => {
+    setTooltipOpen(prev => ({
+      ...prev,
+      [symbol]: isOpen
+    }));
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -460,18 +468,26 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 />
                 {performer.isNewListing && (
                   <TooltipProvider>
-                    <UITooltip>
+                    <UITooltip 
+                      open={tooltipOpen[performer.symbol]} 
+                      onOpenChange={(open) => handleTooltipOpenChange(performer.symbol, open)}
+                    >
                       <TooltipTrigger asChild>
                         <div 
                           className="ml-1 cursor-help"
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent triggering the card click
+                            handleTooltipOpenChange(performer.symbol, !tooltipOpen[performer.symbol]);
                           }}
                         >
                           <AlertTriangle size={12} className="text-amber-400" />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]">
+                      <TooltipContent 
+                        side="top" 
+                        className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]"
+                        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+                      >
                         <p className="font-bold mb-1">New Listing Alert!</p>
                         <p className="mb-1">{performer.symbol.replace('USDT', '')} was listed <span className="text-amber-400 font-bold">{performer.daysCovered}</span> days ago.</p>
                         <p>Performance is calculated from its initial price of {formatPrice(performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}</p>
