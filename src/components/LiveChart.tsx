@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -33,7 +32,6 @@ interface KlineData {
   isNew?: boolean;
 }
 
-// WS Registry for sharing connections
 const wsRegistry = {
   activeConnections: new Map<string, WebSocket>(),
   connectionCounts: new Map<string, number>(),
@@ -111,7 +109,6 @@ const formatDate = (timestamp: number): string => {
     ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-// Available timeframe options - now focused on 1s, 15m, 1h, 4h, 1d
 const timeframeOptions = [
   { value: "1s", label: "1s" },
   { value: "15m", label: "15m" },
@@ -127,12 +124,11 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [interval, setInterval] = useState<string>("15m"); // Default to 15m
+  const [interval, setInterval] = useState<string>("15m");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
   const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
   
-  // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const lastFullRefreshRef = useRef<number>(Date.now());
   const dataMapRef = useRef<Map<number, KlineData>>(new Map());
@@ -157,7 +153,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       
       console.log(`Fetching data for ${symbol} with interval ${interval}`);
       
-      // For 1s interval, we'll request up to 900 points
       const limit = interval === "1s" ? 900 : 30;
       maxDataPointsRef.current = limit;
       
@@ -274,10 +269,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           setIsUpdating(true);
           setLastUpdated(new Date());
           
-          // Check if this is a new timestamp we should add
           const isNewTimestamp = !dataMapRef.current.has(timestamp);
           
-          // For 1s timeframe, we want to track if it's truly a new kline
           if (isNewTimestamp) {
             newDataPointsTimestampsRef.current.add(timestamp);
           }
@@ -301,10 +294,8 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           
           setLastDataPoint(newKline);
           
-          // Store this kline in our map
           dataMapRef.current.set(timestamp, newKline);
           
-          // Update lastKnownTimestamp if this is newer
           if (lastKnownTimestampRef.current === null || timestamp > lastKnownTimestampRef.current) {
             lastKnownTimestampRef.current = timestamp;
           }
@@ -318,17 +309,14 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           
           if (isComponentMountedRef.current) {
             setData(prevData => {
-              // Get all values from the map and sort them by timestamp
               const allValues = Array.from(dataMapRef.current.values());
               const sortedValues = allValues.sort((a, b) => a.timestamp - b.timestamp);
               
-              // Mark new data points
               const updatedData = sortedValues.map(point => ({
                 ...point,
                 isNew: newDataPointsTimestampsRef.current.has(point.timestamp)
               }));
               
-              // If we have more points than our limit, trim from the beginning
               if (updatedData.length > maxDataPointsRef.current) {
                 return updatedData.slice(updatedData.length - maxDataPointsRef.current);
               }
@@ -406,7 +394,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     newDataPointsTimestampsRef.current = new Set();
     lastKnownTimestampRef.current = null;
     
-    // Update max data points based on interval
     maxDataPointsRef.current = interval === "1s" ? 900 : 30;
     
     currentSymbolRef.current = symbol;
@@ -468,10 +455,9 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const priceChange = getPriceChange();
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
-  // Timeframe selection component using buttons instead of dropdown
   const TimeframeSelector = () => (
-    <div className="mb-4 flex items-center justify-between px-2 py-2 bg-black/40 rounded-lg border border-emerald-500/10">
-      <div className="flex items-center gap-2">
+    <div className="mb-4">
+      <div className="flex items-center gap-2 px-2 py-2 bg-black/40 rounded-lg border border-emerald-500/10 mb-2">
         <Clock size={16} className="text-emerald-400" />
         <span className="text-sm text-emerald-400 font-mono">Timeframe:</span>
         <div className="flex space-x-1">
@@ -489,7 +475,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
       </div>
       
-      <div className="text-xs text-emerald-400/70 font-mono">
+      <div className="text-xs text-emerald-400/70 font-mono text-center px-2">
         {data.length > 0 ? 
           `${formatDate(data[0].timestamp)} - ${formatDate(data[data.length - 1].timestamp)}` : 
           'No data'}
@@ -662,7 +648,6 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
         </div>
       </div>
       
-      {/* Timeframe selector now appears above the chart and won't be affected by chart updates */}
       <TimeframeSelector />
       
       <ChartContent height={200} />
