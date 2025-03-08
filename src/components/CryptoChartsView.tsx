@@ -459,6 +459,16 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       : 'flash-update-negative';
   };
 
+  const handleShowTopPerformers = () => {
+    setShowTopPerformers(true);
+    setShowTickerList(false);
+  };
+
+  const handleShowTickerList = () => {
+    setShowTickerList(true);
+    setShowTopPerformers(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -479,15 +489,15 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         </div>
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => setShowTopPerformers(!showTopPerformers)} 
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            onClick={handleShowTopPerformers} 
+            className={`p-1.5 rounded-lg ${showTopPerformers ? 'bg-emerald-500/30' : 'bg-black/40'} text-emerald-400 hover:bg-emerald-500/20 transition-colors`}
             title="Show top performers"
           >
             <Award size={16} />
           </button>
           <button 
-            onClick={() => setShowTickerList(!showTickerList)} 
-            className="p-1.5 rounded-lg bg-black/40 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            onClick={handleShowTickerList} 
+            className={`p-1.5 rounded-lg ${showTickerList ? 'bg-emerald-500/30' : 'bg-black/40'} text-emerald-400 hover:bg-emerald-500/20 transition-colors`}
             title="Show all tickers"
           >
             <List size={16} />
