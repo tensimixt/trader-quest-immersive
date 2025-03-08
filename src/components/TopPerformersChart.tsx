@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
@@ -225,7 +224,6 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     </div>
   );
 
-  // Helper function to format large numbers with K, M, B suffixes
   const formatNumber = (num: number): string => {
     if (num >= 1000000000) {
       return (num / 1000000000).toFixed(2) + 'B';
@@ -489,7 +487,20 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
               </div>
               
               <div className="mt-4">
-                <div className="text-sm text-gray-300 mb-2">Price History ({timeframe}D)</div>
+                <div className="text-sm text-gray-300 mb-2 flex items-center justify-between">
+                  <span>Price History ({timeframe}D)</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                      <span className="text-xs text-emerald-400/70">Close Price</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-3 h-3 rounded-full bg-blue-500" />
+                      <span className="text-xs text-emerald-400/70">Open Price</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="h-[250px] bg-black/30 border border-emerald-500/20 rounded-lg p-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart 
@@ -520,10 +531,10 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
                                 </p>
                                 {data.open !== undefined ? (
                                   <div className="text-xs">
-                                    <p className="text-white">Open: {formatPrice(data.open)}</p>
+                                    <p className="text-blue-400">Open: {formatPrice(data.open)}</p>
                                     <p className="text-white">High: {formatPrice(data.high)}</p>
                                     <p className="text-white">Low: {formatPrice(data.low)}</p>
-                                    <p className="text-white">Close: {formatPrice(data.close)}</p>
+                                    <p className="text-emerald-400">Close: {formatPrice(data.close)}</p>
                                     <p className="text-white">Volume: ${formatNumber(data.volume)}</p>
                                   </div>
                                 ) : (
@@ -538,14 +549,25 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
                         }}
                       />
                       {selectedToken.klineData ? (
-                        <Line 
-                          type="monotone" 
-                          dataKey="close" 
-                          name="Price" 
-                          stroke="#10B981" 
-                          dot={false}
-                          activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
-                        />
+                        <>
+                          <Line 
+                            type="monotone" 
+                            dataKey="close" 
+                            name="Close Price" 
+                            stroke="#10B981" 
+                            dot={false}
+                            activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#111' }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="open" 
+                            name="Open Price" 
+                            stroke="#0EA5E9" 
+                            dot={false}
+                            strokeDasharray="5 5"
+                            activeDot={{ r: 6, stroke: '#0EA5E9', strokeWidth: 2, fill: '#111' }}
+                          />
+                        </>
                       ) : (
                         <Line 
                           type="monotone" 
