@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bitcoin, Coins, BarChart2, RefreshCw, X, TrendingUp, TrendingDown, BarChart, List, Award } from 'lucide-react';
@@ -117,8 +116,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [showTickerList, setShowTickerList] = useState(false);
   const [showTopPerformers, setShowTopPerformers] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  
+  const tickersMapRef = useRef<Map<string, TickerStreamData>>(new Map());
   const updatedSymbolsRef = useRef<Set<string>>(new Set());
   const tickerChangeDirectionRef = useRef<Map<string, 'up' | 'down'>>(new Map());
+  const previousPricesRef = useRef<Map<string, number>>(new Map());
   
   const isComponentMountedRef = useRef<boolean>(true);
   const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
@@ -132,10 +134,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     'ETHUSDT': false,
     'BNBUSDT': false
   });
-  const lastValidPricesRef = useRef<{[key: string]: number}>({});
-  const lastValidChangesRef = useRef<{[key: string]: number}>({});
-  // Add reference to track when changes were last updated
-  const lastChangesUpdateTimeRef = useRef<{[key: string]: number}>({});
 
   const fetchInitialPrices = async () => {
     if (!isComponentMountedRef.current) return;
@@ -152,7 +150,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       const newPrices = pricesData.reduce((acc, curr) => {
         if (isValidPrice(curr.price)) {
           initialDataFetchedRef.current[curr.symbol] = true;
-          lastValidPricesRef.current[curr.symbol] = curr.price;
+          previousPricesRef.current.set(curr.symbol, curr.price);
           return {
             ...acc,
             [curr.symbol]: curr.price
@@ -177,9 +175,17 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
               const percentChange = parseFloat(ticker.priceChangePercent);
               if (!isNaN(percentChange)) {
                 changeData[ticker.symbol] = percentChange;
-                lastValidChangesRef.current[ticker.symbol] = percentChange;
-                lastChangesUpdateTimeRef.current[ticker.symbol] = Date.now();
-                initialDataFetchedRef.current[ticker.symbol] = true;
+                
+                tickersMapRef.current.set(ticker.symbol, {
+                  s: ticker.symbol,
+                  P: ticker.priceChangePercent,
+                  p: ticker.priceChange,
+                  c: ticker.lastPrice,
+                  v: ticker.volume,
+                  q: ticker.quoteVolume || '0',
+                  e: '',
+                  E: Date.now()
+                });
               }
             }
           });
@@ -225,69 +231,69 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         if (!isComponentMountedRef.current) return;
         
         if (Array.isArray(data)) {
-          const updatedPrices = { ...prices };
-          const updatedChanges = { ...changes };
-          let pricesUpdated = false;
-          let changesUpdated = false;
-          
           data.forEach((ticker: any) => {
             const symbol = ticker.s;
             if (trackingSymbols.includes(symbol)) {
-              const price = parseFloat(ticker.c);
+              const currentPrice = parseFloat(ticker.c || '0');
               
-              if (isValidPrice(price)) {
-                lastValidPricesRef.current[symbol] = price;
-                
-                const currentPrice = updatedPrices[symbol];
-                
-                if (isValidPrice(currentPrice)) {
-                  if (price !== currentPrice) {
-                    const direction = price > currentPrice ? 'up' : 'down';
-                    tickerChangeDirectionRef.current.set(symbol, direction);
-                    updatedSymbolsRef.current.add(symbol);
-                    
-                    if (flashTimeoutsRef.current[symbol]) {
-                      clearTimeout(flashTimeoutsRef.current[symbol]);
-                    }
-                    
-                    flashTimeoutsRef.current[symbol] = setTimeout(() => {
-                      if (isComponentMountedRef.current) {
-                        updatedSymbolsRef.current.delete(symbol);
-                      }
-                    }, 2000);
+              if (isValidPrice(currentPrice)) {
+                const previousPrice = previousPricesRef.current.get(symbol);
+                if (previousPrice !== undefined && currentPrice !== previousPrice) {
+                  const direction = currentPrice > previousPrice ? 'up' : 'down';
+                  tickerChangeDirectionRef.current.set(symbol, direction);
+                  updatedSymbolsRef.current.add(symbol);
+                  
+                  if (flashTimeoutsRef.current[symbol]) {
+                    clearTimeout(flashTimeoutsRef.current[symbol]);
                   }
+                  
+                  flashTimeoutsRef.current[symbol] = setTimeout(() => {
+                    if (isComponentMountedRef.current) {
+                      updatedSymbolsRef.current.delete(symbol);
+                    }
+                  }, 2000);
                 }
+                
+                previousPricesRef.current.set(symbol, currentPrice);
+                
+                tickersMapRef.current.set(symbol, {
+                  s: symbol,
+                  c: ticker.c || '0',
+                  P: ticker.P || '0',
+                  p: ticker.p || '0',
+                  v: ticker.v || '0',
+                  q: ticker.q || '0',
+                  e: ticker.e || '',
+                  E: ticker.E || Date.now()
+                });
                 
                 initialDataFetchedRef.current[symbol] = true;
-                updatedPrices[symbol] = price;
-                pricesUpdated = true;
-                
-                // Process 24h price change percent from WebSocket message
-                if (ticker.P) {
-                  const priceChangePercent = parseFloat(ticker.P);
-                  if (!isNaN(priceChangePercent)) {
-                    updatedChanges[symbol] = priceChangePercent;
-                    lastValidChangesRef.current[symbol] = priceChangePercent;
-                    lastChangesUpdateTimeRef.current[symbol] = Date.now();
-                    changesUpdated = true;
-                    console.log(`Updated ${symbol} change from WebSocket: ${priceChangePercent}%`);
-                  }
-                }
-              } else {
-                console.warn(`Received invalid price for ${symbol}:`, ticker.c);
-                if (lastValidPricesRef.current[symbol] && isValidPrice(lastValidPricesRef.current[symbol])) {
-                  updatedPrices[symbol] = lastValidPricesRef.current[symbol];
-                }
               }
             }
           });
           
-          if (pricesUpdated && isComponentMountedRef.current) {
+          if (isComponentMountedRef.current) {
+            const updatedPrices = { ...prices };
+            const updatedChanges = { ...changes };
+            
+            for (const symbol of trackingSymbols) {
+              const ticker = tickersMapRef.current.get(symbol);
+              if (ticker) {
+                const price = parseFloat(ticker.c);
+                const changePercent = parseFloat(ticker.P);
+                
+                if (isValidPrice(price)) {
+                  updatedPrices[symbol] = price;
+                }
+                
+                if (!isNaN(changePercent)) {
+                  updatedChanges[symbol] = changePercent;
+                }
+              }
+            }
+            
             setPreviousPrices(prices);
             setPrices(updatedPrices);
-          }
-          
-          if (changesUpdated && isComponentMountedRef.current) {
             setChanges(updatedChanges);
           }
         }
@@ -325,11 +331,12 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       const newPrices = pricesData.reduce((acc, curr) => {
         if (isValidPrice(curr.price)) {
-          acc[curr.symbol] = curr.price;
-          lastValidPricesRef.current[curr.symbol] = curr.price;
+          previousPricesRef.current.set(curr.symbol, curr.price);
           initialDataFetchedRef.current[curr.symbol] = true;
-        } else if (lastValidPricesRef.current[curr.symbol] && isValidPrice(lastValidPricesRef.current[curr.symbol])) {
-          acc[curr.symbol] = lastValidPricesRef.current[curr.symbol];
+          return {
+            ...acc,
+            [curr.symbol]: curr.price
+          };
         }
         return acc;
       }, {} as {[key: string]: number});
@@ -345,13 +352,23 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         
         if (!tickersError && tickersData && isComponentMountedRef.current) {
           const newChanges = {};
+          
           tickersData.forEach(ticker => {
             if (ticker.symbol && ticker.priceChangePercent) {
               const percentChange = parseFloat(ticker.priceChangePercent);
               if (!isNaN(percentChange)) {
                 newChanges[ticker.symbol] = percentChange;
-                lastValidChangesRef.current[ticker.symbol] = percentChange;
-                lastChangesUpdateTimeRef.current[ticker.symbol] = Date.now();
+                
+                tickersMapRef.current.set(ticker.symbol, {
+                  s: ticker.symbol,
+                  P: ticker.priceChangePercent,
+                  p: ticker.priceChange,
+                  c: ticker.lastPrice,
+                  v: ticker.volume,
+                  q: ticker.quoteVolume || '0',
+                  e: '',
+                  E: Date.now()
+                });
               }
             }
           });
@@ -518,7 +535,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       return 'bg-red-500/20'; // Red highlight for price down
     }
     
-    // Default highlight if direction is unknown
     return 'bg-emerald-500/20';
   };
 
@@ -535,29 +551,25 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const hasSymbolData = (symbol: string): boolean => {
     return (
       initialDataFetchedRef.current[symbol] === true && 
-      (isValidPrice(prices[symbol]) || 
-       (lastValidPricesRef.current[symbol] && isValidPrice(lastValidPricesRef.current[symbol])))
+      tickersMapRef.current.has(symbol) &&
+      isValidPrice(parseFloat(tickersMapRef.current.get(symbol)?.c || '0'))
     );
   };
 
   const getDisplayPrice = (symbol: string): number => {
-    if (isValidPrice(prices[symbol])) {
-      return prices[symbol];
+    const ticker = tickersMapRef.current.get(symbol);
+    if (ticker && isValidPrice(parseFloat(ticker.c))) {
+      return parseFloat(ticker.c);
     }
-    if (lastValidPricesRef.current[symbol] && isValidPrice(lastValidPricesRef.current[symbol])) {
-      return lastValidPricesRef.current[symbol];
-    }
-    return 0;
+    return prices[symbol] || 0;
   };
 
   const getDisplayChange = (symbol: string): number => {
-    if (typeof changes[symbol] === 'number' && !isNaN(changes[symbol])) {
-      return changes[symbol];
+    const ticker = tickersMapRef.current.get(symbol);
+    if (ticker && !isNaN(parseFloat(ticker.P))) {
+      return parseFloat(ticker.P);
     }
-    if (lastValidChangesRef.current[symbol] && !isNaN(lastValidChangesRef.current[symbol])) {
-      return lastValidChangesRef.current[symbol];
-    }
-    return 0;
+    return changes[symbol] || 0;
   };
 
   return (
