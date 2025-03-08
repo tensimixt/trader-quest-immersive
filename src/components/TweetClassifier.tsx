@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter } from 'lucide-react';
@@ -44,29 +43,35 @@ interface ClassifiedTweet {
   timestamp: string;
 }
 
-const TweetClassifier = () => {
+interface TweetClassifierProps {
+  tweets: any[];
+  isLoading: boolean;
+}
+
+const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets, isLoading: externalLoading }) => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [rawTweets, setRawTweets] = useState<Tweet[]>([]);
+  const [isLoading, setIsLoading] = useState(externalLoading);
+  const [rawTweets, setRawTweets] = useState<Tweet[]>(initialTweets);
   const [classifiedTweets, setClassifiedTweets] = useState<ClassifiedTweet[]>([]);
   const [activeTab, setActiveTab] = useState('raw');
   const [marketFilter, setMarketFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Mock API fetch for development
+  useEffect(() => {
+    setRawTweets(initialTweets);
+    setIsLoading(externalLoading);
+  }, [initialTweets, externalLoading]);
+  
   const fetchTweets = async () => {
     setIsLoading(true);
     try {
-      // This would be replaced with an actual API call to Twitter API
-      // For demo purposes, using mocked data
       const response = await fetch('https://api.twitterapi.io/twitter/list/tweets', {
         method: 'GET',
         headers: {
           'X-API-Key': '63b174ff7c2f44af89a86e7022509709',
         }
       }).catch(() => {
-        // Fallback to mock data if API call fails
         return new Response(JSON.stringify({
           tweets: [
             {
@@ -151,18 +156,13 @@ const TweetClassifier = () => {
     }
   };
 
-  // Simulate classification
   const classifyTweet = (tweet: Tweet): ClassifiedTweet => {
-    // This would be replaced with actual ML or rule-based classification
-    // For demo, we'll use some simple pattern matching
-    
     let market = "UNKNOWN";
     let direction = "NEUTRAL";
     let confidence = 50;
     
     const tweetText = tweet.text.toLowerCase();
     
-    // Simple market detection
     if (tweetText.includes("btc") || tweetText.includes("bitcoin") || tweetText.includes("pin-bar")) {
       market = "BTC";
     } else if (tweetText.includes("eth") || tweetText.includes("ethereum")) {
@@ -173,7 +173,6 @@ const TweetClassifier = () => {
       market = "CRYPTO";
     }
     
-    // Simple direction detection
     if (tweetText.includes("bull") || tweetText.includes("buy") || tweetText.includes("long") || tweetText.includes("million x")) {
       direction = "UP";
       confidence = 75;
@@ -182,12 +181,10 @@ const TweetClassifier = () => {
       confidence = 75;
     }
     
-    // Increase confidence based on certain patterns
     if (tweet.author.userName === "MuroCrypto" || tweet.author.userName === "Pentosh1") {
       confidence += 15;
     }
     
-    // Cap confidence at 95%
     confidence = Math.min(confidence, 95);
     
     return {
@@ -266,9 +263,10 @@ const TweetClassifier = () => {
     return passes;
   });
 
-  // Load mock data on initial render
   useEffect(() => {
-    fetchTweets();
+    if (rawTweets.length === 0 && !isLoading) {
+      fetchTweets();
+    }
   }, []);
 
   return (
