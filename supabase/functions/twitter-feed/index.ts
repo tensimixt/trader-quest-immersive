@@ -2,6 +2,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
+// Twitter crypto list ID - this is a public crypto-focused Twitter list
+const TWITTER_LIST_ID = '1650549894331887617';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +19,10 @@ serve(async (req) => {
   try {
     console.log('Twitter feed function called');
     
-    const response = await fetch('https://api.twitterapi.io/twitter/list/tweets', {
+    const url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
+    console.log('Calling Twitter API with URL:', url);
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'X-API-Key': TWITTER_API_KEY,
@@ -41,7 +46,7 @@ serve(async (req) => {
     }
     
     const data = await response.json();
-    console.log('Twitter API response received');
+    console.log('Twitter API response received successfully');
     
     return new Response(JSON.stringify(data), {
       headers: {
