@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -75,12 +75,21 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState<{[key: string]: boolean}>({});
+  const isOpeningDialogRef = useRef(false);
 
   const openTokenDetails = (token: PerformanceData) => {
+    if (isOpeningDialogRef.current) return;
+    
+    isOpeningDialogRef.current = true;
+    
     setSelectedToken(token);
+    
     setTimeout(() => {
       setTokenDetailsOpen(true);
-    }, 10);
+      setTimeout(() => {
+        isOpeningDialogRef.current = false;
+      }, 100);
+    }, 50);
   };
 
   useEffect(() => {
@@ -284,6 +293,9 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const handleOpenChange = (open: boolean) => {
       if (!open) {
         setTokenDetailsOpen(false);
+        setTimeout(() => {
+          setSelectedToken(null);
+        }, 300);
       }
     };
     
