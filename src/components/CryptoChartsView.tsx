@@ -8,6 +8,81 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const LiveChart = lazy(() => import('./LiveChart'));
 const TickerList = lazy(() => import('./TickerList'));
 
+const priceWsRegistry = {
+  activeConnection: null as WebSocket | null,
+  connectionCount: 0,
+  subscribers: new Set<(data: any) => void>(),
+  
+  getConnection(onMessage: (data: any) => void): WebSocket {
+    if (this.activeConnection && this.activeConnection.readyState === WebSocket.OPEN) {
+      this.subscribers.add(onMessage);
+      this.connectionCount++;
+      console.log(`Reusing price WebSocket, count: ${this.connectionCount}`);
+      return this.activeConnection;
+    } else {
+      console.log('Creating new price WebSocket');
+      
+      const wsUrl = 'wss://stream.binance.com:9443/ws/!miniTicker@arr';
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('Price WebSocket connected');
+        toast.success('Connected to price updates');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.subscribers.forEach(subscriber => subscriber(data));
+        } catch (error) {
+          console.error('Error parsing WebSocket data:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('Price WebSocket error:', error);
+        toast.error('Connection error');
+        this.activeConnection = null;
+      };
+      
+      ws.onclose = () => {
+        console.log('Price WebSocket disconnected');
+        this.activeConnection = null;
+        
+        setTimeout(() => {
+          if (this.subscribers.size > 0 && document.visibilityState === 'visible') {
+            console.log('Attempting to reconnect price WebSocket');
+            this.getConnection((data) => {
+              // This is just to trigger reconnection, the actual subscribers will be re-added
+            });
+          }
+        }, 5000);
+      };
+      
+      this.activeConnection = ws;
+      
+      this.subscribers.add(onMessage);
+      this.connectionCount++;
+      
+      return ws;
+    }
+  },
+  
+  releaseConnection(onMessage: (data: any) => void): void {
+    if (this.subscribers.has(onMessage)) {
+      this.subscribers.delete(onMessage);
+      this.connectionCount--;
+      console.log(`Released price WebSocket subscription, count: ${this.connectionCount}`);
+      
+      if (this.subscribers.size === 0 && this.activeConnection) {
+        console.log('No more subscribers, closing price WebSocket');
+        this.activeConnection.close();
+        this.activeConnection = null;
+      }
+    }
+  }
+};
+
 type TickerStreamData = {
   e: string; // Event type
   E: number; // Event time
@@ -39,19 +114,22 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
   const [showTickerList, setShowTickerList] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   
-  const webSocketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const isComponentMountedRef = useRef<boolean>(true);
   const trackingSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
+  const onMessageCallbackRef = useRef<(data: any) => void>(() => {});
+  const webSocketRef = useRef<WebSocket | null>(null);
+  const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
+    window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
 
   const fetchInitialPrices = async () => {
+    if (!isComponentMountedRef.current) return;
+    
     setIsLoading(true);
     try {
       const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
       if (pricesError) throw pricesError;
+      if (!isComponentMountedRef.current) return;
 
       console.log('Initial prices fetched via HTTP:', pricesData);
       
@@ -67,7 +145,7 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
           body: { get24hTickers: true }
         });
         
-        if (!tickersError && tickersData) {
+        if (!tickersError && tickersData && isComponentMountedRef.current) {
           const changeData = {};
           tickersData.forEach(ticker => {
             if (ticker.symbol && ticker.priceChangePercent) {
@@ -82,184 +160,93 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
         console.error('Failed to fetch ticker changes:', err);
       }
       
-      if (!isInitialized) setIsInitialized(true);
+      if (isComponentMountedRef.current && !isInitialized) {
+        setIsInitialized(true);
+      }
       
     } catch (error) {
       console.error('Failed to fetch initial crypto prices:', error);
-      toast.error('Failed to load initial prices');
+      if (isComponentMountedRef.current) {
+        toast.error('Failed to load initial prices');
+      }
     } finally {
-      setIsLoading(false);
+      if (isComponentMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const connectWebSocket = () => {
+    if (!isComponentMountedRef.current) return;
+    
     if (webSocketRef.current) {
-      webSocketRef.current.close();
+      priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
     }
     
     setWsConnected(false);
     setIsLoading(true);
     
     try {
-      const host = window.location.host.includes('localhost') 
-        ? 'localhost:54321' 
-        : window.location.host;
-      
-      const isSecure = window.location.protocol === 'https:';
-      const wsProtocol = isSecure ? 'wss' : 'ws';
-      const wsUrl = `${wsProtocol}://${host}/functions/v1/crypto-prices`;
-      
-      console.log('Connecting to edge function WebSocket:', wsUrl);
-      
-      const ws = new WebSocket(wsUrl);
-      webSocketRef.current = ws;
-      
-      ws.onopen = () => {
-        console.log('WebSocket connection established with edge function');
-        setWsConnected(true);
-        setIsLoading(false);
-        toast.success('Connected to live price updates');
-        reconnectAttempts.current = 0;
+      const onMessage = (data: any) => {
+        if (!isComponentMountedRef.current) return;
         
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          symbols: trackingSymbols
-        }));
-        
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-        }
-        
-        pingIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
-          }
-        }, 30000);
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+        if (Array.isArray(data)) {
+          const updatedPrices = { ...prices };
+          let pricesUpdated = false;
           
-          if (data.type === 'ping' || data.type === 'pong') {
-            console.log(`Received ${data.type} from server`);
-            return;
-          }
-          
-          if (data.type === 'price') {
-            const symbol = data.symbol;
-            const price = data.price;
-            
+          data.forEach((ticker: any) => {
+            const symbol = ticker.s;
             if (trackingSymbols.includes(symbol)) {
-              setPrices(prevPrices => {
-                const previousPrice = prevPrices[symbol] || 0;
+              const price = parseFloat(ticker.c);
+              
+              if (prices[symbol] !== price) {
+                updatedPrices[symbol] = price;
+                pricesUpdated = true;
                 
-                if (previousPrice > 0) {
-                  setPreviousPrices(prev => ({
+                if (previousPrices[symbol]) {
+                  const change = ((price - previousPrices[symbol]) / previousPrices[symbol]) * 100;
+                  setChanges(prev => ({
                     ...prev,
-                    [symbol]: previousPrice
+                    [symbol]: change
                   }));
                 }
-                
-                return {
-                  ...prevPrices,
-                  [symbol]: price
-                };
-              });
-              
-              if (data.change) {
-                setChanges(prevChanges => ({
-                  ...prevChanges,
-                  [symbol]: parseFloat(data.change)
-                }));
-              }
-              
-              const element = document.querySelector(`.crypto-card[data-symbol="${symbol}"]`);
-              if (element) {
-                const isPriceUp = price > (previousPrices[symbol] || 0);
-                
-                element.classList.remove('flash-update-positive', 'flash-update-negative');
-                
-                element.classList.add(isPriceUp ? 'flash-update-positive' : 'flash-update-negative');
-                
-                setTimeout(() => {
-                  element.classList.remove('flash-update-positive', 'flash-update-negative');
-                }, 2000);
               }
             }
-          } else if (data.type === 'prices' && data.data) {
-            const newPrices = data.data;
-            setPrices(prev => ({
-              ...prev,
-              ...newPrices
-            }));
-            
-            if (data.changes) {
-              setChanges(prev => ({
-                ...prev,
-                ...data.changes
-              }));
-            }
-          } else if (data.type === 'error') {
-            console.error('WebSocket error from server:', data.message);
-            toast.error(data.message || 'Error from server');
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setWsConnected(false);
-        setIsLoading(false);
-        toast.error('WebSocket connection error');
-      };
-      
-      ws.onclose = (event) => {
-        console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
-        setWsConnected(false);
-        setIsLoading(false);
-        
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-          pingIntervalRef.current = null;
-        }
-        
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          reconnectAttempts.current += 1;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
-          toast.info(`Connection lost. Reconnecting in ${delay/1000}s...`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (document.visibilityState === 'visible') {
-              connectWebSocket();
-            }
-          }, delay);
-        } else {
-          console.log('Maximum reconnection attempts reached');
-          toast.error('Could not establish WebSocket connection', {
-            description: 'Falling back to regular updates'
           });
-          fetchInitialPrices();
+          
+          if (pricesUpdated && isComponentMountedRef.current) {
+            setPreviousPrices(prices);
+            setPrices(updatedPrices);
+          }
         }
       };
+      
+      onMessageCallbackRef.current = onMessage;
+      
+      webSocketRef.current = priceWsRegistry.getConnection(onMessage);
+      
+      setWsConnected(true);
+      setIsLoading(false);
+      
     } catch (error) {
       console.error('Error setting up WebSocket:', error);
-      setWsConnected(false);
-      setIsLoading(false);
-      fetchInitialPrices();
+      if (isComponentMountedRef.current) {
+        setWsConnected(false);
+        setIsLoading(false);
+        fetchInitialPrices();
+      }
     }
   };
 
   const refreshPrices = async () => {
+    if (!isComponentMountedRef.current) return;
+    
     setIsLoading(true);
     try {
       const { data: pricesData, error: pricesError } = await supabase.functions.invoke('crypto-prices');
       
       if (pricesError) throw pricesError;
+      if (!isComponentMountedRef.current) return;
 
       setPreviousPrices({...prices});
       
@@ -278,27 +265,74 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
       
       setPrices(newPrices);
       setChanges(newChanges);
-      if (!isInitialized) setIsInitialized(true);
+      if (!isInitialized && isComponentMountedRef.current) {
+        setIsInitialized(true);
+      }
       
       toast.success('Prices updated');
     } catch (error) {
       console.error('Failed to fetch crypto prices:', error);
-      toast.error('Failed to fetch crypto prices');
+      if (isComponentMountedRef.current) {
+        toast.error('Failed to fetch crypto prices');
+      }
     } finally {
-      setIsLoading(false);
+      if (isComponentMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    const handleResize = () => {
+      const newScreenSize = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+      if (screenSizeRef.current !== newScreenSize) {
+        console.log(`Screen size changed from ${screenSizeRef.current} to ${newScreenSize}`);
+        screenSizeRef.current = newScreenSize;
+        
+        if (wsConnected) {
+          if (webSocketRef.current) {
+            priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
+            webSocketRef.current = null;
+          }
+          
+          setTimeout(() => {
+            if (isComponentMountedRef.current) {
+              connectWebSocket();
+            }
+          }, 300);
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [wsConnected]);
+
+  useEffect(() => {
+    isComponentMountedRef.current = true;
+    
     fetchInitialPrices().then(() => {
       const timeoutId = setTimeout(() => {
-        connectWebSocket();
+        if (isComponentMountedRef.current) {
+          connectWebSocket();
+        }
       }, isMobile ? 300 : 0);
       
       return () => {
         clearTimeout(timeoutId);
       };
     });
+    
+    return () => {
+      isComponentMountedRef.current = false;
+      
+      if (webSocketRef.current) {
+        priceWsRegistry.releaseConnection(onMessageCallbackRef.current);
+        webSocketRef.current = null;
+      }
+    };
   }, [isMobile]);
   
   useEffect(() => {
@@ -315,21 +349,6 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      if (webSocketRef.current) {
-        webSocketRef.current.close();
-        webSocketRef.current = null;
-      }
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = null;
-      }
     };
   }, []);
   
@@ -338,7 +357,11 @@ const CryptoChartsView = ({ onClose }: { onClose: () => void }) => {
     
     if (isInitialized && !wsConnected) {
       console.log('WebSocket not connected, falling back to HTTP updates');
-      interval = setInterval(refreshPrices, 10000);
+      interval = setInterval(() => {
+        if (isComponentMountedRef.current) {
+          refreshPrices();
+        }
+      }, 10000);
     }
     
     return () => {

@@ -13,20 +13,110 @@ type TickerData = {
   quoteVolume?: string; // Adding quoteVolume which is in USDT
 };
 
+// Create a static WebSocket registry to manage all-tickers connection
+const tickersWsRegistry = {
+  activeConnection: null as WebSocket | null,
+  connectionCount: 0,
+  subscribers: new Set<(data: any) => void>(),
+  
+  // Get or create the singleton ticker WebSocket
+  getConnection(onMessage: (data: any) => void): WebSocket {
+    if (this.activeConnection && this.activeConnection.readyState === WebSocket.OPEN) {
+      // Add the subscriber
+      this.subscribers.add(onMessage);
+      this.connectionCount++;
+      console.log(`Reusing tickers WebSocket, count: ${this.connectionCount}`);
+      return this.activeConnection;
+    } else {
+      // Create a new connection
+      console.log('Creating new tickers WebSocket');
+      
+      // Create WebSocket connection for all tickers
+      const wsUrl = 'wss://stream.binance.com:9443/ws/!ticker@arr';
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('Tickers WebSocket connected');
+        toast.success('Connected to ticker updates');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          // Dispatch to all subscribers
+          this.subscribers.forEach(subscriber => subscriber(data));
+        } catch (error) {
+          console.error('Error parsing WebSocket data:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('Tickers WebSocket error:', error);
+        toast.error('Connection error');
+        this.activeConnection = null;
+      };
+      
+      ws.onclose = () => {
+        console.log('Tickers WebSocket disconnected');
+        this.activeConnection = null;
+        
+        // Attempt reconnection after a delay
+        setTimeout(() => {
+          if (this.subscribers.size > 0 && document.visibilityState === 'visible') {
+            console.log('Attempting to reconnect tickers WebSocket');
+            this.getConnection(() => {
+              // This is just to trigger reconnection, the actual subscribers will be re-added
+            });
+          }
+        }, 5000);
+      };
+      
+      // Store the new connection
+      this.activeConnection = ws;
+      
+      // Add the subscriber
+      this.subscribers.add(onMessage);
+      this.connectionCount++;
+      
+      return ws;
+    }
+  },
+  
+  // Release a subscription
+  releaseConnection(onMessage: (data: any) => void): void {
+    if (this.subscribers.has(onMessage)) {
+      this.subscribers.delete(onMessage);
+      this.connectionCount--;
+      console.log(`Released tickers WebSocket subscription, count: ${this.connectionCount}`);
+      
+      // If no more subscribers, close the connection
+      if (this.subscribers.size === 0 && this.activeConnection) {
+        console.log('No more subscribers, closing tickers WebSocket');
+        this.activeConnection.close();
+        this.activeConnection = null;
+      }
+    }
+  }
+};
+
 const TickerList = ({ onClose }: { onClose: () => void }) => {
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
-  const webSocketRef = useRef<WebSocket | null>(null);
+  
   const tickersMapRef = useRef<Map<string, TickerData>>(new Map());
   const updatedTickersRef = useRef<Set<string>>(new Set());
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const isComponentMountedRef = useRef<boolean>(true);
+  const webSocketRef = useRef<WebSocket | null>(null);
+  const onMessageCallbackRef = useRef<(data: any) => void>(() => {});
+  const screenSizeRef = useRef<string>(typeof window !== 'undefined' ? 
+    window.innerWidth <= 768 ? 'mobile' : 'desktop' : 'desktop');
 
   const fetchTickers = async () => {
+    if (!isComponentMountedRef.current) return;
+    
     setIsLoading(true);
     try {
       // Fallback to HTTP for initial data
@@ -35,6 +125,7 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       });
 
       if (error) throw error;
+      if (!isComponentMountedRef.current) return;
       
       if (data && Array.isArray(data)) {
         data.forEach((ticker: TickerData) => {
@@ -50,134 +141,130 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
       }
     } catch (error) {
       console.error('Failed to fetch tickers:', error);
-      toast.error('Failed to fetch ticker data');
+      if (isComponentMountedRef.current) {
+        toast.error('Failed to fetch ticker data');
+      }
     } finally {
-      setIsLoading(false);
+      if (isComponentMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const connectWebSocket = () => {
-    if (webSocketRef.current && webSocketRef.current.readyState !== WebSocket.CLOSED) {
-      webSocketRef.current.close();
+    if (!isComponentMountedRef.current) return;
+    
+    if (webSocketRef.current) {
+      // We are already connected - release the old callback
+      tickersWsRegistry.releaseConnection(onMessageCallbackRef.current);
     }
-
+    
     try {
-      // Connect to our Supabase edge function WebSocket instead of directly to Binance
-      const host = window.location.host.includes('localhost') 
-        ? 'localhost:54321' 
-        : window.location.host;
-      
-      const isSecure = window.location.protocol === 'https:';
-      const wsProtocol = isSecure ? 'wss' : 'ws';
-      const wsUrl = `${wsProtocol}://${host}/functions/v1/crypto-prices`;
-      
-      console.log('Connecting to edge function WebSocket for tickers:', wsUrl);
-      
-      const ws = new WebSocket(wsUrl);
-      webSocketRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('WebSocket connected to edge function for tickers');
-        setIsWebSocketConnected(true);
-        toast.success('Live ticker updates connected');
-        reconnectAttempts.current = 0;
+      // Create a message handler
+      const onMessage = (data: any) => {
+        if (!isComponentMountedRef.current) return;
         
-        // Request all tickers
-        ws.send(JSON.stringify({
-          type: 'allTickers'
-        }));
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'initial' || data.type === 'refresh') {
-            // Full ticker list update
-            if (Array.isArray(data.data)) {
-              data.data.forEach((ticker: TickerData) => {
-                tickersMapRef.current.set(ticker.symbol, ticker);
-              });
+        if (Array.isArray(data)) {
+          // Process the data into our ticker format
+          data.forEach((ticker) => {
+            if (ticker.s && ticker.s.endsWith('USDT')) {
+              const tickerData: TickerData = {
+                symbol: ticker.s,
+                priceChange: ticker.p || '0',
+                priceChangePercent: ticker.P || '0',
+                lastPrice: ticker.c || '0',
+                volume: ticker.v || '0',
+                quoteVolume: ticker.q || '0'
+              };
               
-              // Sort tickers by volume and update state
-              const sortedTickers = Array.from(tickersMapRef.current.values())
-                .sort((a, b) => {
-                  const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
-                  const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
-                  return bVolume - aVolume;
-                });
-              
-              setTickers(sortedTickers);
-              setLastUpdateTime(new Date());
-            }
-          } else if (data.type === 'ticker') {
-            // Single ticker update
-            const ticker = data.data;
-            if (ticker && ticker.symbol) {
-              tickersMapRef.current.set(ticker.symbol, ticker);
-              updatedTickersRef.current.add(ticker.symbol);
+              tickersMapRef.current.set(tickerData.symbol, tickerData);
+              updatedTickersRef.current.add(tickerData.symbol);
               
               // Clear the highlight after 2 seconds
               setTimeout(() => {
-                updatedTickersRef.current.delete(ticker.symbol);
+                if (isComponentMountedRef.current) {
+                  updatedTickersRef.current.delete(tickerData.symbol);
+                }
               }, 2000);
-              
-              // Update state with sorted tickers
-              const sortedTickers = Array.from(tickersMapRef.current.values())
-                .sort((a, b) => {
-                  const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
-                  const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
-                  return bVolume - aVolume;
-                });
-              
-              setTickers(sortedTickers);
-              setLastUpdateTime(new Date());
             }
+          });
+          
+          // Update state with sorted tickers
+          if (isComponentMountedRef.current) {
+            const sortedTickers = Array.from(tickersMapRef.current.values())
+              .filter(ticker => ticker.symbol.endsWith('USDT'))
+              .sort((a, b) => {
+                const aVolume = a.quoteVolume ? parseFloat(a.quoteVolume) : parseFloat(a.volume) * parseFloat(a.lastPrice);
+                const bVolume = b.quoteVolume ? parseFloat(b.quoteVolume) : parseFloat(b.volume) * parseFloat(b.lastPrice);
+                return bVolume - aVolume;
+              });
+            
+            setTickers(sortedTickers);
+            setLastUpdateTime(new Date());
           }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
         }
       };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected for tickers');
-        setIsWebSocketConnected(false);
-        
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          reconnectAttempts.current += 1;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          
-          console.log(`Attempting to reconnect ticker WebSocket in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (document.visibilityState === 'visible') {
-              connectWebSocket();
-            }
-          }, delay);
-        } else {
-          console.log('Maximum reconnection attempts reached for tickers');
-          toast.error('Connection lost, falling back to manual updates');
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error for tickers:', error);
-        toast.error('Connection error, trying to reconnect...');
-        setIsWebSocketConnected(false);
-      };
+      
+      // Store the callback in the ref so we can release it later
+      onMessageCallbackRef.current = onMessage;
+      
+      // Get a connection from the registry
+      webSocketRef.current = tickersWsRegistry.getConnection(onMessage);
+      
+      setIsWebSocketConnected(true);
+      
     } catch (error) {
-      console.error('Error creating WebSocket connection for tickers:', error);
-      toast.error('Failed to establish WebSocket connection');
-      setIsWebSocketConnected(false);
+      console.error('Error setting up WebSocket connection for tickers:', error);
+      if (isComponentMountedRef.current) {
+        toast.error('Failed to establish WebSocket connection');
+        setIsWebSocketConnected(false);
+      }
     }
   };
 
+  // Handle screen size changes
   useEffect(() => {
+    const handleResize = () => {
+      const newScreenSize = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+      if (screenSizeRef.current !== newScreenSize) {
+        console.log(`Screen size changed from ${screenSizeRef.current} to ${newScreenSize}`);
+        screenSizeRef.current = newScreenSize;
+        
+        // If WebSocket is connected, reconnect it
+        if (isWebSocketConnected) {
+          // Clean up and reconnect after a small delay
+          if (webSocketRef.current) {
+            tickersWsRegistry.releaseConnection(onMessageCallbackRef.current);
+            webSocketRef.current = null;
+          }
+          
+          setIsWebSocketConnected(false);
+          
+          setTimeout(() => {
+            if (isComponentMountedRef.current) {
+              connectWebSocket();
+            }
+          }, 300);
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isWebSocketConnected]);
+
+  useEffect(() => {
+    isComponentMountedRef.current = true;
+    
     // First fetch data via HTTP
     fetchTickers().then(() => {
       // Then attempt WebSocket connection
       const timeoutId = setTimeout(() => {
-        connectWebSocket();
+        if (isComponentMountedRef.current) {
+          connectWebSocket();
+        }
       }, 300);
       
       return () => {
@@ -186,14 +273,11 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     });
     
     return () => {
-      if (webSocketRef.current) {
-        webSocketRef.current.close();
-        webSocketRef.current = null;
-      }
+      isComponentMountedRef.current = false;
       
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
+      if (webSocketRef.current) {
+        tickersWsRegistry.releaseConnection(onMessageCallbackRef.current);
+        webSocketRef.current = null;
       }
     };
   }, []);
@@ -204,7 +288,9 @@ const TickerList = ({ onClose }: { onClose: () => void }) => {
     // If WebSocket is not connected, fall back to HTTP updates
     if (!isWebSocketConnected && tickers.length > 0) {
       httpUpdateInterval = setInterval(() => {
-        fetchTickers();
+        if (isComponentMountedRef.current) {
+          fetchTickers();
+        }
       }, 15000); // Every 15 seconds
     }
     
