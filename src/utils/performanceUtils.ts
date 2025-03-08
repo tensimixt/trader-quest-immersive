@@ -1,3 +1,4 @@
+
 // Add this import at the top if it's not already there
 import { format as formatDate } from 'date-fns';
 
@@ -71,4 +72,51 @@ export const getDailyChange = (kline: any): number => {
 
 export const formatDailyChange = (change: number): string => {
   return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%`;
+};
+
+// Add the missing generatePerformanceData function
+export const generatePerformanceData = (marketCalls: Array<any>, year: string): any => {
+  // Filter calls for the specified year
+  const yearCalls = marketCalls.filter(call => {
+    const callYear = new Date(call.timestamp).getFullYear().toString();
+    return callYear === year;
+  });
+  
+  // Initialize monthly data
+  const monthlyData = Array(12).fill(0).map((_, idx) => ({
+    month: new Date(Number(year), idx).toLocaleString('default', { month: 'short' }),
+    winRate: 0,
+    calls: 0
+  }));
+  
+  // Process calls by month
+  yearCalls.forEach(call => {
+    const callDate = new Date(call.timestamp);
+    const monthIndex = callDate.getMonth();
+    
+    // Count call
+    monthlyData[monthIndex].calls += 1;
+    
+    // If positive ROI, count as win
+    if (call.roi > 0) {
+      monthlyData[monthIndex].winRate += 1;
+    }
+  });
+  
+  // Calculate win rate percentages
+  monthlyData.forEach(month => {
+    if (month.calls > 0) {
+      month.winRate = (month.winRate / month.calls) * 100;
+    }
+  });
+  
+  // Calculate overall win rate
+  const totalCalls = yearCalls.length;
+  const totalWins = yearCalls.filter(call => call.roi > 0).length;
+  const overall = totalCalls > 0 ? Math.round((totalWins / totalCalls) * 100) : 0;
+  
+  return {
+    monthlyData,
+    overall
+  };
 };
