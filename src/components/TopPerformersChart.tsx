@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import TokenDetailChart from './TokenDetailChart';
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -52,6 +53,10 @@ type PerformanceData = {
   initialPrice?: number;
 }
 
+interface TopPerformersChartProps {
+  onClose: () => void;
+}
+
 const COLORS = [
   '#10B981', // emerald-500
   '#3B82F6', // blue-500
@@ -65,7 +70,7 @@ const COLORS = [
   '#EF4444', // red-500
 ];
 
-const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
   const [topPerformers, setTopPerformers] = useState<PerformanceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [timeframe, setTimeframe] = useState<number>(7);
@@ -74,6 +79,10 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
+  
+  const dialogOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dialogActionsInProgressRef = useRef(false);
+  const lastClickTimeRef = useRef(0);
 
   useEffect(() => {
     fetchTopPerformers();
@@ -198,51 +207,40 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       setNormalizedData(formattedData);
     }
   };
-  
-  const formatPercentage = (value: number): string => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
 
-  const formatPrice = (price: number): string => {
-    if (price < 0.01) return `$${price.toFixed(6)}`;
-    if (price < 1) return `$${price.toFixed(4)}`;
-    if (price < 1000) return `$${price.toFixed(2)}`;
-    return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  };
-  
-  const formatTimestamp = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleDateString();
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const date = formatTimestamp(label);
-      
-      return (
-        <div className="custom-tooltip bg-black/90 border border-emerald-500/30 p-2 rounded">
-          <p className="text-emerald-400 font-mono text-xs">{date}</p>
-          <div className="tooltip-items">
-            {payload.map((entry: any, index: number) => (
-              <div key={`item-${index}`} className="flex items-center text-xs py-1">
-                <div 
-                  className="w-2 h-2 rounded-full mr-1" 
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="text-white mr-2">{entry.name}:</span>
-                <span 
-                  className={entry.value >= 0 ? 'text-emerald-400' : 'text-red-400'}
-                >
-                  {formatPercentage(entry.value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
+  const handleTokenCardClick = (performer: PerformanceData) => {
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 500) {
+      console.log('Debouncing rapid token card clicks');
+      return;
+    }
+    lastClickTimeRef.current = now;
+    
+    if (dialogActionsInProgressRef.current) {
+      console.log('Dialog action already in progress, ignoring click');
+      return;
     }
     
-    return null;
+    dialogActionsInProgressRef.current = true;
+    
+    setSelectedToken(performer);
+    
+    setTimeout(() => {
+      setTokenDetailsOpen(true);
+      
+      setTimeout(() => {
+        dialogActionsInProgressRef.current = false;
+      }, 100);
+    }, 50);
   };
+
+  useEffect(() => {
+    return () => {
+      if (dialogOpenTimerRef.current) {
+        clearTimeout(dialogOpenTimerRef.current);
+      }
+    };
+  }, []);
 
   const InfoNote = () => (
     <div className="text-amber-200 text-xs leading-relaxed">
@@ -274,61 +272,85 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const dailyChange = lastKline ? getDailyChange(lastKline) : null;
     
     return (
-      <Dialog open={tokenDetailsOpen} onOpenChange={setTokenDetailsOpen}>
-        <DialogContent className="bg-black/95 border border-emerald-500/30 text-white">
+      <Dialog 
+        open={tokenDetailsOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setTokenDetailsOpen(false);
+            setTimeout(() => setSelectedToken(null), 300);
+          } 
+        }}
+      >
+        <DialogContent className="sm:max-w-[850px] bg-black/95 border border-emerald-500/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-emerald-400 flex items-center gap-2">
               <Info size={18} />
               {selectedToken.symbol.replace('USDT', '')} Performance Details
             </DialogTitle>
+            <DialogDescription className="text-emerald-300/70">
+              {getTimeframeText(timeframe)} performance analysis
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div>
-              <span className="text-emerald-400 font-semibold">Current Price:</span>
-              <span className="ml-2 text-white">{formatPrice(selectedToken.currentPrice)}</span>
-              {dailyChange !== null && (
-                <span className={`ml-2 ${dailyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {formatDailyChange(dailyChange)}
-                </span>
-              )}
-            </div>
-            <div>
-              <span className="text-emerald-400 font-semibold">Initial Price:</span>
-              <span className="ml-2 text-white">{formatPrice(initialPrice)}</span>
-              {selectedToken.isNewListing && (
-                <span className="ml-2 text-amber-400">(from {daysAvailable} days ago)</span>
-              )}
-            </div>
-            <div>
-              <span className="text-emerald-400 font-semibold">Overall Performance:</span>
-              <span className={`ml-2 ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {formatPercentage(selectedToken.performance)}
-              </span>
-            </div>
-            {selectedToken.klineData && selectedToken.klineData.length > 0 && (
-              <div>
-                <span className="text-emerald-400 font-semibold">Calculation Method:</span>
-                <span className="ml-2 text-white">
-                  Open price at start: {formatPrice(selectedToken.klineData[0].open)} → 
-                  Close price now: {formatPrice(selectedToken.klineData[selectedToken.klineData.length-1].close)}
-                </span>
-              </div>
-            )}
-            {selectedToken.isNewListing && (
-              <div className="border border-amber-500/20 rounded p-2 bg-amber-500/10">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-amber-400 mt-0.5" />
-                  <div>
-                    <p className="text-amber-300 font-medium">New Listing</p>
-                    <p className="text-amber-200 text-xs mt-1">
-                      This token has only been available for trading for {daysAvailable} days, 
-                      which is less than the selected timeframe of {timeframe} days.
-                      The performance shown is calculated from its first trading day.
-                    </p>
-                  </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3 text-sm">
+                <div>
+                  <span className="text-emerald-400 font-semibold">Current Price:</span>
+                  <span className="ml-2 text-white">{formatPrice(selectedToken.currentPrice)}</span>
+                  {dailyChange !== null && (
+                    <span className={`ml-2 ${dailyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {formatDailyChange(dailyChange)}
+                    </span>
+                  )}
                 </div>
+                <div>
+                  <span className="text-emerald-400 font-semibold">Initial Price:</span>
+                  <span className="ml-2 text-white">{formatPrice(initialPrice)}</span>
+                  {selectedToken.isNewListing && (
+                    <span className="ml-2 text-amber-400">(from {daysAvailable} days ago)</span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-emerald-400 font-semibold">Overall Performance:</span>
+                  <span className={`ml-2 ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {formatPercentage(selectedToken.performance)}
+                  </span>
+                </div>
+                {selectedToken.klineData && selectedToken.klineData.length > 0 && (
+                  <div>
+                    <span className="text-emerald-400 font-semibold">Calculation Method:</span>
+                    <span className="ml-2 text-white">
+                      Open price at start: {formatPrice(selectedToken.klineData[0].open)} → 
+                      Close price now: {formatPrice(selectedToken.klineData[selectedToken.klineData.length-1].close)}
+                    </span>
+                  </div>
+                )}
+                {selectedToken.isNewListing && (
+                  <div className="border border-amber-500/20 rounded p-2 bg-amber-500/10">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={16} className="text-amber-400 mt-0.5" />
+                      <div>
+                        <p className="text-amber-300 font-medium">New Listing</p>
+                        <p className="text-amber-200 text-xs mt-1">
+                          This token has only been available for trading for {daysAvailable} days, 
+                          which is less than the selected timeframe of {timeframe} days.
+                          The performance shown is calculated from its first trading day.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              
+              <div>
+                <h4 className="text-emerald-400 text-sm font-medium mb-2">{selectedToken.symbol} Price Chart</h4>
+                <TokenDetailChart 
+                  symbol={selectedToken.symbol} 
+                  interval={timeframe <= 1 ? '1h' : '1d'} 
+                  timeframe={timeframe}
+                />
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -444,10 +466,7 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <div 
             key={performer.symbol} 
             className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
-            onClick={() => {
-              setSelectedToken(performer);
-              setTokenDetailsOpen(true);
-            }}
+            onClick={() => handleTokenCardClick(performer)}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-emerald-400 font-mono text-xs font-bold">
@@ -515,6 +534,36 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <TokenDetailsDialog />
     </motion.div>
   );
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const date = label;
+    
+    return (
+      <div className="custom-tooltip bg-black/90 border border-emerald-500/30 p-2 rounded">
+        <p className="text-emerald-400 font-mono text-xs">{date}</p>
+        <div className="tooltip-items">
+          {payload.map((entry: any, index: number) => (
+            <div key={`item-${index}`} className="flex items-center text-xs py-1">
+              <div 
+                className="w-2 h-2 rounded-full mr-1" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-white mr-2">{entry.name}:</span>
+              <span 
+                className={entry.value >= 0 ? 'text-emerald-400' : 'text-red-400'}
+              >
+                {formatPercentage(entry.value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  return null;
 };
 
 export default TopPerformersChart;

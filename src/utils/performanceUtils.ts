@@ -1,3 +1,4 @@
+
 type MarketCall = {
   timestamp: string;
   roi: number;
@@ -66,6 +67,9 @@ export const formatPrice = (price: number): string => {
   if (price < 1000) return `$${price.toFixed(2)}`;
   return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 };
+
+// Alias for compatibility with any code that might be using formatCurrency
+export const formatCurrency = formatPrice;
 
 // Function to get the initial price for a token
 export const getInitialPrice = (priceData: Array<{timestamp: number, price: number}>): number => {
