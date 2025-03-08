@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { RefreshCw, X, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -190,6 +189,15 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <X size={16} />
           </button>
         </div>
+      </div>
+      
+      <div className="bg-amber-900/30 border border-amber-500/20 rounded-lg p-2 mb-4 flex items-start">
+        <Info size={16} className="text-amber-400 mt-0.5 mr-2 flex-shrink-0" />
+        <p className="text-amber-200 text-xs">
+          <span className="font-bold">Note:</span> Performance percentage is calculated based on available data. 
+          Tokens with <AlertTriangle size={10} className="inline text-amber-400 mx-1" /> 
+          are new listings with incomplete data and may show different performance than expected.
+        </p>
       </div>
       
       <div className="flex flex-wrap gap-2 mb-4">

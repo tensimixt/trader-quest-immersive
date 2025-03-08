@@ -26,3 +26,31 @@ export const generatePerformanceData = (calls: MarketCall[], year: string) => {
     wins: winningCalls
   };
 };
+
+// New utility function to normalize price data for charts
+export const normalizeChartData = (priceData: Array<{timestamp: number, price: number}>) => {
+  if (!priceData.length) return [];
+  
+  const initialPrice = priceData[0].price;
+  
+  return priceData.map(point => ({
+    timestamp: point.timestamp,
+    formattedDate: new Date(point.timestamp).toLocaleDateString(),
+    percentChange: ((point.price - initialPrice) / initialPrice) * 100,
+    price: point.price
+  }));
+};
+
+// Function to detect if a token is likely a new listing
+export const isLikelyNewListing = (
+  priceData: Array<{timestamp: number, price: number}>, 
+  expectedDays: number
+) => {
+  if (priceData.length < 2) return false;
+  
+  const firstTimestamp = priceData[0].timestamp;
+  const lastTimestamp = priceData[priceData.length - 1].timestamp;
+  const daysCovered = (lastTimestamp - firstTimestamp) / (1000 * 60 * 60 * 24);
+  
+  return daysCovered < (expectedDays * 0.8);
+};
