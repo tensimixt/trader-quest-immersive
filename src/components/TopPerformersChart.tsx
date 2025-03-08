@@ -81,21 +81,9 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<PerformanceData | null>(null);
   const [tokenDetailsOpen, setTokenDetailsOpen] = useState(false);
-  
-  const isDialogTransitioning = useRef(false);
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastClickTimeRef = useRef(0);
-  const detailsDialogRef = useRef<HTMLDivElement>(null);
-  const processingClickRef = useRef(false);
 
   useEffect(() => {
     fetchTopPerformers();
-    
-    return () => {
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
-    };
   }, [timeframe, limit]);
 
   const fetchTopPerformers = async () => {
@@ -222,55 +210,9 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     event.preventDefault();
     event.stopPropagation();
     
-    if (processingClickRef.current) {
-      console.log('Already processing a click, ignoring this one');
-      return;
-    }
-    
-    processingClickRef.current = true;
-    
-    const now = Date.now();
-    if (now - lastClickTimeRef.current < 800) {
-      console.log('Debouncing rapid click');
-      setTimeout(() => {
-        processingClickRef.current = false;
-      }, 500);
-      return;
-    }
-    lastClickTimeRef.current = now;
-    
-    if (isDialogTransitioning.current) {
-      console.log('Dialog is already transitioning, ignoring click');
-      setTimeout(() => {
-        processingClickRef.current = false;
-      }, 500);
-      return;
-    }
-    
     console.log('Token card clicked:', performer.symbol);
-    isDialogTransitioning.current = true;
-    
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
-    
     setSelectedToken(performer);
-    
-    clickTimeoutRef.current = setTimeout(() => {
-      if (performer && performer.symbol) {
-        console.log('Opening dialog for:', performer.symbol);
-        setTokenDetailsOpen(true);
-        
-        setTimeout(() => {
-          isDialogTransitioning.current = false;
-          processingClickRef.current = false;
-          console.log('Dialog transition complete');
-        }, 800);
-      } else {
-        isDialogTransitioning.current = false;
-        processingClickRef.current = false;
-      }
-    }, 200);
+    setTokenDetailsOpen(true);
   };
 
   const InfoNote = () => (
@@ -302,37 +244,12 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
     const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
     const dailyChange = lastKline ? getDailyChange(lastKline) : null;
     
-    const handleOpenChange = (open: boolean) => {
-      console.log('Dialog open change:', open);
-      
-      if (isDialogTransitioning.current) {
-        console.log('Ignoring dialog open change during transition');
-        return;
-      }
-      
-      if (!open) {
-        isDialogTransitioning.current = true;
-        
-        setTokenDetailsOpen(false);
-        
-        setTimeout(() => {
-          if (!tokenDetailsOpen) {
-            setSelectedToken(null);
-          }
-          
-          isDialogTransitioning.current = false;
-          console.log('Dialog fully closed');
-        }, 500);
-      }
-    };
-    
     return (
       <Dialog 
         open={tokenDetailsOpen} 
-        onOpenChange={handleOpenChange}
+        onOpenChange={setTokenDetailsOpen}
       >
         <DialogContent 
-          ref={detailsDialogRef}
           onClick={(e) => e.stopPropagation()} 
           className="sm:max-w-[850px] bg-black/95 border border-emerald-500/30 text-white"
         >
@@ -530,14 +447,7 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ onClose }) => {
           <div 
             key={performer.symbol} 
             className="bg-black/30 border border-emerald-500/10 rounded-lg p-2 flex flex-col cursor-pointer hover:border-emerald-500/40 transition-colors"
-            onClick={(e) => {
-              if (!isDialogTransitioning.current && !processingClickRef.current) {
-                handleTokenCardClick(performer, e);
-              } else {
-                e.stopPropagation();
-                e.preventDefault();
-              }
-            }}
+            onClick={(e) => handleTokenCardClick(performer, e)}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-emerald-400 font-mono text-xs font-bold">
@@ -647,4 +557,3 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default TopPerformersChart;
-
