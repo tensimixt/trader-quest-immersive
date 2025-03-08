@@ -22,7 +22,11 @@ import {
   formatPercentage, 
   formatPrice, 
   getInitialPrice, 
-  getTimeframeText 
+  getTimeframeText,
+  calculateOpenClosePerformance,
+  normalizeOHLCChartData,
+  getDailyChange,
+  formatDailyChange
 } from '@/utils/performanceUtils';
 
 type PerformanceData = {
@@ -31,6 +35,14 @@ type PerformanceData = {
   priceData: Array<{
     timestamp: number;
     price: number;
+  }>;
+  klineData?: Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
   }>;
   currentPrice: number;
   isNewListing?: boolean;
@@ -75,7 +87,8 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         body: { 
           getTopPerformers: true,
           days: timeframe,
-          limit: limit
+          limit: limit,
+          useOHLC: true
         }
       });
       
@@ -83,15 +96,23 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       
       console.log('Fetched top performers:', data);
       
-      // Add initial price to each performer for reference
-      const enhancedData = data.map((performer: PerformanceData) => ({
-        ...performer,
-        initialPrice: performer.priceData.length > 0 ? performer.priceData[0].price : 0
-      }));
+      const enhancedData = data.map((performer: PerformanceData) => {
+        let calculatedPerformance = performer.performance;
+        
+        if (performer.klineData && performer.klineData.length >= 2) {
+          calculatedPerformance = calculateOpenClosePerformance(performer.klineData);
+        }
+        
+        return {
+          ...performer,
+          performance: calculatedPerformance,
+          initialPrice: performer.klineData?.length ? performer.klineData[0].open : 
+                        (performer.priceData.length > 0 ? performer.priceData[0].price : 0)
+        };
+      });
       
       setTopPerformers(enhancedData);
       
-      // Normalize data for charting
       normalizeDataForChart(enhancedData);
       
     } catch (error) {
@@ -105,46 +126,77 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const normalizeDataForChart = (performers: PerformanceData[]) => {
     if (!performers.length) return;
     
-    // First, find the earliest common timestamp
-    const allTimestamps = new Set<number>();
-    performers.forEach(performer => {
-      performer.priceData.forEach(point => {
-        allTimestamps.add(point.timestamp);
-      });
-    });
+    const hasKlineData = performers.some(p => p.klineData && p.klineData.length > 0);
     
-    const timestampArray = Array.from(allTimestamps).sort((a, b) => a - b);
-    
-    // Create normalized data points
-    const normalized = timestampArray.map(timestamp => {
-      const dataPoint: any = { timestamp };
-      
+    if (hasKlineData) {
+      const allTimestamps = new Set<number>();
       performers.forEach(performer => {
-        const matchingPoint = performer.priceData.find(p => p.timestamp === timestamp);
-        if (matchingPoint) {
-          // Find the initial price for this performer
-          const initialPrice = performer.priceData[0]?.price || 1;
-          // Calculate percentage change from initial price
-          const percentChange = ((matchingPoint.price - initialPrice) / initialPrice) * 100;
-          dataPoint[performer.symbol] = percentChange;
+        if (performer.klineData) {
+          performer.klineData.forEach(kline => {
+            allTimestamps.add(kline.timestamp);
+          });
         }
       });
       
-      return dataPoint;
-    });
-    
-    // Sort by timestamp
-    const sortedData = normalized.sort((a, b) => a.timestamp - b.timestamp);
-    
-    // Format dates for display
-    const formattedData = sortedData.map(point => {
-      return {
+      const timestampArray = Array.from(allTimestamps).sort((a, b) => a - b);
+      
+      const normalized = timestampArray.map(timestamp => {
+        const dataPoint: any = { timestamp };
+        
+        performers.forEach(performer => {
+          if (performer.klineData) {
+            const matchingKline = performer.klineData.find(k => k.timestamp === timestamp);
+            if (matchingKline) {
+              const initialOpen = performer.klineData[0]?.open || 1;
+              const percentChange = ((matchingKline.close - initialOpen) / initialOpen) * 100;
+              dataPoint[performer.symbol] = percentChange;
+            }
+          }
+        });
+        
+        return dataPoint;
+      });
+      
+      const sortedData = normalized.sort((a, b) => a.timestamp - b.timestamp);
+      const formattedData = sortedData.map(point => ({
         ...point,
         formattedDate: new Date(point.timestamp).toLocaleDateString()
-      };
-    });
-    
-    setNormalizedData(formattedData);
+      }));
+      
+      setNormalizedData(formattedData);
+    } else {
+      const allTimestamps = new Set<number>();
+      performers.forEach(performer => {
+        performer.priceData.forEach(point => {
+          allTimestamps.add(point.timestamp);
+        });
+      });
+      
+      const timestampArray = Array.from(allTimestamps).sort((a, b) => a - b);
+      
+      const normalized = timestampArray.map(timestamp => {
+        const dataPoint: any = { timestamp };
+        
+        performers.forEach(performer => {
+          const matchingPoint = performer.priceData.find(p => p.timestamp === timestamp);
+          if (matchingPoint) {
+            const initialPrice = performer.priceData[0]?.price || 1;
+            const percentChange = ((matchingPoint.price - initialPrice) / initialPrice) * 100;
+            dataPoint[performer.symbol] = percentChange;
+          }
+        });
+        
+        return dataPoint;
+      });
+      
+      const sortedData = normalized.sort((a, b) => a.timestamp - b.timestamp);
+      const formattedData = sortedData.map(point => ({
+        ...point,
+        formattedDate: new Date(point.timestamp).toLocaleDateString()
+      }));
+      
+      setNormalizedData(formattedData);
+    }
   };
   
   const formatPercentage = (value: number): string => {
@@ -198,13 +250,14 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <span className="font-bold">How performance is calculated:</span>
       </p>
       <ul className="list-disc pl-4 space-y-1">
-        <li>For tokens with complete data history, performance is measured from the beginning of the selected time period ({getTimeframeText(timeframe)}).</li>
+        <li>Performance is measured from the <strong>opening price</strong> of the first candle to the <strong>closing price</strong> of the most recent candle within the selected timeframe ({getTimeframeText(timeframe)}).</li>
+        <li>For tokens with complete data history, this shows the real market performance over time.</li>
         <li>For new listings with incomplete data, performance is calculated from the earliest available price point.</li>
         <li>Tokens marked with <AlertTriangle size={12} className="inline text-amber-400 mx-1" /> are new listings with less than complete data for the selected timeframe.</li>
         <li>The number beside the warning icon (e.g., "16d") indicates the number of days of data available for that token.</li>
       </ul>
       <p className="mt-2">
-        For example, if a token was listed 16 days ago at $0.10 and is now worth $1.55, it will show a performance of +1450% even in the 30-day view.
+        This methodology aligns with standard financial market analysis by comparing opening and closing prices rather than arbitrary points during trading sessions.
       </p>
     </div>
   );
@@ -212,8 +265,13 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const TokenDetailsDialog = () => {
     if (!selectedToken) return null;
     
-    const initialPrice = selectedToken.initialPrice || getInitialPrice(selectedToken.priceData);
+    const initialPrice = selectedToken.initialPrice || 
+                          (selectedToken.klineData?.length ? selectedToken.klineData[0].open : 
+                          getInitialPrice(selectedToken.priceData));
     const daysAvailable = selectedToken.daysCovered || "N/A";
+    
+    const lastKline = selectedToken.klineData?.[selectedToken.klineData.length - 1];
+    const dailyChange = lastKline ? getDailyChange(lastKline) : null;
     
     return (
       <Dialog open={tokenDetailsOpen} onOpenChange={setTokenDetailsOpen}>
@@ -228,6 +286,11 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <div>
               <span className="text-emerald-400 font-semibold">Current Price:</span>
               <span className="ml-2 text-white">{formatPrice(selectedToken.currentPrice)}</span>
+              {dailyChange !== null && (
+                <span className={`ml-2 ${dailyChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatDailyChange(dailyChange)}
+                </span>
+              )}
             </div>
             <div>
               <span className="text-emerald-400 font-semibold">Initial Price:</span>
@@ -237,11 +300,20 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               )}
             </div>
             <div>
-              <span className="text-emerald-400 font-semibold">Performance:</span>
+              <span className="text-emerald-400 font-semibold">Overall Performance:</span>
               <span className={`ml-2 ${selectedToken.performance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {formatPercentage(selectedToken.performance)}
               </span>
             </div>
+            {selectedToken.klineData && selectedToken.klineData.length > 0 && (
+              <div>
+                <span className="text-emerald-400 font-semibold">Calculation Method:</span>
+                <span className="ml-2 text-white">
+                  Open price at start: {formatPrice(selectedToken.klineData[0].open)} → 
+                  Close price now: {formatPrice(selectedToken.klineData[selectedToken.klineData.length-1].close)}
+                </span>
+              </div>
+            )}
             {selectedToken.isNewListing && (
               <div className="border border-amber-500/20 rounded p-2 bg-amber-500/10">
                 <div className="flex items-start gap-2">
@@ -397,7 +469,7 @@ const TopPerformersChart: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                       <TooltipContent side="top" className="bg-black/90 border-amber-500/30 text-amber-200 text-xs max-w-[250px]">
                         <p className="font-bold mb-1">New Listing Alert!</p>
                         <p>{performer.symbol.replace('USDT', '')} has only {performer.daysCovered} days of data.</p>
-                        <p className="mt-1">Performance is calculated from its initial price of {formatPrice(getInitialPrice(performer.priceData))}.</p>
+                        <p className="mt-1">Performance is calculated from its initial price of {formatPrice(initialPrice: performer.initialPrice || (performer.klineData?.length ? performer.klineData[0].open : getInitialPrice(performer.priceData)))}.</p>
                       </TooltipContent>
                     </UITooltip>
                   </TooltipProvider>

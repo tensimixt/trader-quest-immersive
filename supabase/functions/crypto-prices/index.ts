@@ -66,9 +66,9 @@ async function fetch24hTickers() {
   }
 }
 
-async function fetchTopPerformers(days = 7, limit = 10) {
+async function fetchTopPerformers(days = 7, limit = 10, useOHLC = false) {
   try {
-    console.log(`Fetching top performers for ${days} days`);
+    console.log(`Fetching top performers for ${days} days (useOHLC: ${useOHLC})`);
     const allTickers = await fetch24hTickers();
     
     const topByVolume = allTickers.slice(0, 50);
@@ -105,8 +105,8 @@ async function fetchTopPerformers(days = 7, limit = 10) {
             timestamp: k.timestamp,
             price: k.close
           }));
-          
-          return {
+
+          const result = {
             symbol: ticker.symbol,
             performance,
             priceData,
@@ -116,6 +116,12 @@ async function fetchTopPerformers(days = 7, limit = 10) {
             expectedDataPoints: klineLimit,
             daysCovered: daysSinceFirstKline.toFixed(1)
           };
+          
+          if (useOHLC) {
+            result.klineData = klines;
+          }
+          
+          return result;
         } catch (error) {
           console.error(`Error processing ${ticker.symbol}:`, error);
           return {
@@ -354,6 +360,7 @@ serve(async (req) => {
     let getTopPerformers = url.searchParams.get('getTopPerformers') === 'true';
     let days = parseInt(url.searchParams.get('days') || '7', 10);
     let limit = parseInt(url.searchParams.get('limit') || '10', 10);
+    let useOHLC = url.searchParams.get('useOHLC') === 'true';
     
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
@@ -366,14 +373,15 @@ serve(async (req) => {
         getTopPerformers = (body.getTopPerformers === 'true' || body.getTopPerformers === true) || getTopPerformers;
         days = body.days || days;
         limit = body.limit || limit;
+        useOHLC = (body.useOHLC === 'true' || body.useOHLC === true) || useOHLC;
       } catch (e) {
         console.error("Error parsing JSON body:", e);
       }
     }
     
     if (getTopPerformers) {
-      console.log(`Fetching top ${limit} performers for ${days} days`);
-      const topPerformers = await fetchTopPerformers(days, limit);
+      console.log(`Fetching top ${limit} performers for ${days} days (useOHLC: ${useOHLC})`);
+      const topPerformers = await fetchTopPerformers(days, limit, useOHLC);
       return new Response(JSON.stringify(topPerformers), {
         headers: {
           ...corsHeaders,
