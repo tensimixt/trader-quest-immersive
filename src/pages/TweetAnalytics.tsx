@@ -1,11 +1,20 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { WalletAuthButton } from '@/components/WalletAuthButton';
+import { marketIntelligence } from '@/data/marketIntelligence';
 
 const TweetAnalytics = () => {
+  const [tweets, setTweets] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Initialize with sample data from marketIntelligence
+    setTweets(marketIntelligence.filter(item => item.screenName));
+  }, []);
+
   return (
     <div className="min-h-screen overflow-hidden bat-grid">
       <motion.div
@@ -22,7 +31,7 @@ const TweetAnalytics = () => {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1"
           >
-            <TweetClassifier />
+            <TweetClassifier tweets={tweets} isLoading={isLoading} />
           </motion.div>
         </div>
       </motion.div>
