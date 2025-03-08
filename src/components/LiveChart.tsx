@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import { RefreshCw, X, Maximize2 } from 'lucide-react';
+import { RefreshCw, X, Maximize2, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -10,6 +10,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LiveChartProps {
   symbol: string;
@@ -108,6 +115,17 @@ const formatDate = (timestamp: number): string => {
     ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+const timeframeOptions = [
+  { value: "1s", label: "1 Second" },
+  { value: "1m", label: "1 Minute" },
+  { value: "5m", label: "5 Minutes" },
+  { value: "15m", label: "15 Minutes" },
+  { value: "30m", label: "30 Minutes" },
+  { value: "1h", label: "1 Hour" },
+  { value: "4h", label: "4 Hours" },
+  { value: "1d", label: "1 Day" },
+];
+
 const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [data, setData] = useState<KlineData[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
@@ -115,7 +133,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [interval, setInterval] = useState<string>('15m');
+  const [interval, setInterval] = useState<string>("15m");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastDataPoint, setLastDataPoint] = useState<KlineData | null>(null);
   const [priceChangeAnimation, setPriceChangeAnimation] = useState<'increase' | 'decrease' | null>(null);
@@ -140,7 +158,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       setIsLoading(true);
       setIsUpdating(true);
       
-      console.log(`Fetching data for ${symbol}`);
+      console.log(`Fetching data for ${symbol} with interval ${interval}`);
       
       const { data: responseData, error: fetchError } = await supabase.functions.invoke('crypto-prices', {
         body: { symbol, history: 'true', interval }
@@ -414,6 +432,26 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
     return ((lastPrice - firstPrice) / firstPrice) * 100;
   };
 
+  const getTimeframeLabel = (interval: string): string => {
+    switch (interval) {
+      case "1s": return "1 sec";
+      case "1m": return "1 min";
+      case "5m": return "5 min";
+      case "15m": return "15 min";
+      case "30m": return "30 min";
+      case "1h": return "1 hr";
+      case "4h": return "4 hr";
+      case "1d": return "1 day";
+      default: return interval;
+    }
+  };
+
+  const handleIntervalChange = (newInterval: string) => {
+    if (newInterval !== interval) {
+      setInterval(newInterval);
+    }
+  };
+
   const priceChange = getPriceChange();
   const price = currentPrice ?? (data.length > 0 ? data[data.length - 1].close : 0);
 
@@ -422,8 +460,20 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
       isPriceDecreasingRef.current ? 'ring-2 ring-red-400 transition-all duration-300' : 'ring-2 ring-emerald-500 transition-all duration-300' 
       : ''}`}>
       <div className="mb-2 flex items-center justify-between px-2">
-        <div className="text-xs text-emerald-400/70 font-mono">
-          Timeframe: {interval}
+        <div className="text-xs text-emerald-400/70 font-mono flex items-center">
+          <Clock size={12} className="mr-1" />
+          <Select value={interval} onValueChange={handleIntervalChange}>
+            <SelectTrigger className="h-6 text-xs bg-black/60 border-emerald-500/30 w-20">
+              <SelectValue placeholder={getTimeframeLabel(interval)} />
+            </SelectTrigger>
+            <SelectContent className="bg-black border-emerald-500/30">
+              {timeframeOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="text-xs text-emerald-400/70 font-mono">
           {data.length > 0 ? 
@@ -573,6 +623,7 @@ const LiveChart = ({ symbol, onClose }: LiveChartProps) => {
           <div className="flex items-center mt-1">
             <span className={`text-sm font-mono ${priceChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
+              <span className="ml-1 text-xs opacity-70">({getTimeframeLabel(interval)})</span>
             </span>
           </div>
         </div>

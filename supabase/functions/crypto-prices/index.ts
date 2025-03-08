@@ -21,6 +21,11 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     console.log(`Fetching klines from: ${url}`);
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}, URL: ${url}`);
+    }
+    
     const data = await response.json();
     
     return data.map((kline: any) => ({
@@ -32,7 +37,29 @@ async function fetchBinanceKlines(symbol: string, interval = "15m", limit = 30) 
       volume: parseFloat(kline[5]),
     }));
   } catch (error) {
-    console.error(`Error fetching ${symbol} klines:`, error);
+    console.error(`Error fetching ${symbol} klines with interval ${interval}:`, error);
+    
+    if (interval === "1s") {
+      console.log(`Falling back to 1m interval for ${symbol}`);
+      try {
+        const fallbackUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${limit}`;
+        const fallbackResponse = await fetch(fallbackUrl);
+        const fallbackData = await fallbackResponse.json();
+        
+        return fallbackData.map((kline: any) => ({
+          timestamp: kline[0],
+          open: parseFloat(kline[1]),
+          high: parseFloat(kline[2]),
+          low: parseFloat(kline[3]),
+          close: parseFloat(kline[4]),
+          volume: parseFloat(kline[5]),
+        }));
+      } catch (fallbackError) {
+        console.error(`Fallback to 1m also failed for ${symbol}:`, fallbackError);
+        return [];
+      }
+    }
+    
     return [];
   }
 }
@@ -299,6 +326,7 @@ serve(async (req) => {
                 socket.send(JSON.stringify({
                   type: 'klineData',
                   symbol: message.symbol,
+                  interval: message.interval || '15m',
                   data: klines
                 }));
               }
