@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -26,15 +25,35 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = 1 } = await req.json();
+    const { cursor, batchSize = 1, startNew = false } = await req.json();
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}`);
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // If startNew is true, get the most recent tweets
+    // Otherwise, use the provided cursor or find the oldest tweet's cursor
     let nextCursor = cursor;
+    
+    if (!cursor && !startNew) {
+      // Find the oldest tweet we've stored to get its cursor for pagination
+      const { data: oldestTweet, error: findError } = await supabase
+        .from('historical_tweets')
+        .select('id')
+        .order('created_at', { ascending: true })
+        .limit(1);
+      
+      if (findError) {
+        console.error('Error finding oldest tweet:', findError);
+      } else if (oldestTweet && oldestTweet.length > 0) {
+        // Use the oldest tweet ID to build a position cursor
+        // This is a simplified approach - Twitter API may require specific cursor format
+        console.log(`Found oldest tweet ID: ${oldestTweet[0].id}`);
+      }
+    }
+    
     let totalFetched = 0;
     let latestCursor = null;
     

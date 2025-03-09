@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft, History } from 'lucide-react';
@@ -21,6 +20,7 @@ const TweetAnalyzer = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [tweetData, setTweetData] = useState<any[]>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -129,13 +129,19 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const fetchHistoricalTweets = async () => {
+  const fetchHistoricalTweets = async (startNew = false) => {
     setIsHistoricalLoading(true);
     try {
+      if (startNew) {
+        setFetchingMode('newer');
+        setCurrentCursor(null);
+      }
+      
       const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
         body: { 
           cursor: currentCursor,
-          batchSize: 2 // Fetch 2 pages of historical tweets
+          batchSize: 2,
+          startNew: startNew
         }
       });
       
@@ -150,11 +156,10 @@ const TweetAnalyzer = () => {
         setCurrentCursor(data.nextCursor);
         toast.success(`Fetched ${data.totalFetched} historical tweets`);
         
-        // If we have a cursor, let the user know there are more tweets to fetch
         if (data.nextCursor) {
-          toast.info('More historical tweets available. Click "Fetch Historical" again to get more.');
+          toast.info(`More historical tweets available. Click "Fetch ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to get more.`);
         } else {
-          toast.info('All historical tweets have been fetched.');
+          toast.info(`All ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets have been fetched.`);
         }
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
@@ -165,6 +170,13 @@ const TweetAnalyzer = () => {
     } finally {
       setIsHistoricalLoading(false);
     }
+  };
+
+  const toggleFetchingMode = () => {
+    const newMode = fetchingMode === 'newer' ? 'older' : 'newer';
+    setFetchingMode(newMode);
+    setCurrentCursor(null);
+    toast.info(`Switched to fetching ${newMode} tweets`);
   };
 
   const filteredTweets = tweetData.filter(tweet => {
@@ -221,16 +233,26 @@ const TweetAnalyzer = () => {
                 className="pl-8 bg-black/40 border-emerald-500/30 text-white"
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchHistoricalTweets}
-              disabled={isHistoricalLoading}
-              className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-            >
-              <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
-              Fetch Historical
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleFetchingMode()}
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+              >
+                {fetchingMode === 'older' ? "Switch to Newer" : "Switch to Older"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchHistoricalTweets(fetchingMode === 'newer')}
+                disabled={isHistoricalLoading}
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+              >
+                <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
+                Fetch {fetchingMode === 'newer' ? 'Newer' : 'Older'}
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="sm"
