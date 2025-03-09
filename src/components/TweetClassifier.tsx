@@ -419,7 +419,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             />
           </div>
           
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2" style={{ height: 'calc(100% - 3.5rem)' }}>
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2" style={{ height: 'calc(100% - 3.5rem)', minHeight: '500px' }}>
             {rawTweets.map((tweet) => (
               <motion.div 
                 key={tweet.id}
@@ -529,7 +529,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             </Select>
           </div>
           
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2" style={{ height: 'calc(100% - 5.5rem)' }}>
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2" style={{ height: 'calc(100% - 5.5rem)', minHeight: '500px' }}>
             {filteredClassifiedTweets.map((tweet) => (
               <motion.div 
                 key={tweet.id}
