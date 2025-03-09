@@ -72,6 +72,7 @@ serve(async (req) => {
       
     if (countError) {
       console.error('Error counting records:', countError);
+      throw new Error(`Count error: ${countError.message}`);
     }
     
     console.log(`Found ${totalCount} total matching records`);
@@ -82,9 +83,10 @@ serve(async (req) => {
     query = query.range(from, to);
     
     // Execute the query
-    const { data: tweets, error, count } = await query;
+    const { data: tweets, error } = await query;
     
     if (error) {
+      console.error('Database query error:', error);
       throw new Error(`Database error: ${error.message}`);
     }
     
