@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter, Image as ImageIcon, Brain } from 'lucide-react';
+import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter, Image as ImageIcon, Brain, Telescope, ArchiveIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Tweet, ClassifiedTweet } from "@/types/tweetTypes";
+import { Tweet, ClassifiedTweet, HistoricalTweetResponse } from "@/types/tweetTypes";
 
 interface TweetClassifierProps {
   tweets: Tweet[];
@@ -21,16 +20,28 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
   const [isLoading, setIsLoading] = useState(externalLoading);
   const [rawTweets, setRawTweets] = useState<Tweet[]>(initialTweets);
   const [classifiedTweets, setClassifiedTweets] = useState<ClassifiedTweet[]>([]);
+  const [historicalTweets, setHistoricalTweets] = useState<Tweet[]>([]);
   const [activeTab, setActiveTab] = useState('raw');
   const [marketFilter, setMarketFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [classificationMethod, setClassificationMethod] = useState<'mistral' | 'local'>('mistral');
+  const [isHistoricalLoading, setIsHistoricalLoading] = useState(false);
+  const [historicalPage, setHistoricalPage] = useState(1);
+  const [historicalTotal, setHistoricalTotal] = useState(0);
+  const [historicalPageSize, setHistoricalPageSize] = useState(20);
+  const [historicalTotalPages, setHistoricalTotalPages] = useState(1);
   
   useEffect(() => {
     setRawTweets(initialTweets);
     setIsLoading(externalLoading);
   }, [initialTweets, externalLoading]);
+
+  useEffect(() => {
+    if (activeTab === 'historical' && historicalTweets.length === 0) {
+      fetchHistoricalTweets();
+    }
+  }, [activeTab]);
   
   const fetchTweets = async () => {
     setIsLoading(true);
@@ -89,6 +100,116 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     }
   };
 
+  const fetchHistoricalTweets = useCallback(async () => {
+    setIsHistoricalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<HistoricalTweetResponse>('get-historical-tweets', {
+        body: { 
+          page: historicalPage,
+          pageSize: historicalPageSize,
+          market: marketFilter !== 'all' ? marketFilter : undefined,
+          direction: directionFilter !== 'all' ? directionFilter : undefined,
+          search: searchQuery || undefined
+        }
+      });
+      
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
+      }
+      
+      console.log('Historical tweets from DB:', data);
+      
+      if (data?.tweets) {
+        setHistoricalTweets(data.tweets);
+        setHistoricalTotal(data.total);
+        setHistoricalTotalPages(data.totalPages);
+        
+        toast({
+          title: "Historical tweets loaded",
+          description: `Loaded ${data.tweets.length} of ${data.total} tweets`,
+          duration: 3000,
+        });
+      } else {
+        throw new Error('Invalid response format from function');
+      }
+    } catch (error) {
+      console.error('Error fetching historical tweets:', error);
+      toast({
+        title: "Error fetching historical tweets",
+        description: "Failed to load historical tweets from database",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsHistoricalLoading(false);
+    }
+  }, [historicalPage, historicalPageSize, marketFilter, directionFilter, searchQuery]);
+
+  const handlePageChange = (newPage: number) => {
+    setHistoricalPage(newPage);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'historical') {
+      fetchHistoricalTweets();
+    }
+  }, [historicalPage, marketFilter, directionFilter, fetchHistoricalTweets]);
+
+  const classifyStoredTweet = async (tweet: Tweet) => {
+    try {
+      setIsLoading(true);
+      
+      if (tweet.classification) {
+        toast({
+          title: "Tweet already classified",
+          description: "This tweet has already been classified.",
+          duration: 2000,
+        });
+        return;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('classify-tweet', {
+        body: { tweet }
+      });
+      
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
+      }
+      
+      const { error: updateError } = await supabase
+        .from('historical_tweets')
+        .update({
+          classification: data
+        })
+        .eq('id', tweet.id);
+      
+      if (updateError) {
+        throw new Error(`Database update error: ${updateError.message}`);
+      }
+      
+      const updatedTweet = { ...tweet, classification: data };
+      setHistoricalTweets(prev => 
+        prev.map(t => t.id === tweet.id ? updatedTweet : t)
+      );
+      
+      toast({
+        title: "Tweet classified",
+        description: `Classified as ${data.market} ${data.direction} with ${data.confidence}% confidence`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error classifying stored tweet:', error);
+      toast({
+        title: "Classification error",
+        description: "Could not classify tweet",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getTweetMedia = (tweet: Tweet) => {
     const mediaItems = tweet.extendedEntities?.media || tweet.entities?.media || [];
     return mediaItems.map(media => ({
@@ -111,7 +232,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     }));
   };
 
-  // Local classification fallback
   const classifyTweetLocally = (tweet: Tweet): ClassifiedTweet => {
     let market = "UNKNOWN";
     let direction = "NEUTRAL";
@@ -161,7 +281,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     };
   };
 
-  // Classify using Mistral AI
   const classifyTweetWithMistral = async (tweet: Tweet): Promise<ClassifiedTweet> => {
     try {
       const { data, error } = await supabase.functions.invoke('classify-tweet', {
@@ -191,7 +310,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
       };
     } catch (error) {
       console.error('Error classifying tweet with Mistral:', error);
-      // Fall back to local classification
       toast({
         title: "AI classification failed",
         description: "Falling back to local classification",
@@ -224,7 +342,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
           duration: 3000,
         });
         
-        // Process tweets sequentially to avoid overwhelming the API
         const classified = [];
         let completedCount = 0;
         
@@ -233,7 +350,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
           classified.push(classifiedTweet);
           completedCount++;
           
-          // Update progress every few tweets
           if (completedCount % 5 === 0 || completedCount === rawTweets.length) {
             toast({
               title: "Classification in progress",
@@ -245,7 +361,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
         
         setClassifiedTweets(classified);
       } else {
-        // Use local classification
         const classified = rawTweets.map(classifyTweetLocally);
         setClassifiedTweets(classified);
       }
@@ -256,7 +371,6 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
         duration: 3000,
       });
       
-      // Switch to classified tab
       setActiveTab('classified');
     } catch (error) {
       console.error("Error classifying tweets:", error);
@@ -364,6 +478,48 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     );
   };
 
+  const renderClassificationBadge = (classification: any) => {
+    if (!classification) return null;
+    
+    return (
+      <div className="flex flex-wrap items-center gap-2 my-2">
+        <Badge variant="outline" className={`${
+          classification.market === "BTC" ? "bg-orange-500/20 text-orange-300" :
+          classification.market === "ETH" ? "bg-purple-500/20 text-purple-300" :
+          classification.market === "FOREX" ? "bg-blue-500/20 text-blue-300" :
+          classification.market === "CRYPTO" ? "bg-emerald-500/20 text-emerald-300" :
+          "bg-gray-500/20 text-gray-300"
+        }`}>
+          {classification.market}
+        </Badge>
+        
+        <Badge variant="outline" className={`${
+          classification.direction === "UP" ? "bg-green-500/20 text-green-300" :
+          classification.direction === "DOWN" ? "bg-red-500/20 text-red-300" :
+          "bg-gray-500/20 text-gray-300"
+        }`}>
+          {classification.direction === "UP" ? (
+            <span className="flex items-center gap-1">
+              <ArrowUp className="w-3 h-3" />
+              BULLISH
+            </span>
+          ) : classification.direction === "DOWN" ? (
+            <span className="flex items-center gap-1">
+              <ArrowDown className="w-3 h-3" />
+              BEARISH
+            </span>
+          ) : (
+            "NEUTRAL"
+          )}
+        </Badge>
+        
+        <Badge variant="outline" className="bg-blue-500/20 text-blue-300">
+          Confidence: {classification.confidence}%
+        </Badge>
+      </div>
+    );
+  };
+
   useEffect(() => {
     if (rawTweets.length === 0 && !isLoading) {
       fetchTweets();
@@ -436,6 +592,13 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             className="data-[state=active]:bg-emerald-400/10 data-[state=active]:text-emerald-400 rounded px-4"
           >
             Classified ({classifiedTweets.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="historical" 
+            className="data-[state=active]:bg-purple-400/10 data-[state=active]:text-purple-400 rounded px-4"
+          >
+            <ArchiveIcon className="w-4 h-4 mr-2" />
+            Historical ({historicalTotal})
           </TabsTrigger>
         </TabsList>
         
@@ -673,6 +836,198 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
               <div className="text-center py-10">
                 <div className="inline-block w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin"></div>
                 <p className="text-emerald-400 mt-2">Classifying tweets with AI...</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="historical" className="flex-1 flex flex-col overflow-hidden h-full">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4 flex-shrink-0">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-purple-400/50" />
+              <Input
+                className="pl-8 bg-black/30 border-purple-400/20 text-white placeholder:text-white/50"
+                placeholder="Search historical tweets..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value === '') {
+                    fetchHistoricalTweets();
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    fetchHistoricalTweets();
+                  }
+                }}
+              />
+            </div>
+            
+            <Select value={marketFilter} onValueChange={(value) => {
+              setMarketFilter(value);
+              setHistoricalPage(1);
+            }}>
+              <SelectTrigger className="w-[180px] border-purple-400/20 bg-black/30">
+                <SelectValue placeholder="Filter by market" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Markets</SelectItem>
+                <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
+                <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
+                <SelectItem value="CRYPTO">Crypto (General)</SelectItem>
+                <SelectItem value="FOREX">Forex</SelectItem>
+                <SelectItem value="UNKNOWN">Unknown</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={directionFilter} onValueChange={(value) => {
+              setDirectionFilter(value);
+              setHistoricalPage(1);
+            }}>
+              <SelectTrigger className="w-[180px] border-purple-400/20 bg-black/30">
+                <SelectValue placeholder="Filter by direction" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Directions</SelectItem>
+                <SelectItem value="UP">Bullish (UP)</SelectItem>
+                <SelectItem value="DOWN">Bearish (DOWN)</SelectItem>
+                <SelectItem value="NEUTRAL">Neutral</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchHistoricalTweets()}
+              disabled={isHistoricalLoading}
+              className="text-purple-400 border-purple-400/30"
+            >
+              <Telescope className={`w-4 h-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
+              Search
+            </Button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 min-h-[600px]">
+            {historicalTweets.map((tweet) => (
+              <motion.div 
+                key={tweet.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card p-3 rounded-lg border border-white/5"
+              >
+                <div className="flex gap-3">
+                  <img 
+                    src={tweet.author.profilePicture || "https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png"} 
+                    alt={tweet.author.name} 
+                    className="w-10 h-10 rounded-full"
+                  />
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{tweet.author.name}</span>
+                        <span className="text-gray-400 text-sm">@{tweet.author.userName}</span>
+                      </div>
+                      
+                      {!tweet.classification && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={() => classifyStoredTweet(tweet)}
+                          disabled={isLoading}
+                          className="text-purple-400 border-purple-400/30 h-7 text-xs"
+                        >
+                          <Brain className="w-3 h-3 mr-1" />
+                          Classify
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {renderClassificationBadge(tweet.classification)}
+                    
+                    <p className="text-white/90 my-1">{tweet.text}</p>
+                    
+                    {renderMedia(getTweetMedia(tweet))}
+                    
+                    {tweet.quoted_tweet && renderQuoteTweet(tweet)}
+                    
+                    {tweet.classification && (
+                      <div className="mt-2 p-2 bg-purple-500/5 rounded border border-purple-500/10 text-sm">
+                        <div className="flex items-center gap-1 mb-1 text-xs text-purple-400">
+                          <Brain className="w-3 h-3" />
+                          <span>AI Analysis</span>
+                        </div>
+                        <p className="text-white/80">{tweet.classification.explanation}</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-2">
+                      <span>{new Date(tweet.createdAt).toLocaleString()}</span>
+                      
+                      {tweet.isReply && (
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" />
+                          Reply
+                        </span>
+                      )}
+                      
+                      {tweet.isQuote && (
+                        <span className="flex items-center gap-1 text-emerald-400">
+                          <Quote className="w-3 h-3" />
+                          Quote
+                        </span>
+                      )}
+                      
+                      {getTweetMedia(tweet).length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <ImageIcon className="w-3 h-3" />
+                          Media
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+            
+            {historicalTweets.length === 0 && !isHistoricalLoading && (
+              <div className="text-center py-10 text-white/50">
+                <p>No historical tweets found. Try adjusting your search or filters.</p>
+              </div>
+            )}
+            
+            {isHistoricalLoading && (
+              <div className="text-center py-10">
+                <div className="inline-block w-6 h-6 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin"></div>
+                <p className="text-purple-400 mt-2">Loading historical tweets...</p>
+              </div>
+            )}
+            
+            {historicalTotalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-4 mb-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(Math.max(1, historicalPage - 1))}
+                  disabled={historicalPage <= 1 || isHistoricalLoading}
+                  className="text-purple-400 border-purple-400/30 px-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <span className="text-sm text-white/70">
+                  Page {historicalPage} of {historicalTotalPages}
+                </span>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(Math.min(historicalTotalPages, historicalPage + 1))}
+                  disabled={historicalPage >= historicalTotalPages || isHistoricalLoading}
+                  className="text-purple-400 border-purple-400/30 px-2"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             )}
           </div>

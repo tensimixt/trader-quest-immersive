@@ -53,6 +53,14 @@ export interface Tweet {
       expanded_url: string;
     }[];
   };
+  classification?: TweetClassification;
+}
+
+export interface TweetClassification {
+  market: string;
+  direction: string;
+  confidence: number;
+  explanation: string;
 }
 
 export interface ClassifiedTweet {
@@ -70,4 +78,20 @@ export interface ClassifiedTweet {
   replyTweetText?: string;
   timestamp: string;
   media?: TweetMedia[];
+}
+
+export interface HistoricalTweetBatch {
+  success: boolean;
+  totalFetched: number;
+  nextCursor: string | null;
+  message: string;
+  error?: string;
+}
+
+export interface HistoricalTweetResponse {
+  tweets: Tweet[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }

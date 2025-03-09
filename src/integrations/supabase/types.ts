@@ -197,6 +197,63 @@ export type Database = {
         }
         Relationships: []
       }
+      historical_tweets: {
+        Row: {
+          author_name: string | null
+          author_profile_picture: string | null
+          author_username: string
+          classification: Json | null
+          created_at: string
+          entities: Json | null
+          extended_entities: Json | null
+          fetched_at: string | null
+          id: string
+          in_reply_to_id: string | null
+          is_quote: boolean | null
+          is_reply: boolean | null
+          quoted_tweet_author: string | null
+          quoted_tweet_id: string | null
+          quoted_tweet_text: string | null
+          text: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_profile_picture?: string | null
+          author_username: string
+          classification?: Json | null
+          created_at: string
+          entities?: Json | null
+          extended_entities?: Json | null
+          fetched_at?: string | null
+          id: string
+          in_reply_to_id?: string | null
+          is_quote?: boolean | null
+          is_reply?: boolean | null
+          quoted_tweet_author?: string | null
+          quoted_tweet_id?: string | null
+          quoted_tweet_text?: string | null
+          text: string
+        }
+        Update: {
+          author_name?: string | null
+          author_profile_picture?: string | null
+          author_username?: string
+          classification?: Json | null
+          created_at?: string
+          entities?: Json | null
+          extended_entities?: Json | null
+          fetched_at?: string | null
+          id?: string
+          in_reply_to_id?: string | null
+          is_quote?: boolean | null
+          is_reply?: boolean | null
+          quoted_tweet_author?: string | null
+          quoted_tweet_id?: string | null
+          quoted_tweet_text?: string | null
+          text?: string
+        }
+        Relationships: []
+      }
       participants: {
         Row: {
           address: string

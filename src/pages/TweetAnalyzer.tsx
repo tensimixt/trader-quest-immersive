@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { SearchIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
+import { SearchIcon, RefreshCcw, ArrowLeft, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,16 @@ import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
+import { HistoricalTweetBatch } from '@/types/tweetTypes';
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoricalLoading, setIsHistoricalLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tweetData, setTweetData] = useState<any[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -125,6 +129,44 @@ const TweetAnalyzer = () => {
     }
   };
 
+  const fetchHistoricalTweets = async () => {
+    setIsHistoricalLoading(true);
+    try {
+      const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
+        body: { 
+          cursor: currentCursor,
+          batchSize: 2 // Fetch 2 pages of historical tweets
+        }
+      });
+      
+      if (result.error) {
+        throw new Error(`Function error: ${result.error.message}`);
+      }
+      
+      const data = result.data;
+      console.log('Historical tweets response:', data);
+      
+      if (data?.success) {
+        setCurrentCursor(data.nextCursor);
+        toast.success(`Fetched ${data.totalFetched} historical tweets`);
+        
+        // If we have a cursor, let the user know there are more tweets to fetch
+        if (data.nextCursor) {
+          toast.info('More historical tweets available. Click "Fetch Historical" again to get more.');
+        } else {
+          toast.info('All historical tweets have been fetched.');
+        }
+      } else {
+        throw new Error(data?.error || 'Failed to fetch historical tweets');
+      }
+    } catch (error) {
+      console.error('Error fetching historical tweets:', error);
+      toast.error('Failed to fetch historical tweets');
+    } finally {
+      setIsHistoricalLoading(false);
+    }
+  };
+
   const filteredTweets = tweetData.filter(tweet => {
     if (!searchTerm) return true;
     
@@ -179,6 +221,16 @@ const TweetAnalyzer = () => {
                 className="pl-8 bg-black/40 border-emerald-500/30 text-white"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchHistoricalTweets}
+              disabled={isHistoricalLoading}
+              className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+            >
+              <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
+              Fetch Historical
+            </Button>
             <Button
               variant="outline"
               size="sm"
