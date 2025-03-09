@@ -1,4 +1,3 @@
-
 export interface TweetAuthor {
   userName: string;
   name: string;
@@ -85,8 +84,9 @@ export interface HistoricalTweetBatch {
   totalFetched: number;
   totalStored: number;
   nextCursor: string | null;
-  pagesProcessed: number; // Added this property to match the API response
+  pagesProcessed: number;
   message: string;
+  cursorMode: 'newer' | 'older';
   error?: string;
 }
 

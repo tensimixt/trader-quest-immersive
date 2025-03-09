@@ -38,6 +38,53 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_R
   }
 }
 
+// Function to get stored cursor from the database
+async function getStoredCursor(supabase, mode) {
+  try {
+    const { data, error } = await supabase
+      .from('twitter_cursors')
+      .select('cursor_value')
+      .eq('cursor_type', mode)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching stored cursor:', error);
+      return null;
+    }
+    
+    return data?.cursor_value || null;
+  } catch (error) {
+    console.error('Exception when fetching cursor:', error);
+    return null;
+  }
+}
+
+// Function to store cursor in the database
+async function storeCursor(supabase, mode, cursorValue) {
+  if (!cursorValue) return;
+  
+  try {
+    const { error } = await supabase
+      .from('twitter_cursors')
+      .upsert(
+        { 
+          cursor_type: mode, 
+          cursor_value: cursorValue,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'cursor_type' }
+      );
+    
+    if (error) {
+      console.error('Error storing cursor:', error);
+    } else {
+      console.log(`Successfully stored cursor for mode: ${mode}`);
+    }
+  } catch (error) {
+    console.error('Exception when storing cursor:', error);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -47,33 +94,22 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = 1, startNew = false } = await req.json();
+    const { cursor, batchSize = 1, startNew = false, mode = 'older' } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}`);
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // If startNew is true, get the most recent tweets
-    // Otherwise, use the provided cursor or find the oldest tweet's cursor
+    // Determine which cursor to use
     let nextCursor = cursor;
     
+    // If no cursor provided but not starting new, get stored cursor from database
     if (!cursor && !startNew) {
-      // Find the oldest tweet we've stored to get its cursor for pagination
-      const { data: oldestTweet, error: findError } = await supabase
-        .from('historical_tweets')
-        .select('id')
-        .order('created_at', { ascending: true })
-        .limit(1);
-      
-      if (findError) {
-        console.error('Error finding oldest tweet:', findError);
-      } else if (oldestTweet && oldestTweet.length > 0) {
-        // Use the oldest tweet ID to build a position cursor
-        console.log(`Found oldest tweet ID: ${oldestTweet[0].id}`);
-      }
+      nextCursor = await getStoredCursor(supabase, mode);
+      console.log(`Retrieved stored cursor for mode ${mode}: ${nextCursor || 'none found'}`);
     }
     
     let totalFetched = 0;
@@ -197,13 +233,19 @@ serve(async (req) => {
       }
     }
 
+    // Store the latest cursor for future use
+    if (latestCursor) {
+      await storeCursor(supabase, mode, latestCursor);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       totalFetched,
       totalStored,
       nextCursor: latestCursor,
       pagesProcessed,
-      message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`
+      message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`,
+      cursorMode: mode
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -150,16 +150,12 @@ const TweetAnalyzer = () => {
       // Add a small delay to avoid potential rate limiting or gateway timeouts
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (startNew) {
-        setFetchingMode('newer');
-        setCurrentCursor(null);
-      }
-      
       const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
         body: { 
-          cursor: currentCursor,
+          cursor: startNew ? null : currentCursor,
           batchSize: 5,
-          startNew: startNew
+          startNew: startNew,
+          mode: fetchingMode
         }
       });
       
@@ -219,7 +215,7 @@ const TweetAnalyzer = () => {
   const toggleFetchingMode = () => {
     const newMode = fetchingMode === 'newer' ? 'older' : 'newer';
     setFetchingMode(newMode);
-    setCurrentCursor(null);
+    setCurrentCursor(null); // Reset cursor when changing modes
     toast.info(`Switched to fetching ${newMode} tweets`);
   };
 
@@ -250,9 +246,15 @@ const TweetAnalyzer = () => {
   };
 
   const handleRetryHistorical = () => {
-    retryWithBackoff(() => fetchHistoricalTweets(fetchingMode === 'newer'))
+    retryWithBackoff(() => fetchHistoricalTweets(false)) // Always continue from where we left off
       .then(() => toast.success('Retry successful!'))
       .catch(err => toast.error(`Retry failed after multiple attempts: ${err.message}`));
+  };
+  
+  const handleStartNewHistorical = () => {
+    retryWithBackoff(() => fetchHistoricalTweets(true)) // Start from newest tweets
+      .then(() => toast.success('Started new fetch sequence!'))
+      .catch(err => toast.error(`Failed to start new fetch: ${err.message}`));
   };
 
   return (
@@ -293,7 +295,7 @@ const TweetAnalyzer = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => toggleFetchingMode()}
+                onClick={toggleFetchingMode}
                 className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
               >
                 {fetchingMode === 'older' ? "Switch to Newer" : "Switch to Older"}
@@ -301,12 +303,22 @@ const TweetAnalyzer = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleRetryHistorical()}
+                onClick={handleStartNewHistorical}
+                disabled={isHistoricalLoading}
+                className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Start New
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryHistorical}
                 disabled={isHistoricalLoading}
                 className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
               >
                 <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
-                Fetch {fetchingMode === 'newer' ? 'Newer' : 'Older'}
+                Continue {fetchingMode === 'newer' ? 'Newer' : 'Older'}
               </Button>
             </div>
             <Button
