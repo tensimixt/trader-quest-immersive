@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter, Image as ImageIcon } from 'lucide-react';
+import { Search, ArrowDown, ArrowUp, MessageCircle, Quote, RefreshCw, Filter, Image as ImageIcon, Brain } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,79 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
-interface Tweet {
-  id: string;
-  text: string;
-  createdAt: string;
-  author: {
-    userName: string;
-    name: string;
-    profilePicture: string;
-  };
-  isReply: boolean;
-  isQuote: boolean;
-  inReplyToId?: string;
-  quoted_tweet?: {
-    text: string;
-    author?: {
-      userName: string;
-      name?: string;
-      profilePicture?: string;
-    };
-    entities?: {
-      media?: {
-        type: string;
-        media_url_https: string;
-        expanded_url: string;
-      }[];
-    };
-    extendedEntities?: {
-      media?: {
-        type: string;
-        media_url_https: string;
-        expanded_url: string;
-      }[];
-    };
-  };
-  entities?: {
-    media?: {
-      type: string;
-      media_url_https: string;
-      expanded_url: string;
-    }[];
-  };
-  extendedEntities?: {
-    media?: {
-      type: string;
-      media_url_https: string;
-      expanded_url: string;
-    }[];
-  };
-}
-
-interface ClassifiedTweet {
-  id: string;
-  market: string;
-  direction: string;
-  confidence: number;
-  tweetText: string;
-  screenName: string;
-  isQuote: boolean;
-  isReply: boolean;
-  quoteTweetText?: string;
-  quoteAuthor?: string;
-  replyTweetText?: string;
-  timestamp: string;
-  media?: {
-    type: string;
-    url: string;
-    expandedUrl: string;
-  }[];
-}
+import { Tweet, ClassifiedTweet } from "@/types/tweetTypes";
 
 interface TweetClassifierProps {
-  tweets: any[];
+  tweets: Tweet[];
   isLoading: boolean;
 }
 
@@ -93,6 +25,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
   const [marketFilter, setMarketFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [classificationMethod, setClassificationMethod] = useState<'mistral' | 'local'>('mistral');
   
   useEffect(() => {
     setRawTweets(initialTweets);
@@ -178,7 +111,8 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     }));
   };
 
-  const classifyTweet = (tweet: Tweet): ClassifiedTweet => {
+  // Local classification fallback
+  const classifyTweetLocally = (tweet: Tweet): ClassifiedTweet => {
     let market = "UNKNOWN";
     let direction = "NEUTRAL";
     let confidence = 50;
@@ -214,6 +148,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
       market,
       direction,
       confidence,
+      explanation: "Classified using keyword matching. Found relevant terms that indicate this market and direction.",
       tweetText: tweet.text,
       screenName: tweet.author.userName,
       isQuote: tweet.isQuote,
@@ -226,7 +161,48 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     };
   };
 
-  const runClassification = () => {
+  // Classify using Mistral AI
+  const classifyTweetWithMistral = async (tweet: Tweet): Promise<ClassifiedTweet> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('classify-tweet', {
+        body: { tweet }
+      });
+      
+      if (error) {
+        console.error('Error calling classify-tweet function:', error);
+        throw new Error(`Classification error: ${error.message}`);
+      }
+      
+      return {
+        id: tweet.id,
+        market: data.market,
+        direction: data.direction,
+        confidence: data.confidence,
+        explanation: data.explanation,
+        tweetText: tweet.text,
+        screenName: tweet.author.userName,
+        isQuote: tweet.isQuote,
+        isReply: tweet.isReply,
+        quoteTweetText: tweet.quoted_tweet?.text,
+        quoteAuthor: tweet.quoted_tweet?.author?.userName,
+        replyTweetText: tweet.isReply ? "Reply context not available" : undefined,
+        timestamp: tweet.createdAt,
+        media: getTweetMedia(tweet).length > 0 ? getTweetMedia(tweet) : undefined
+      };
+    } catch (error) {
+      console.error('Error classifying tweet with Mistral:', error);
+      // Fall back to local classification
+      toast({
+        title: "AI classification failed",
+        description: "Falling back to local classification",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return classifyTweetLocally(tweet);
+    }
+  };
+
+  const runClassification = async () => {
     if (rawTweets.length === 0) {
       toast({
         title: "No tweets to classify",
@@ -238,16 +214,50 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
     }
     
     setIsLoading(true);
+    setClassifiedTweets([]);
     
     try {
-      const classified = rawTweets.map(classifyTweet);
-      setClassifiedTweets(classified);
+      if (classificationMethod === 'mistral') {
+        toast({
+          title: "Using Mistral AI",
+          description: "Classifying tweets using AI...",
+          duration: 3000,
+        });
+        
+        // Process tweets sequentially to avoid overwhelming the API
+        const classified = [];
+        let completedCount = 0;
+        
+        for (const tweet of rawTweets) {
+          const classifiedTweet = await classifyTweetWithMistral(tweet);
+          classified.push(classifiedTweet);
+          completedCount++;
+          
+          // Update progress every few tweets
+          if (completedCount % 5 === 0 || completedCount === rawTweets.length) {
+            toast({
+              title: "Classification in progress",
+              description: `Classified ${completedCount} of ${rawTweets.length} tweets`,
+              duration: 2000,
+            });
+          }
+        }
+        
+        setClassifiedTweets(classified);
+      } else {
+        // Use local classification
+        const classified = rawTweets.map(classifyTweetLocally);
+        setClassifiedTweets(classified);
+      }
       
       toast({
         title: "Classification complete",
-        description: `Classified ${classified.length} tweets`,
+        description: `Classified ${rawTweets.length} tweets`,
         duration: 3000,
       });
+      
+      // Switch to classified tab
+      setActiveTab('classified');
     } catch (error) {
       console.error("Error classifying tweets:", error);
       toast({
@@ -277,7 +287,8 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
       const matchesQuery = 
         tweet.tweetText.toLowerCase().includes(query) ||
         tweet.screenName.toLowerCase().includes(query) ||
-        (tweet.quoteTweetText && tweet.quoteTweetText.toLowerCase().includes(query));
+        (tweet.quoteTweetText && tweet.quoteTweetText.toLowerCase().includes(query)) ||
+        (tweet.explanation && tweet.explanation.toLowerCase().includes(query));
         
       if (!matchesQuery) {
         passes = false;
@@ -368,6 +379,26 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
         </h2>
         
         <div className="flex gap-2">
+          <Select value={classificationMethod} onValueChange={(value: any) => setClassificationMethod(value)}>
+            <SelectTrigger className="w-[180px] border-emerald-400/30 bg-black/30">
+              <SelectValue placeholder="Classification Method" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mistral">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-purple-400" />
+                  <span>Mistral AI</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="local">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-blue-400" />
+                  <span>Local Rules</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          
           <Button 
             variant="outline" 
             size="sm" 
@@ -386,7 +417,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             disabled={isLoading || rawTweets.length === 0}
             className="text-blue-400 border-blue-400/30"
           >
-            <Filter className="w-4 h-4 mr-2" />
+            <Brain className="w-4 h-4 mr-2" />
             Classify
           </Button>
         </div>
@@ -586,6 +617,16 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
                 
                 <p className="text-white/90 my-2">{tweet.tweetText}</p>
                 
+                {tweet.explanation && (
+                  <div className="mt-2 p-2 bg-purple-500/5 rounded border border-purple-500/10 text-sm">
+                    <div className="flex items-center gap-1 mb-1 text-xs text-purple-400">
+                      <Brain className="w-3 h-3" />
+                      <span>AI Analysis</span>
+                    </div>
+                    <p className="text-white/80">{tweet.explanation}</p>
+                  </div>
+                )}
+                
                 {renderMedia(tweet.media)}
                 
                 {tweet.isQuote && tweet.quoteTweetText && (
@@ -631,7 +672,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             {isLoading && (
               <div className="text-center py-10">
                 <div className="inline-block w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin"></div>
-                <p className="text-emerald-400 mt-2">Classifying tweets...</p>
+                <p className="text-emerald-400 mt-2">Classifying tweets with AI...</p>
               </div>
             )}
           </div>
