@@ -5,10 +5,9 @@ const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a8
 // Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
-const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 20; // Default batch size to 20 since we get fewer tweets per page
+const DEFAULT_BATCH_SIZE = 20; // Default batch size set to 20
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,14 +102,11 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older', tweetsPerRequest = TWEETS_PER_REQUEST } = await req.json();
+    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older' } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    // Allow customization of tweets per request, but ensure it doesn't exceed the maximum
-    const actualTweetsPerRequest = Math.min(parseInt(tweetsPerRequest), TWEETS_PER_REQUEST);
-    
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, tweets per request: ${actualTweetsPerRequest}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -131,11 +127,11 @@ serve(async (req) => {
     let consecutiveErrors = 0;
     let emptyResultCount = 0; // Track empty results to handle API inconsistency
     let lowTweetCountPages = 0; // Track pages with very few tweets
-    const expectedTweetsPerPage = 20; // Adjust our expectations - we typically get around 20 tweets per page
+    const expectedTweetsPerPage = 20; // Twitter typically returns around 20 tweets per page
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
-      // Construct URL with pagination parameters
-      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}&count=${actualTweetsPerRequest}`;
+      // Construct URL with pagination parameters - REMOVED count parameter as it defaults to 20
+      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
       if (nextCursor) {
         url += `&cursor=${nextCursor}`;
       }

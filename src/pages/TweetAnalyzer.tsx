@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
@@ -38,8 +37,8 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(1000);
-  const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
+  const [batchSize, setBatchSize] = useState(20);
+  const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   
@@ -75,7 +74,6 @@ const TweetAnalyzer = () => {
     checkStoredCursors();
   }, []);
 
-  // Added debounced search effect to trigger search when searchTerm changes
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (searchTerm.trim()) {
