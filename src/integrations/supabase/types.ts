@@ -443,6 +443,27 @@ export type Database = {
         }
         Relationships: []
       }
+      twitter_cursors: {
+        Row: {
+          created_at: string
+          cursor_type: string
+          cursor_value: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cursor_type: string
+          cursor_value: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cursor_type?: string
+          cursor_value?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_credit_balances: {
         Row: {
           created_at: string

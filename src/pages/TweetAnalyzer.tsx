@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle } from 'lucide-react';
@@ -52,7 +51,43 @@ const TweetAnalyzer = () => {
     
     setTweetData(initialTweets);
     fetchTweets();
+    
+    // Check for stored cursors on initial load
+    checkStoredCursors();
   }, []);
+
+  const checkStoredCursors = async () => {
+    try {
+      const { data: newerCursor, error: newerError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'newer')
+        .single();
+      
+      const { data: olderCursor, error: olderError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'older')
+        .single();
+      
+      if (!olderError && olderCursor) {
+        toast.info('Found stored position for older tweets. Click "Continue Older" to resume.');
+      }
+      
+      if (!newerError && newerCursor) {
+        toast.info('Found stored position for newer tweets. Click "Continue Newer" to resume.');
+      }
+      
+      // Set the current cursor based on the current mode
+      if (fetchingMode === 'newer' && !newerError && newerCursor) {
+        setCurrentCursor(newerCursor.cursor_value);
+      } else if (fetchingMode === 'older' && !olderError && olderCursor) {
+        setCurrentCursor(olderCursor.cursor_value);
+      }
+    } catch (error) {
+      console.error('Error checking stored cursors:', error);
+    }
+  };
 
   const fetchTweets = async () => {
     setIsLoading(true);
@@ -215,7 +250,10 @@ const TweetAnalyzer = () => {
   const toggleFetchingMode = () => {
     const newMode = fetchingMode === 'newer' ? 'older' : 'newer';
     setFetchingMode(newMode);
-    setCurrentCursor(null); // Reset cursor when changing modes
+    
+    // When toggling mode, check if we have a stored cursor for the new mode
+    checkStoredCursors();
+    
     toast.info(`Switched to fetching ${newMode} tweets`);
   };
 
