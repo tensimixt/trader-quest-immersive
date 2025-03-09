@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle } from 'lucide-react';
@@ -22,6 +23,7 @@ const TweetAnalyzer = () => {
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
+  const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -90,6 +92,13 @@ const TweetAnalyzer = () => {
   };
 
   const fetchTweets = async () => {
+    // Check if we attempted a fetch very recently to prevent spamming
+    if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
+      toast.warning('Please wait a moment before refreshing again');
+      return;
+    }
+    
+    setLastFetchAttempt(new Date());
     setIsLoading(true);
     try {
       // Add a small delay to avoid potential rate limiting or gateway timeouts
@@ -180,8 +189,17 @@ const TweetAnalyzer = () => {
   };
 
   const fetchHistoricalTweets = async (startNew = false) => {
+    // Check if we attempted a fetch very recently to prevent spamming
+    if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
+      toast.warning('Please wait a moment before fetching again');
+      return;
+    }
+    
+    setLastFetchAttempt(new Date());
     setIsHistoricalLoading(true);
     try {
+      toast.info(`Starting ${fetchingMode} tweet fetch...`);
+      
       // Add a small delay to avoid potential rate limiting or gateway timeouts
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -203,15 +221,23 @@ const TweetAnalyzer = () => {
       
       if (data?.success) {
         setCurrentCursor(data.nextCursor);
-        toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
+        
+        if (data.totalFetched > 0) {
+          toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
+        } else {
+          toast.info('No new tweets found in this batch.');
+        }
         
         if (data.nextCursor) {
-          toast.info(`More historical tweets available. Click "Fetch ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to get more.`);
+          toast.info(`More historical tweets available. Click "Continue ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to get more.`);
         } else {
           toast.info(`All ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets have been fetched.`);
         }
         // Reset error count on success
         setApiErrorCount(0);
+        
+        // Refresh the tweet list to show any new tweets
+        fetchTweets();
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
       }
@@ -241,6 +267,7 @@ const TweetAnalyzer = () => {
         retries++;
         if (retries >= maxRetries) throw error;
         console.log(`Retry ${retries}/${maxRetries} after error:`, error);
+        toast.info(`Retry attempt ${retries}/${maxRetries}...`);
         // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
@@ -279,14 +306,14 @@ const TweetAnalyzer = () => {
 
   const handleRetryFetch = () => {
     retryWithBackoff(fetchTweets)
-      .then(() => toast.success('Retry successful!'))
-      .catch(err => toast.error(`Retry failed after multiple attempts: ${err.message}`));
+      .then(() => toast.success('Refresh successful!'))
+      .catch(err => toast.error(`Refresh failed after multiple attempts: ${err.message}`));
   };
 
   const handleRetryHistorical = () => {
     retryWithBackoff(() => fetchHistoricalTweets(false)) // Always continue from where we left off
-      .then(() => toast.success('Retry successful!'))
-      .catch(err => toast.error(`Retry failed after multiple attempts: ${err.message}`));
+      .then(() => toast.success('Historical fetch successful!'))
+      .catch(err => toast.error(`Historical fetch failed after multiple attempts: ${err.message}`));
   };
   
   const handleStartNewHistorical = () => {

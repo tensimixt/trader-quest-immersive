@@ -22,16 +22,25 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
   try {
     const response = await fetch(url, options);
-    if (!response.ok && retries > 0) {
-      console.log(`Request failed with status ${response.status}, retrying... (${retries} retries left)`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    
+    // If we get a 502 Bad Gateway or other 5xx error
+    if ((response.status >= 500 && response.status < 600) && retries > 0) {
+      console.log(`Received ${response.status} error, retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1))); // Exponential backoff
       return fetchWithRetry(url, options, retries - 1);
     }
+    
+    if (!response.ok && retries > 0) {
+      console.log(`Request failed with status ${response.status}, retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1))); // Exponential backoff
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    
     return response;
   } catch (error) {
     if (retries > 0) {
       console.log(`Request failed with error: ${error.message}, retrying... (${retries} retries left)`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1))); // Exponential backoff
       return fetchWithRetry(url, options, retries - 1);
     }
     throw error;
@@ -116,6 +125,7 @@ serve(async (req) => {
     let totalStored = 0;
     let latestCursor = null;
     let pagesProcessed = 0;
+    let consecutiveErrors = 0;
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
       // Construct URL with pagination parameters
@@ -139,8 +149,21 @@ serve(async (req) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Twitter API error on request ${i+1}:`, errorText, 'Status:', response.status);
-          throw new Error(`API Error: ${response.status} - ${errorText}`);
+          
+          // If we've hit multiple consecutive errors, we should break the loop
+          consecutiveErrors++;
+          if (consecutiveErrors >= 3) {
+            console.error(`Hit ${consecutiveErrors} consecutive errors, stopping batch processing`);
+            break;
+          }
+          
+          // Wait longer between requests if we're getting errors
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          continue; // Skip to the next iteration
         }
+        
+        // Reset consecutive errors on success
+        consecutiveErrors = 0;
       } catch (error) {
         console.error(`Failed to fetch tweets after retries: ${error.message}`);
         // If we've already processed some tweets, don't fail the entire request
@@ -156,14 +179,30 @@ serve(async (req) => {
         const responseText = await response.text();
         console.error('Non-JSON response from Twitter API:', responseText);
         
-        // If we've already processed some tweets, don't fail the entire request
-        if (pagesProcessed > 0) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= 3) {
+          console.error(`Hit ${consecutiveErrors} consecutive non-JSON responses, stopping batch processing`);
           break;
         }
-        throw new Error('API returned non-JSON response');
+        
+        // Wait longer between requests if we're getting errors
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        continue; // Skip to the next iteration
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error('Error parsing JSON response:', e);
+        consecutiveErrors++;
+        if (consecutiveErrors >= 3) {
+          console.error(`Hit ${consecutiveErrors} consecutive JSON parsing errors, stopping batch processing`);
+          break;
+        }
+        continue;
+      }
+      
       pagesProcessed++;
       
       // Check if we have tweets in the response
@@ -227,13 +266,13 @@ serve(async (req) => {
         break;
       }
       
-      // Add a small delay between requests to avoid rate limiting
+      // Add a delay between requests to avoid rate limiting
       if (i < actualBatchSize - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
-    // Store the latest cursor for future use
+    // Store the latest cursor for future use, only if we had a successful fetch
     if (latestCursor) {
       await storeCursor(supabase, mode, latestCursor);
     }
