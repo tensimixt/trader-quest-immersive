@@ -9,6 +9,7 @@ const MAX_REQUESTS = 100; // Maximum number of pages to fetch
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
+const DEFAULT_BATCH_SIZE = 20; // Increase default batch size to 20 since we get fewer tweets per page
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,7 +104,7 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = 1, startNew = false, mode = 'older', tweetsPerRequest = TWEETS_PER_REQUEST } = await req.json();
+    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older', tweetsPerRequest = TWEETS_PER_REQUEST } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
@@ -130,6 +131,8 @@ serve(async (req) => {
     let pagesProcessed = 0;
     let consecutiveErrors = 0;
     let emptyResultCount = 0; // Track empty results to handle API inconsistency
+    let lowTweetCountPages = 0; // Track pages with very few tweets
+    const expectedTweetsPerPage = 20; // Adjust our expectations - we typically get around 20 tweets per page
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
       // Construct URL with pagination parameters
@@ -234,7 +237,22 @@ serve(async (req) => {
       // Reset empty result count if we got tweets
       emptyResultCount = 0;
       
-      console.log(`Fetched ${data.tweets.length} tweets in this page (expected up to ${actualTweetsPerRequest})`);
+      // Track if we're getting significantly fewer tweets than expected
+      if (data.tweets.length < expectedTweetsPerPage / 2) {
+        lowTweetCountPages++;
+        console.log(`Warning: Only received ${data.tweets.length} tweets, which is less than half of expected ${expectedTweetsPerPage}`);
+        
+        // If we get 3 consecutive pages with very few tweets, we might be approaching the end
+        if (lowTweetCountPages >= 3) {
+          console.log(`Multiple pages with very few tweets, might be approaching end of available data`);
+          // We'll continue but log this warning
+        }
+      } else {
+        // Reset the counter if we get a normal page
+        lowTweetCountPages = 0;
+      }
+      
+      console.log(`Fetched ${data.tweets.length} tweets in this page (expected around ${expectedTweetsPerPage})`);
       totalFetched += data.tweets.length;
       
       // Log if we have has_next_page value and what it is
@@ -290,9 +308,9 @@ serve(async (req) => {
       }
       
       // Handle Twitter API inconsistency: If we have a next_cursor but very few tweets
-      // in consecutive requests, we might be at the end even though has_next_page is true
-      if (data.tweets.length < 5) {
-        console.log(`Warning: Only ${data.tweets.length} tweets returned, might be approaching end of data`);
+      // or a page with no new tweets (totalStored didn't increase), we might be at the end
+      if (data.tweets.length < 5 || (processedTweets.length > 0 && totalStored === 0)) {
+        console.log(`Warning: Only ${data.tweets.length} tweets returned, or no new tweets stored. Might be approaching end of data`);
         emptyResultCount += 0.5; // Count low tweet counts as "half empty"
         
         if (emptyResultCount >= 2) {
@@ -309,7 +327,7 @@ serve(async (req) => {
       
       // Adaptively adjust the delay between requests based on the number of tweets received
       // If we got fewer tweets than expected, the API might be rate limiting us
-      const delayMultiplier = data.tweets.length < (actualTweetsPerRequest / 2) ? 1.5 : 1; 
+      const delayMultiplier = data.tweets.length < (expectedTweetsPerPage / 2) ? 1.5 : 1; 
       const baseDelay = 1000; // 1 second base delay
       const delay = Math.round(baseDelay * delayMultiplier);
       
@@ -331,7 +349,8 @@ serve(async (req) => {
       nextCursor: latestCursor,
       pagesProcessed,
       message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`,
-      cursorMode: mode
+      cursorMode: mode,
+      isAtEnd: emptyResultCount >= 1.5 || lowTweetCountPages >= 3 // Indicate if we might be at the end of available data
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

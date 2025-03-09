@@ -38,7 +38,7 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(5);
+  const [batchSize, setBatchSize] = useState(20); // Increased default batch size to 20
   const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   
@@ -250,7 +250,7 @@ const TweetAnalyzer = () => {
         }
         
         // Check if we're likely at the end of available data
-        if (data.totalFetched < 10 && data.pagesProcessed > 0) {
+        if (data.isAtEnd) {
           setIsPossiblyAtEnd(true);
           toast.info(
             `Only ${data.totalFetched} tweets retrieved despite ${data.pagesProcessed} requests. You may have reached the end of available data.`, 
@@ -258,10 +258,10 @@ const TweetAnalyzer = () => {
           );
         }
         
-        if (data.nextCursor) {
+        if (data.nextCursor && !data.isAtEnd) {
           toast.info(`More historical tweets may be available. Click "Continue ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to try getting more.`);
-        } else {
-          toast.info(`All ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets have been fetched.`);
+        } else if (!data.nextCursor || data.isAtEnd) {
+          toast.info(`You may have reached the end of ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets.`);
           setIsPossiblyAtEnd(true);
         }
         
@@ -420,7 +420,7 @@ const TweetAnalyzer = () => {
                       <Slider
                         value={[batchSize]}
                         min={1}
-                        max={20}
+                        max={30}
                         step={1}
                         onValueChange={(value) => setBatchSize(value[0])}
                         className="w-full"
@@ -428,7 +428,7 @@ const TweetAnalyzer = () => {
                       
                       <div className="flex items-center justify-between mt-4">
                         <span className="text-sm text-white/70">Tweets Per Request: {tweetsPerRequest}</span>
-                        <span className="text-xs text-amber-400/70">Adjust if getting fewer tweets</span>
+                        <span className="text-xs text-amber-400/70">Max tweets per page</span>
                       </div>
                       <Slider
                         value={[tweetsPerRequest]}
@@ -441,7 +441,7 @@ const TweetAnalyzer = () => {
                       
                       <div className="mt-4 text-xs text-white/70 p-2 bg-amber-500/10 rounded">
                         <Info className="h-3 w-3 inline-block mr-1 text-amber-400" />
-                        If you're getting fewer tweets than expected, try reducing the "Tweets Per Request" value to 20-40, as Twitter's API sometimes returns empty results when we ask for too many at once.
+                        <span>Each request typically returns around 20 tweets regardless of the setting. We've updated the default batch size to 20 requests to get more tweets at once.</span>
                       </div>
                     </div>
                   </div>
