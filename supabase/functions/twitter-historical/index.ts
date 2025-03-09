@@ -1,14 +1,15 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
 const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
 // Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
-const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
+const MAX_REQUESTS = 100; // Maximum number of pages to fetch
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 20; // Default batch size to 20 since we get fewer tweets per page
+const DEFAULT_BATCH_SIZE = 20; // Increase default batch size to 20 since we get fewer tweets per page
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

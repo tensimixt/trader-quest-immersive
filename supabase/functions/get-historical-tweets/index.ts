@@ -22,8 +22,6 @@ serve(async (req) => {
     
     const { page = 1, pageSize = 20, market, direction, search } = await req.json();
     
-    console.log('Search parameters:', { page, pageSize, market, direction, search });
-    
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
     
@@ -43,21 +41,8 @@ serve(async (req) => {
     }
     
     if (search) {
-      // Use a more comprehensive search across multiple fields
-      query = query.or(`text.ilike.%${search}%,quoted_tweet_text.ilike.%${search}%,author_username.ilike.%${search}%,author_name.ilike.%${search}%`);
+      query = query.or(`text.ilike.%${search}%,quoted_tweet_text.ilike.%${search}%,author_username.ilike.%${search}%`);
     }
-    
-    // Count total matching records first (for pagination)
-    const { count: totalCount, error: countError } = await supabase
-      .from('historical_tweets')
-      .select('*', { count: 'exact', head: true })
-      .or(`text.ilike.%${search || ''}%,quoted_tweet_text.ilike.%${search || ''}%,author_username.ilike.%${search || ''}%,author_name.ilike.%${search || ''}%`);
-      
-    if (countError) {
-      console.error('Error counting records:', countError);
-    }
-    
-    console.log(`Found ${totalCount} total matching records`);
     
     // Add pagination
     const from = (page - 1) * pageSize;
@@ -71,7 +56,10 @@ serve(async (req) => {
       throw new Error(`Database error: ${error.message}`);
     }
     
-    console.log(`Retrieved ${tweets?.length || 0} tweets for page ${page}`);
+    // Get the total count
+    const { count: totalCount } = await supabase
+      .from('historical_tweets')
+      .select('*', { count: 'exact', head: true });
     
     // Format the tweets to match the expected format in the UI
     const formattedTweets = tweets.map(tweet => ({

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
@@ -37,10 +38,9 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(20);
+  const [batchSize, setBatchSize] = useState(20); // Increased default batch size to 20
   const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -71,6 +71,7 @@ const TweetAnalyzer = () => {
     setTweetData(initialTweets);
     fetchTweets();
     
+    // Check for stored cursors on initial load
     checkStoredCursors();
   }, []);
 
@@ -96,6 +97,7 @@ const TweetAnalyzer = () => {
         toast.info('Found stored position for newer tweets. Click "Continue Newer" to resume.');
       }
       
+      // Set the current cursor based on the current mode
       if (fetchingMode === 'newer' && !newerError && newerCursor) {
         setCurrentCursor(newerCursor.cursor_value);
       } else if (fetchingMode === 'older' && !olderError && olderCursor) {
@@ -107,6 +109,7 @@ const TweetAnalyzer = () => {
   };
 
   const fetchTweets = async () => {
+    // Check if we attempted a fetch very recently to prevent spamming
     if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
       toast.warning('Please wait a moment before refreshing again');
       return;
@@ -115,73 +118,50 @@ const TweetAnalyzer = () => {
     setLastFetchAttempt(new Date());
     setIsLoading(true);
     try {
-      if (searchTerm) {
-        setIsSearching(true);
-        const { data, error } = await supabase.functions.invoke('get-historical-tweets', {
-          body: { 
-            page: 1, 
-            pageSize: 100, 
-            search: searchTerm 
-          }
-        });
-        
-        if (error) {
-          throw new Error(`Function error: ${error.message}`);
-        }
-        
-        console.log('Supabase function response (search):', data);
-        
-        if (data && data.tweets && Array.isArray(data.tweets)) {
-          setTweetData(data.tweets);
-          toast.success(`Found ${data.tweets.length} tweets matching "${searchTerm}"`);
-        } else {
-          toast.info(`No tweets found matching "${searchTerm}"`);
-          setTweetData([]);
-        }
-      } else {
-        setIsSearching(false);
-        const { data, error } = await supabase.functions.invoke('twitter-feed');
-        
-        if (error) {
-          throw new Error(`Function error: ${error.message}`);
-        }
-        
-        console.log('Supabase function response:', data);
-        
-        if (data && data.tweets && Array.isArray(data.tweets)) {
-          const formattedTweets = data.tweets.map((tweet: any) => ({
-            id: tweet.id,
-            text: tweet.text,
-            createdAt: tweet.createdAt,
-            author: {
-              userName: tweet.author?.userName || "unknown",
-              name: tweet.author?.name || "Unknown User",
-              profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-            },
-            isReply: tweet.isReply || false,
-            isQuote: tweet.isQuote || false,
-            quoted_tweet: tweet.quoted_tweet ? {
-              text: tweet.quoted_tweet.text,
-              author: {
-                userName: tweet.quoted_tweet.author?.userName || "unknown",
-                name: tweet.quoted_tweet.author?.name || "Unknown User",
-                profilePicture: tweet.quoted_tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-              },
-              entities: tweet.quoted_tweet.entities || { media: [] },
-              extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
-            } : undefined,
-            entities: tweet.entities || { media: [] },
-            extendedEntities: tweet.extendedEntities || { media: [] }
-          }));
-          
-          setTweetData(formattedTweets);
-          toast.success('Tweets loaded successfully');
-        } else {
-          throw new Error('Invalid response format from function');
-        }
+      // Add a small delay to avoid potential rate limiting or gateway timeouts
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data, error } = await supabase.functions.invoke('twitter-feed');
+      
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
       }
       
-      setApiErrorCount(0);
+      console.log('Supabase function response:', data);
+      
+      if (data && data.tweets && Array.isArray(data.tweets)) {
+        const formattedTweets = data.tweets.map((tweet: any) => ({
+          id: tweet.id,
+          text: tweet.text,
+          createdAt: tweet.createdAt,
+          author: {
+            userName: tweet.author?.userName || "unknown",
+            name: tweet.author?.name || "Unknown User",
+            profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          },
+          isReply: tweet.isReply || false,
+          isQuote: tweet.isQuote || false,
+          quoted_tweet: tweet.quoted_tweet ? {
+            text: tweet.quoted_tweet.text,
+            author: {
+              userName: tweet.quoted_tweet.author?.userName || "unknown",
+              name: tweet.quoted_tweet.author?.name || "Unknown User",
+              profilePicture: tweet.quoted_tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+            },
+            entities: tweet.quoted_tweet.entities || { media: [] },
+            extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
+          } : undefined,
+          entities: tweet.entities || { media: [] },
+          extendedEntities: tweet.extendedEntities || { media: [] }
+        }));
+        
+        setTweetData(formattedTweets);
+        toast.success('Tweets loaded successfully');
+        // Reset error count on success
+        setApiErrorCount(0);
+      } else {
+        throw new Error('Invalid response format from function');
+      }
     } catch (error) {
       console.error('Error fetching tweets:', error);
       toast.error('Failed to load tweets from API, using sample data');
@@ -194,40 +174,39 @@ const TweetAnalyzer = () => {
         });
       }
       
-      if (!searchTerm) {
-        const sampleTweets = marketIntelligence
-          .filter(item => item.screenName)
-          .map(item => ({
-            id: item.id.toString(),
-            text: item.message,
-            createdAt: item.timestamp,
+      const sampleTweets = marketIntelligence
+        .filter(item => item.screenName)
+        .map(item => ({
+          id: item.id.toString(),
+          text: item.message,
+          createdAt: item.timestamp,
+          author: {
+            userName: item.screenName || "unknown",
+            name: item.screenName || "Unknown User",
+            profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          },
+          isReply: item.isReply || false,
+          isQuote: item.isQuote || false,
+          quoted_tweet: item.quoteTweet ? {
+            text: item.quoteTweet,
             author: {
-              userName: item.screenName || "unknown",
+              userName: item.screenName,
               name: item.screenName || "Unknown User",
               profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-            },
-            isReply: item.isReply || false,
-            isQuote: item.isQuote || false,
-            quoted_tweet: item.quoteTweet ? {
-              text: item.quoteTweet,
-              author: {
-                userName: item.screenName,
-                name: item.screenName || "Unknown User",
-                profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-              }
-            } : undefined,
-            entities: { media: [] },
-            extendedEntities: { media: [] }
-          }));
-        
-        setTweetData(sampleTweets);
-      }
+            }
+          } : undefined,
+          entities: { media: [] },
+          extendedEntities: { media: [] }
+        }));
+      
+      setTweetData(sampleTweets);
     } finally {
       setIsLoading(false);
     }
   };
 
   const fetchHistoricalTweets = async (startNew = false) => {
+    // Check if we attempted a fetch very recently to prevent spamming
     if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
       toast.warning('Please wait a moment before fetching again');
       return;
@@ -235,11 +214,12 @@ const TweetAnalyzer = () => {
     
     setLastFetchAttempt(new Date());
     setIsHistoricalLoading(true);
-    setIsPossiblyAtEnd(false);
+    setIsPossiblyAtEnd(false); // Reset the end marker when starting a new fetch
     
     try {
       toast.info(`Starting ${fetchingMode} tweet fetch (batch size: ${batchSize})...`);
       
+      // Add a small delay to avoid potential rate limiting or gateway timeouts
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
@@ -269,6 +249,7 @@ const TweetAnalyzer = () => {
           setIsPossiblyAtEnd(true);
         }
         
+        // Check if we're likely at the end of available data
         if (data.isAtEnd) {
           setIsPossiblyAtEnd(true);
           toast.info(
@@ -284,8 +265,10 @@ const TweetAnalyzer = () => {
           setIsPossiblyAtEnd(true);
         }
         
+        // Reset error count on success
         setApiErrorCount(0);
         
+        // Refresh the tweet list to show any new tweets
         fetchTweets();
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
@@ -317,6 +300,7 @@ const TweetAnalyzer = () => {
         if (retries >= maxRetries) throw error;
         console.log(`Retry ${retries}/${maxRetries} after error:`, error);
         toast.info(`Retry attempt ${retries}/${maxRetries}...`);
+        // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
@@ -326,15 +310,31 @@ const TweetAnalyzer = () => {
     const newMode = fetchingMode === 'newer' ? 'older' : 'newer';
     setFetchingMode(newMode);
     
+    // When toggling mode, check if we have a stored cursor for the new mode
     checkStoredCursors();
     
     toast.info(`Switched to fetching ${newMode} tweets`);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchTweets();
-  };
+  const filteredTweets = tweetData.filter(tweet => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    
+    if (tweet.text) {
+      return (
+        tweet.text.toLowerCase().includes(searchLower) ||
+        (tweet.author?.userName || '').toLowerCase().includes(searchLower) ||
+        (tweet.quoted_tweet?.text || '').toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return (
+      (tweet.message || '').toLowerCase().includes(searchLower) ||
+      (tweet.screenName || '').toLowerCase().includes(searchLower) ||
+      (tweet.quoteTweet || '').toLowerCase().includes(searchLower)
+    );
+  });
 
   const handleRetryFetch = () => {
     retryWithBackoff(fetchTweets)
@@ -343,13 +343,13 @@ const TweetAnalyzer = () => {
   };
 
   const handleRetryHistorical = () => {
-    retryWithBackoff(() => fetchHistoricalTweets(false))
+    retryWithBackoff(() => fetchHistoricalTweets(false)) // Always continue from where we left off
       .then(() => toast.success('Historical fetch successful!'))
       .catch(err => toast.error(`Historical fetch failed after multiple attempts: ${err.message}`));
   };
   
   const handleStartNewHistorical = () => {
-    retryWithBackoff(() => fetchHistoricalTweets(true))
+    retryWithBackoff(() => fetchHistoricalTweets(true)) // Start from newest tweets
       .then(() => toast.success('Started new fetch sequence!'))
       .catch(err => toast.error(`Failed to start new fetch: ${err.message}`));
   };
@@ -378,7 +378,7 @@ const TweetAnalyzer = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <form onSubmit={handleSearchSubmit} className="relative w-64">
+            <div className="relative w-64">
               <SearchIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 type="text"
@@ -387,15 +387,7 @@ const TweetAnalyzer = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 bg-black/40 border-emerald-500/30 text-white"
               />
-              <Button 
-                type="submit" 
-                size="sm" 
-                variant="ghost" 
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 h-6"
-              >
-                <SearchIcon className="h-3 w-3 text-emerald-400" />
-              </Button>
-            </form>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -428,8 +420,8 @@ const TweetAnalyzer = () => {
                       <Slider
                         value={[batchSize]}
                         min={1}
-                        max={1000}
-                        step={10}
+                        max={30}
+                        step={1}
                         onValueChange={(value) => setBatchSize(value[0])}
                         className="w-full"
                       />
@@ -449,7 +441,7 @@ const TweetAnalyzer = () => {
                       
                       <div className="mt-4 text-xs text-white/70 p-2 bg-amber-500/10 rounded">
                         <Info className="h-3 w-3 inline-block mr-1 text-amber-400" />
-                        <span>Each request typically returns around 20 tweets regardless of the setting. The batch size determines how many API calls will be made in one batch operation.</span>
+                        <span>Each request typically returns around 20 tweets regardless of the setting. We've updated the default batch size to 20 requests to get more tweets at once.</span>
                       </div>
                     </div>
                   </div>
@@ -504,7 +496,7 @@ const TweetAnalyzer = () => {
         </div>
         
         <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-140px)]">
-          <TweetClassifier tweets={tweetData} isLoading={isLoading} isSearching={isSearching} searchTerm={searchTerm} />
+          <TweetClassifier tweets={filteredTweets} isLoading={isLoading} />
         </div>
       </motion.div>
     </div>
