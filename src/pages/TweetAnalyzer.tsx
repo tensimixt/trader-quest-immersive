@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
@@ -150,11 +151,11 @@ const TweetAnalyzer = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto p-4 flex flex-col h-[100vh] relative"
+        className="container mx-auto p-4 flex flex-col h-screen relative"
       >
         <AppHeader />
         
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -192,7 +193,7 @@ const TweetAnalyzer = () => {
           </div>
         </div>
         
-        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 10rem)' }}>
+        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
           <TweetClassifier tweets={filteredTweets} isLoading={isLoading} />
         </div>
       </motion.div>
