@@ -7,6 +7,8 @@ const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a8
 const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_REQUESTS = 100; // Maximum number of pages to fetch
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
+const MAX_RETRIES = 3; // Maximum number of retries for API requests
+const RETRY_DELAY = 1000; // Delay between retries in milliseconds
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +18,25 @@ const corsHeaders = {
 // Create a Supabase client with the X-Client-Info headers
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok && retries > 0) {
+      console.log(`Request failed with status ${response.status}, retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Request failed with error: ${error.message}, retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -69,18 +90,41 @@ serve(async (req) => {
       
       console.log(`Request ${i+1}/${actualBatchSize}, URL: ${url}`);
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'X-API-Key': TWITTER_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
+      let response;
+      try {
+        response = await fetchWithRetry(url, {
+          method: 'GET',
+          headers: {
+            'X-API-Key': TWITTER_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Twitter API error on request ${i+1}:`, errorText);
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Twitter API error on request ${i+1}:`, errorText, 'Status:', response.status);
+          throw new Error(`API Error: ${response.status} - ${errorText}`);
+        }
+      } catch (error) {
+        console.error(`Failed to fetch tweets after retries: ${error.message}`);
+        // If we've already processed some tweets, don't fail the entire request
+        if (pagesProcessed > 0) {
+          break;
+        }
+        throw error;
+      }
+
+      // Check if the response has the correct content type
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Non-JSON response from Twitter API:', responseText);
+        
+        // If we've already processed some tweets, don't fail the entire request
+        if (pagesProcessed > 0) {
+          break;
+        }
+        throw new Error('API returned non-JSON response');
       }
 
       const data = await response.json();
@@ -145,6 +189,11 @@ serve(async (req) => {
       if (pagesProcessed >= MAX_REQUESTS) {
         console.log(`Reached maximum page limit of ${MAX_REQUESTS}. Stopping further requests.`);
         break;
+      }
+      
+      // Add a small delay between requests to avoid rate limiting
+      if (i < actualBatchSize - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 

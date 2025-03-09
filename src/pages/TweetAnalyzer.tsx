@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { SearchIcon, RefreshCcw, ArrowLeft, History } from 'lucide-react';
+import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ const TweetAnalyzer = () => {
   const [tweetData, setTweetData] = useState<any[]>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
+  const [apiErrorCount, setApiErrorCount] = useState(0);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -56,6 +57,9 @@ const TweetAnalyzer = () => {
   const fetchTweets = async () => {
     setIsLoading(true);
     try {
+      // Add a small delay to avoid potential rate limiting or gateway timeouts
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const { data, error } = await supabase.functions.invoke('twitter-feed');
       
       if (error) {
@@ -92,12 +96,22 @@ const TweetAnalyzer = () => {
         
         setTweetData(formattedTweets);
         toast.success('Tweets loaded successfully');
+        // Reset error count on success
+        setApiErrorCount(0);
       } else {
         throw new Error('Invalid response format from function');
       }
     } catch (error) {
       console.error('Error fetching tweets:', error);
       toast.error('Failed to load tweets from API, using sample data');
+      setApiErrorCount(prev => prev + 1);
+      
+      if (apiErrorCount > 2) {
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.', {
+          duration: 5000,
+          icon: <AlertTriangle className="text-red-500" />
+        });
+      }
       
       const sampleTweets = marketIntelligence
         .filter(item => item.screenName)
@@ -133,6 +147,9 @@ const TweetAnalyzer = () => {
   const fetchHistoricalTweets = async (startNew = false) => {
     setIsHistoricalLoading(true);
     try {
+      // Add a small delay to avoid potential rate limiting or gateway timeouts
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       if (startNew) {
         setFetchingMode('newer');
         setCurrentCursor(null);
@@ -162,14 +179,40 @@ const TweetAnalyzer = () => {
         } else {
           toast.info(`All ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets have been fetched.`);
         }
+        // Reset error count on success
+        setApiErrorCount(0);
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
       }
     } catch (error) {
       console.error('Error fetching historical tweets:', error);
       toast.error('Failed to fetch historical tweets');
+      setApiErrorCount(prev => prev + 1);
+      
+      if (apiErrorCount > 2) {
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.', {
+          duration: 5000,
+          icon: <AlertTriangle className="text-red-500" />
+        });
+      }
     } finally {
       setIsHistoricalLoading(false);
+    }
+  };
+
+  const retryWithBackoff = async (fn: () => Promise<void>, maxRetries = 3) => {
+    let retries = 0;
+    
+    while (retries < maxRetries) {
+      try {
+        return await fn();
+      } catch (error) {
+        retries++;
+        if (retries >= maxRetries) throw error;
+        console.log(`Retry ${retries}/${maxRetries} after error:`, error);
+        // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+      }
     }
   };
 
@@ -199,6 +242,18 @@ const TweetAnalyzer = () => {
       (tweet.quoteTweet || '').toLowerCase().includes(searchLower)
     );
   });
+
+  const handleRetryFetch = () => {
+    retryWithBackoff(fetchTweets)
+      .then(() => toast.success('Retry successful!'))
+      .catch(err => toast.error(`Retry failed after multiple attempts: ${err.message}`));
+  };
+
+  const handleRetryHistorical = () => {
+    retryWithBackoff(() => fetchHistoricalTweets(fetchingMode === 'newer'))
+      .then(() => toast.success('Retry successful!'))
+      .catch(err => toast.error(`Retry failed after multiple attempts: ${err.message}`));
+  };
 
   return (
     <div className="min-h-screen overflow-hidden">
@@ -246,7 +301,7 @@ const TweetAnalyzer = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchHistoricalTweets(fetchingMode === 'newer')}
+                onClick={() => handleRetryHistorical()}
                 disabled={isHistoricalLoading}
                 className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
               >
@@ -257,7 +312,7 @@ const TweetAnalyzer = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={fetchTweets}
+              onClick={handleRetryFetch}
               disabled={isLoading}
               className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
             >
