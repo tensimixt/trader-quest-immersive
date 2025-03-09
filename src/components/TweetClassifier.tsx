@@ -13,16 +13,9 @@ import { Tweet, ClassifiedTweet, HistoricalTweetResponse } from "@/types/tweetTy
 interface TweetClassifierProps {
   tweets: Tweet[];
   isLoading: boolean;
-  isSearching?: boolean;
-  searchTerm?: string;
 }
 
-const TweetClassifier: React.FC<TweetClassifierProps> = ({ 
-  tweets: initialTweets, 
-  isLoading: externalLoading,
-  isSearching = false,
-  searchTerm = '' 
-}) => {
+const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets, isLoading: externalLoading }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(externalLoading);
   const [rawTweets, setRawTweets] = useState<Tweet[]>(initialTweets);

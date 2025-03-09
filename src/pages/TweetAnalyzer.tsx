@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
+import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
@@ -25,7 +25,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -38,7 +37,7 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(1000);
+  const [batchSize, setBatchSize] = useState(20);
   const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -74,17 +73,6 @@ const TweetAnalyzer = () => {
     
     checkStoredCursors();
   }, []);
-
-  // Added debounced search effect to trigger search when searchTerm changes
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      if (searchTerm.trim()) {
-        fetchTweets();
-      }
-    }, 500);
-    
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm]);
 
   const checkStoredCursors = async () => {
     try {
@@ -132,7 +120,7 @@ const TweetAnalyzer = () => {
         const { data, error } = await supabase.functions.invoke('get-historical-tweets', {
           body: { 
             page: 1, 
-            pageSize: 1000, 
+            pageSize: 100, 
             search: searchTerm 
           }
         });
@@ -390,16 +378,24 @@ const TweetAnalyzer = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="relative w-64">
+            <form onSubmit={handleSearchSubmit} className="relative w-64">
+              <SearchIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 type="text"
                 placeholder="Search tweets..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-black/20 border-purple-500/30 text-white placeholder:text-gray-400 w-full"
+                className="pl-8 bg-black/40 border-emerald-500/30 text-white"
               />
-            </div>
-            
+              <Button 
+                type="submit" 
+                size="sm" 
+                variant="ghost" 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 h-6"
+              >
+                <SearchIcon className="h-3 w-3 text-emerald-400" />
+              </Button>
+            </form>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -508,12 +504,7 @@ const TweetAnalyzer = () => {
         </div>
         
         <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-140px)]">
-          <TweetClassifier 
-            tweets={tweetData} 
-            isLoading={isLoading} 
-            isSearching={isSearching} 
-            searchTerm={searchTerm} 
-          />
+          <TweetClassifier tweets={tweetData} isLoading={isLoading} isSearching={isSearching} searchTerm={searchTerm} />
         </div>
       </motion.div>
     </div>
