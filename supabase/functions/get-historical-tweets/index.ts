@@ -20,7 +20,7 @@ serve(async (req) => {
   try {
     console.log('Get historical tweets function called');
     
-    const { page = 1, pageSize = 20, market, direction, search } = await req.json();
+    const { page = 1, pageSize = 1000, market, direction, search } = await req.json();
     
     console.log('Search parameters:', { page, pageSize, market, direction, search });
     

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
@@ -37,7 +36,7 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(20);
+  const [batchSize, setBatchSize] = useState(1000);
   const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -378,24 +377,6 @@ const TweetAnalyzer = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <form onSubmit={handleSearchSubmit} className="relative w-64">
-              <SearchIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="text"
-                placeholder="Search tweets..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 bg-black/40 border-emerald-500/30 text-white"
-              />
-              <Button 
-                type="submit" 
-                size="sm" 
-                variant="ghost" 
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 h-6"
-              >
-                <SearchIcon className="h-3 w-3 text-emerald-400" />
-              </Button>
-            </form>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
