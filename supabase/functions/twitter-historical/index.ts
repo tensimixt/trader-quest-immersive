@@ -9,7 +9,7 @@ const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 1000; // Default batch size to 1000 while knowing we get ~20 tweets per page
+const DEFAULT_BATCH_SIZE = 1000; // Number of API requests to make per batch operation
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,7 +111,7 @@ serve(async (req) => {
     // Allow customization of tweets per request, but ensure it doesn't exceed the maximum
     const actualTweetsPerRequest = Math.min(parseInt(tweetsPerRequest), TWEETS_PER_REQUEST);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, tweets per request: ${actualTweetsPerRequest}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize} API requests, tweets per request: ${actualTweetsPerRequest}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -134,6 +134,7 @@ serve(async (req) => {
     let lowTweetCountPages = 0; // Track pages with very few tweets
     const expectedTweetsPerPage = 20; // Adjust our expectations - we typically get around 20 tweets per page
     
+    // Loop through the batch, making API requests until we hit our batch size limit
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
       // Construct URL with pagination parameters
       let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}&count=${actualTweetsPerRequest}`;
