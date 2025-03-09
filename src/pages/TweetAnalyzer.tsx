@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
@@ -20,7 +19,6 @@ const TweetAnalyzer = () => {
   const [tweetData, setTweetData] = useState<any[]>([]);
   
   useEffect(() => {
-    // Initialize with sample data immediately to prevent blank screen
     const initialTweets = marketIntelligence
       .filter(item => item.screenName)
       .map(item => ({
@@ -42,20 +40,17 @@ const TweetAnalyzer = () => {
             profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
           }
         } : undefined,
-        // Add empty media arrays to ensure the structure is consistent
         entities: { media: [] },
         extendedEntities: { media: [] }
       }));
     
     setTweetData(initialTweets);
-    // Then try to fetch real data
     fetchTweets();
   }, []);
 
   const fetchTweets = async () => {
     setIsLoading(true);
     try {
-      // Call our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('twitter-feed');
       
       if (error) {
@@ -86,7 +81,6 @@ const TweetAnalyzer = () => {
             entities: tweet.quoted_tweet.entities || { media: [] },
             extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
           } : undefined,
-          // Ensure we properly capture the media entities
           entities: tweet.entities || { media: [] },
           extendedEntities: tweet.extendedEntities || { media: [] }
         }));
@@ -100,7 +94,6 @@ const TweetAnalyzer = () => {
       console.error('Error fetching tweets:', error);
       toast.error('Failed to load tweets from API, using sample data');
       
-      // Fall back to sample data
       const sampleTweets = marketIntelligence
         .filter(item => item.screenName)
         .map(item => ({
@@ -122,7 +115,6 @@ const TweetAnalyzer = () => {
               profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
             }
           } : undefined,
-          // Add empty media arrays to ensure the structure is consistent
           entities: { media: [] },
           extendedEntities: { media: [] }
         }));
@@ -138,7 +130,6 @@ const TweetAnalyzer = () => {
     
     const searchLower = searchTerm.toLowerCase();
     
-    // If using the API response format
     if (tweet.text) {
       return (
         tweet.text.toLowerCase().includes(searchLower) ||
@@ -147,7 +138,6 @@ const TweetAnalyzer = () => {
       );
     }
     
-    // If using the marketIntelligence format
     return (
       (tweet.message || '').toLowerCase().includes(searchLower) ||
       (tweet.screenName || '').toLowerCase().includes(searchLower) ||
@@ -202,7 +192,7 @@ const TweetAnalyzer = () => {
           </div>
         </div>
         
-        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden">
+        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-13rem)]">
           <TweetClassifier tweets={filteredTweets} isLoading={isLoading} />
         </div>
       </motion.div>
