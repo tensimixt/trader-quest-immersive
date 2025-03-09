@@ -129,6 +129,7 @@ serve(async (req) => {
     let latestCursor = null;
     let pagesProcessed = 0;
     let consecutiveErrors = 0;
+    let emptyResultCount = 0; // Track empty results to handle API inconsistency
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
       // Construct URL with pagination parameters
@@ -211,11 +212,35 @@ serve(async (req) => {
       // Check if we have tweets in the response
       if (!data.tweets || !Array.isArray(data.tweets) || data.tweets.length === 0) {
         console.log(`No tweets returned in request ${i+1}`);
-        break;
+        emptyResultCount++;
+        
+        // If we've received 2 consecutive empty results, assume we've reached the end
+        // even if has_next_page is true (handling Twitter API inconsistency)
+        if (emptyResultCount >= 2) {
+          console.log(`Received ${emptyResultCount} consecutive empty results, assuming end of data`);
+          break;
+        }
+        
+        // If there's a next cursor but no tweets, we'll try one more time
+        if (data.next_cursor) {
+          nextCursor = data.next_cursor;
+          latestCursor = nextCursor;
+          continue;
+        } else {
+          break;
+        }
       }
+      
+      // Reset empty result count if we got tweets
+      emptyResultCount = 0;
       
       console.log(`Fetched ${data.tweets.length} tweets in this page (expected up to ${actualTweetsPerRequest})`);
       totalFetched += data.tweets.length;
+      
+      // Log if we have has_next_page value and what it is
+      if (data.has_next_page !== undefined) {
+        console.log(`API reports has_next_page: ${data.has_next_page}`);
+      }
       
       // Process tweets for storage - filter out tweets that already exist in the database
       const processedTweets = data.tweets.map(tweet => ({
@@ -258,9 +283,22 @@ serve(async (req) => {
       nextCursor = data.next_cursor;
       latestCursor = nextCursor;
       
+      // Check if we should stop due to no more data
       if (!nextCursor) {
         console.log(`No next cursor available, ending pagination at request ${i+1}`);
         break;
+      }
+      
+      // Handle Twitter API inconsistency: If we have a next_cursor but very few tweets
+      // in consecutive requests, we might be at the end even though has_next_page is true
+      if (data.tweets.length < 5) {
+        console.log(`Warning: Only ${data.tweets.length} tweets returned, might be approaching end of data`);
+        emptyResultCount += 0.5; // Count low tweet counts as "half empty"
+        
+        if (emptyResultCount >= 2) {
+          console.log(`Multiple requests with few or no tweets, assuming we're at the end`);
+          break;
+        }
       }
       
       // Check if we've hit our global page limit
@@ -271,7 +309,7 @@ serve(async (req) => {
       
       // Adaptively adjust the delay between requests based on the number of tweets received
       // If we got fewer tweets than expected, the API might be rate limiting us
-      const delayMultiplier = data.tweets.length < actualTweetsPerRequest ? 1.5 : 1; 
+      const delayMultiplier = data.tweets.length < (actualTweetsPerRequest / 2) ? 1.5 : 1; 
       const baseDelay = 1000; // 1 second base delay
       const delay = Math.round(baseDelay * delayMultiplier);
       

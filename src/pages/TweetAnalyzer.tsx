@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle, Settings } from 'lucide-react';
+import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,12 @@ import {
 import {
   Slider
 } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -33,6 +40,7 @@ const TweetAnalyzer = () => {
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
   const [batchSize, setBatchSize] = useState(5);
   const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
+  const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -206,6 +214,8 @@ const TweetAnalyzer = () => {
     
     setLastFetchAttempt(new Date());
     setIsHistoricalLoading(true);
+    setIsPossiblyAtEnd(false); // Reset the end marker when starting a new fetch
+    
     try {
       toast.info(`Starting ${fetchingMode} tweet fetch (batch size: ${batchSize})...`);
       
@@ -236,13 +246,25 @@ const TweetAnalyzer = () => {
           toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
         } else {
           toast.info('No new tweets found in this batch.');
+          setIsPossiblyAtEnd(true);
+        }
+        
+        // Check if we're likely at the end of available data
+        if (data.totalFetched < 10 && data.pagesProcessed > 0) {
+          setIsPossiblyAtEnd(true);
+          toast.info(
+            `Only ${data.totalFetched} tweets retrieved despite ${data.pagesProcessed} requests. You may have reached the end of available data.`, 
+            { duration: 5000 }
+          );
         }
         
         if (data.nextCursor) {
-          toast.info(`More historical tweets available. Click "Continue ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to get more.`);
+          toast.info(`More historical tweets may be available. Click "Continue ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to try getting more.`);
         } else {
           toast.info(`All ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets have been fetched.`);
+          setIsPossiblyAtEnd(true);
         }
+        
         // Reset error count on success
         setApiErrorCount(0);
         
@@ -403,6 +425,24 @@ const TweetAnalyzer = () => {
                         onValueChange={(value) => setBatchSize(value[0])}
                         className="w-full"
                       />
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm text-white/70">Tweets Per Request: {tweetsPerRequest}</span>
+                        <span className="text-xs text-amber-400/70">Adjust if getting fewer tweets</span>
+                      </div>
+                      <Slider
+                        value={[tweetsPerRequest]}
+                        min={20}
+                        max={100}
+                        step={20}
+                        onValueChange={(value) => setTweetsPerRequest(value[0])}
+                        className="w-full"
+                      />
+                      
+                      <div className="mt-4 text-xs text-white/70 p-2 bg-amber-500/10 rounded">
+                        <Info className="h-3 w-3 inline-block mr-1 text-amber-400" />
+                        If you're getting fewer tweets than expected, try reducing the "Tweets Per Request" value to 20-40, as Twitter's API sometimes returns empty results when we ask for too many at once.
+                      </div>
                     </div>
                   </div>
                 </PopoverContent>
@@ -418,16 +458,29 @@ const TweetAnalyzer = () => {
                 <History className="h-4 w-4 mr-2" />
                 Start New
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRetryHistorical}
-                disabled={isHistoricalLoading}
-                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-              >
-                <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
-                Continue {fetchingMode === 'newer' ? 'Newer' : 'Older'}
-              </Button>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetryHistorical}
+                      disabled={isHistoricalLoading}
+                      className={`border-purple-500/30 text-purple-400 hover:bg-purple-500/10 ${isPossiblyAtEnd ? 'border-yellow-500/50 text-yellow-400' : ''}`}
+                    >
+                      <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
+                      Continue {fetchingMode === 'newer' ? 'Newer' : 'Older'}
+                      {isPossiblyAtEnd && <AlertTriangle className="h-3 w-3 ml-1 text-yellow-400" />}
+                    </Button>
+                  </TooltipTrigger>
+                  {isPossiblyAtEnd && (
+                    <TooltipContent className="bg-black/90 border-yellow-500/50 text-white">
+                      <p className="text-xs">You may have reached the end of available tweets, but you can try again if you wish.</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Button
               variant="outline"
