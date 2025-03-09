@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
 const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
-// Twitter crypto list ID - using the correct list ID provided by the user
+// Twitter crypto list ID
 const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
@@ -123,15 +123,17 @@ serve(async (req) => {
     
     let totalFetched = 0;
     let totalStored = 0;
-    let latestCursor = null;
+    let lastCursor = null;
     let pagesProcessed = 0;
     let consecutiveErrors = 0;
     let emptyResultCount = 0; // Track empty results to handle API inconsistency
     let lowTweetCountPages = 0; // Track pages with very few tweets
+    let duplicateCursorCount = 0; // Track how many times we get the same cursor
     const expectedTweetsPerPage = 20; // Twitter typically returns around 20 tweets per page
+    const seenCursors = new Set(); // Keep track of seen cursors to detect loops
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
-      // Construct URL with pagination parameters - REMOVED count parameter as it defaults to 20
+      // Construct URL with pagination parameters
       let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
       if (nextCursor) {
         url += `&cursor=${nextCursor}`;
@@ -214,7 +216,6 @@ serve(async (req) => {
         emptyResultCount++;
         
         // If we've received 2 consecutive empty results, assume we've reached the end
-        // even if has_next_page is true (handling Twitter API inconsistency)
         if (emptyResultCount >= 2) {
           console.log(`Received ${emptyResultCount} consecutive empty results, assuming end of data`);
           break;
@@ -222,8 +223,26 @@ serve(async (req) => {
         
         // If there's a next cursor but no tweets, we'll try one more time
         if (data.next_cursor) {
+          // Check if we're seeing the same cursor repeatedly
+          if (nextCursor === data.next_cursor) {
+            duplicateCursorCount++;
+            if (duplicateCursorCount >= 2) {
+              console.log(`Received the same cursor ${duplicateCursorCount} times, likely at the end of data`);
+              break;
+            }
+          } else {
+            duplicateCursorCount = 0;
+          }
+          
+          // Check if we've seen this cursor before (loop detection)
+          if (seenCursors.has(data.next_cursor)) {
+            console.log(`Detected cursor loop with cursor: ${data.next_cursor}, stopping`);
+            break;
+          }
+          
+          seenCursors.add(data.next_cursor);
           nextCursor = data.next_cursor;
-          latestCursor = nextCursor;
+          lastCursor = nextCursor;
           continue;
         } else {
           break;
@@ -241,7 +260,6 @@ serve(async (req) => {
         // If we get 3 consecutive pages with very few tweets, we might be approaching the end
         if (lowTweetCountPages >= 3) {
           console.log(`Multiple pages with very few tweets, might be approaching end of available data`);
-          // We'll continue but log this warning
         }
       } else {
         // Reset the counter if we get a normal page
@@ -294,18 +312,35 @@ serve(async (req) => {
       }
       
       // Update cursor for next page if available
-      nextCursor = data.next_cursor;
-      latestCursor = nextCursor;
-      
-      // Check if we should stop due to no more data
-      if (!nextCursor) {
+      if (data.next_cursor) {
+        // Check if we're seeing the same cursor repeatedly
+        if (nextCursor === data.next_cursor) {
+          duplicateCursorCount++;
+          if (duplicateCursorCount >= 2) {
+            console.log(`Received the same cursor ${duplicateCursorCount} times, likely at the end of data`);
+            break;
+          }
+        } else {
+          duplicateCursorCount = 0;
+        }
+        
+        // Check if we've seen this cursor before (loop detection)
+        if (seenCursors.has(data.next_cursor)) {
+          console.log(`Detected cursor loop with cursor: ${data.next_cursor}, stopping`);
+          break;
+        }
+        
+        seenCursors.add(data.next_cursor);
+        nextCursor = data.next_cursor;
+        lastCursor = nextCursor;
+      } else {
         console.log(`No next cursor available, ending pagination at request ${i+1}`);
         break;
       }
       
       // Handle Twitter API inconsistency: If we have a next_cursor but very few tweets
       // or a page with no new tweets (totalStored didn't increase), we might be at the end
-      if (data.tweets.length < 5 || (processedTweets.length > 0 && totalStored === 0)) {
+      if ((data.tweets.length < 5 || (processedTweets.length > 0 && totalStored === 0)) && i > 2) {
         console.log(`Warning: Only ${data.tweets.length} tweets returned, or no new tweets stored. Might be approaching end of data`);
         emptyResultCount += 0.5; // Count low tweet counts as "half empty"
         
@@ -334,19 +369,20 @@ serve(async (req) => {
     }
 
     // Store the latest cursor for future use, only if we had a successful fetch
-    if (latestCursor) {
-      await storeCursor(supabase, mode, latestCursor);
+    if (lastCursor) {
+      await storeCursor(supabase, mode, lastCursor);
     }
 
     return new Response(JSON.stringify({
       success: true,
       totalFetched,
       totalStored,
-      nextCursor: latestCursor,
+      nextCursor: lastCursor,
       pagesProcessed,
       message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`,
       cursorMode: mode,
-      isAtEnd: emptyResultCount >= 1.5 || lowTweetCountPages >= 3 // Indicate if we might be at the end of available data
+      isAtEnd: emptyResultCount >= 1.5 || lowTweetCountPages >= 3 || duplicateCursorCount >= 1,
+      cursorLoopDetected: seenCursors.size > 0 && seenCursors.size < pagesProcessed
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
