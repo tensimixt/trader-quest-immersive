@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft, History } from 'lucide-react';
@@ -154,7 +155,7 @@ const TweetAnalyzer = () => {
       
       if (data?.success) {
         setCurrentCursor(data.nextCursor);
-        toast.success(`Fetched ${data.totalFetched} historical tweets from ${data.pagesProcessed || 'multiple'} pages`);
+        toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
         
         if (data.nextCursor) {
           toast.info(`More historical tweets available. Click "Fetch ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to get more.`);

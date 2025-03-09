@@ -83,6 +83,7 @@ export interface ClassifiedTweet {
 export interface HistoricalTweetBatch {
   success: boolean;
   totalFetched: number;
+  totalStored: number;
   nextCursor: string | null;
   pagesProcessed: number; // Added this property to match the API response
   message: string;

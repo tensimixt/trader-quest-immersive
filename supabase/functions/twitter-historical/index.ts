@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
 // Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
-const MAX_REQUESTS = 100; // Increased to 100 pages max to fetch more historical data
+const MAX_REQUESTS = 100; // Maximum number of pages to fetch
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 
 const corsHeaders = {
@@ -56,6 +56,7 @@ serve(async (req) => {
     }
     
     let totalFetched = 0;
+    let totalStored = 0;
     let latestCursor = null;
     let pagesProcessed = 0;
     
@@ -85,15 +86,16 @@ serve(async (req) => {
       const data = await response.json();
       pagesProcessed++;
       
+      // Check if we have tweets in the response
       if (!data.tweets || !Array.isArray(data.tweets) || data.tweets.length === 0) {
-        console.log(`No more tweets to fetch at request ${i+1}`);
+        console.log(`No tweets returned in request ${i+1}`);
         break;
       }
       
       console.log(`Fetched ${data.tweets.length} tweets`);
       totalFetched += data.tweets.length;
       
-      // Process tweets for storage
+      // Process tweets for storage - filter out tweets that already exist in the database
       const processedTweets = data.tweets.map(tweet => ({
         id: tweet.id,
         text: tweet.text,
@@ -114,15 +116,19 @@ serve(async (req) => {
       
       // Store tweets in the database
       if (processedTweets.length > 0) {
-        const { error } = await supabase
+        const { error, count } = await supabase
           .from('historical_tweets')
-          .upsert(processedTweets, { onConflict: 'id' });
+          .upsert(processedTweets, { 
+            onConflict: 'id',
+            count: 'exact' // Get the count of affected rows
+          });
         
         if (error) {
           console.error('Error storing tweets in database:', error);
           // Continue with the next batch even if there's an error
         } else {
-          console.log(`Successfully stored ${processedTweets.length} tweets in the database`);
+          console.log(`Successfully stored ${count} tweets in the database`);
+          totalStored += count || 0;
         }
       }
       
@@ -145,9 +151,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       totalFetched,
+      totalStored,
       nextCursor: latestCursor,
       pagesProcessed,
-      message: `Successfully fetched and stored ${totalFetched} historical tweets from ${pagesProcessed} pages`
+      message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
