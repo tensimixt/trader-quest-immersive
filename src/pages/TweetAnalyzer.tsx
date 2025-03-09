@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle } from 'lucide-react';
+import { SearchIcon, RefreshCcw, ArrowLeft, History, AlertTriangle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,14 @@ import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Slider
+} from "@/components/ui/slider";
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -24,6 +31,8 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
+  const [batchSize, setBatchSize] = useState(5);
+  const [tweetsPerRequest, setTweetsPerRequest] = useState(100);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -198,7 +207,7 @@ const TweetAnalyzer = () => {
     setLastFetchAttempt(new Date());
     setIsHistoricalLoading(true);
     try {
-      toast.info(`Starting ${fetchingMode} tweet fetch...`);
+      toast.info(`Starting ${fetchingMode} tweet fetch (batch size: ${batchSize})...`);
       
       // Add a small delay to avoid potential rate limiting or gateway timeouts
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -206,9 +215,10 @@ const TweetAnalyzer = () => {
       const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
         body: { 
           cursor: startNew ? null : currentCursor,
-          batchSize: 5,
+          batchSize: batchSize,
           startNew: startNew,
-          mode: fetchingMode
+          mode: fetchingMode,
+          tweetsPerRequest: tweetsPerRequest
         }
       });
       
@@ -365,6 +375,39 @@ const TweetAnalyzer = () => {
               >
                 {fetchingMode === 'older' ? "Switch to Newer" : "Switch to Older"}
               </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Fetch Settings
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 bg-black/80 border-amber-500/30">
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-amber-400">Batch Settings</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-white/70">Batch Size: {batchSize}</span>
+                        <span className="text-xs text-amber-400/70">API calls per batch</span>
+                      </div>
+                      <Slider
+                        value={[batchSize]}
+                        min={1}
+                        max={20}
+                        step={1}
+                        onValueChange={(value) => setBatchSize(value[0])}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
               <Button
                 variant="outline"
                 size="sm"

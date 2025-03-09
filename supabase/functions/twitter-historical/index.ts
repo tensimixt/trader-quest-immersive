@@ -103,11 +103,14 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = 1, startNew = false, mode = 'older' } = await req.json();
+    const { cursor, batchSize = 1, startNew = false, mode = 'older', tweetsPerRequest = TWEETS_PER_REQUEST } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
+    // Allow customization of tweets per request, but ensure it doesn't exceed the maximum
+    const actualTweetsPerRequest = Math.min(parseInt(tweetsPerRequest), TWEETS_PER_REQUEST);
+    
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, tweets per request: ${actualTweetsPerRequest}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -129,7 +132,7 @@ serve(async (req) => {
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
       // Construct URL with pagination parameters
-      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}&count=${TWEETS_PER_REQUEST}`;
+      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}&count=${actualTweetsPerRequest}`;
       if (nextCursor) {
         url += `&cursor=${nextCursor}`;
       }
@@ -211,7 +214,7 @@ serve(async (req) => {
         break;
       }
       
-      console.log(`Fetched ${data.tweets.length} tweets`);
+      console.log(`Fetched ${data.tweets.length} tweets in this page (expected up to ${actualTweetsPerRequest})`);
       totalFetched += data.tweets.length;
       
       // Process tweets for storage - filter out tweets that already exist in the database
@@ -266,9 +269,15 @@ serve(async (req) => {
         break;
       }
       
-      // Add a delay between requests to avoid rate limiting
+      // Adaptively adjust the delay between requests based on the number of tweets received
+      // If we got fewer tweets than expected, the API might be rate limiting us
+      const delayMultiplier = data.tweets.length < actualTweetsPerRequest ? 1.5 : 1; 
+      const baseDelay = 1000; // 1 second base delay
+      const delay = Math.round(baseDelay * delayMultiplier);
+      
       if (i < actualBatchSize - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log(`Waiting ${delay}ms before next request...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
