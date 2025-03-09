@@ -150,7 +150,7 @@ const TweetAnalyzer = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto p-4 h-screen flex flex-col relative"
+        className="container mx-auto p-4 flex flex-col h-screen relative"
       >
         <AppHeader />
         
@@ -192,7 +192,7 @@ const TweetAnalyzer = () => {
           </div>
         </div>
         
-        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-13rem)]">
+        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 14rem)' }}>
           <TweetClassifier tweets={filteredTweets} isLoading={isLoading} />
         </div>
       </motion.div>
