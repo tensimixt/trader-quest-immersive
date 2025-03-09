@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
@@ -24,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -73,6 +75,17 @@ const TweetAnalyzer = () => {
     checkStoredCursors();
   }, []);
 
+  // Added debounced search effect to trigger search when searchTerm changes
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm.trim()) {
+        fetchTweets();
+      }
+    }, 500);
+    
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
   const checkStoredCursors = async () => {
     try {
       const { data: newerCursor, error: newerError } = await supabase
@@ -119,7 +132,7 @@ const TweetAnalyzer = () => {
         const { data, error } = await supabase.functions.invoke('get-historical-tweets', {
           body: { 
             page: 1, 
-            pageSize: 100, 
+            pageSize: 1000, 
             search: searchTerm 
           }
         });
@@ -377,6 +390,16 @@ const TweetAnalyzer = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Input
+                type="text"
+                placeholder="Search tweets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-black/20 border-purple-500/30 text-white placeholder:text-gray-400 w-full"
+              />
+            </div>
+            
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
