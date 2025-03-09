@@ -1,10 +1,11 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
 const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
 // Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
-const MAX_REQUESTS = 10; // Limit the number of paginated requests to avoid timeouts
+const MAX_REQUESTS = 100; // Increased to 100 pages max to fetch more historical data
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 
 const corsHeaders = {
@@ -26,6 +27,7 @@ serve(async (req) => {
     console.log('Historical tweets function called');
     
     const { cursor, batchSize = 1, startNew = false } = await req.json();
+    // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
     console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}`);
@@ -55,8 +57,9 @@ serve(async (req) => {
     
     let totalFetched = 0;
     let latestCursor = null;
+    let pagesProcessed = 0;
     
-    for (let i = 0; i < actualBatchSize; i++) {
+    for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
       // Construct URL with pagination parameters
       let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}&count=${TWEETS_PER_REQUEST}`;
       if (nextCursor) {
@@ -80,6 +83,7 @@ serve(async (req) => {
       }
 
       const data = await response.json();
+      pagesProcessed++;
       
       if (!data.tweets || !Array.isArray(data.tweets) || data.tweets.length === 0) {
         console.log(`No more tweets to fetch at request ${i+1}`);
@@ -130,13 +134,20 @@ serve(async (req) => {
         console.log(`No next cursor available, ending pagination at request ${i+1}`);
         break;
       }
+      
+      // Check if we've hit our global page limit
+      if (pagesProcessed >= MAX_REQUESTS) {
+        console.log(`Reached maximum page limit of ${MAX_REQUESTS}. Stopping further requests.`);
+        break;
+      }
     }
 
     return new Response(JSON.stringify({
       success: true,
       totalFetched,
       nextCursor: latestCursor,
-      message: `Successfully fetched and stored ${totalFetched} historical tweets`
+      pagesProcessed,
+      message: `Successfully fetched and stored ${totalFetched} historical tweets from ${pagesProcessed} pages`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

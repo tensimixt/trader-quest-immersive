@@ -140,7 +140,7 @@ const TweetAnalyzer = () => {
       const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
         body: { 
           cursor: currentCursor,
-          batchSize: 2,
+          batchSize: 5,
           startNew: startNew
         }
       });
@@ -154,7 +154,7 @@ const TweetAnalyzer = () => {
       
       if (data?.success) {
         setCurrentCursor(data.nextCursor);
-        toast.success(`Fetched ${data.totalFetched} historical tweets`);
+        toast.success(`Fetched ${data.totalFetched} historical tweets from ${data.pagesProcessed || 'multiple'} pages`);
         
         if (data.nextCursor) {
           toast.info(`More historical tweets available. Click "Fetch ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to get more.`);
