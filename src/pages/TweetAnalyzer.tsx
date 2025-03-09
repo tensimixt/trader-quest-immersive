@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
@@ -75,7 +74,6 @@ const TweetAnalyzer = () => {
     checkStoredCursors();
   }, []);
 
-  // Added debounced search effect to trigger search when searchTerm changes
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (searchTerm.trim()) {

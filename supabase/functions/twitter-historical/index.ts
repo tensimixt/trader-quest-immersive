@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -8,7 +9,7 @@ const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
 const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 20; // Default batch size to 20 since we get fewer tweets per page
+const DEFAULT_BATCH_SIZE = 1000; // Default batch size to 1000 while knowing we get ~20 tweets per page
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
