@@ -485,7 +485,12 @@ const TweetAnalyzer = () => {
         </div>
         
         <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-140px)]">
-          <TweetClassifier tweets={tweetData} isLoading={isLoading} isSearching={isSearching} searchTerm={searchTerm} />
+          <TweetClassifier 
+            tweets={tweetData} 
+            isLoading={isLoading} 
+            isSearching={isSearching} 
+            searchTerm={searchTerm} 
+          />
         </div>
       </motion.div>
     </div>
