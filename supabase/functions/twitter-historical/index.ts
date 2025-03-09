@@ -49,7 +49,6 @@ serve(async (req) => {
         console.error('Error finding oldest tweet:', findError);
       } else if (oldestTweet && oldestTweet.length > 0) {
         // Use the oldest tweet ID to build a position cursor
-        // This is a simplified approach - Twitter API may require specific cursor format
         console.log(`Found oldest tweet ID: ${oldestTweet[0].id}`);
       }
     }
@@ -95,17 +94,18 @@ serve(async (req) => {
         id: tweet.id,
         text: tweet.text,
         created_at: new Date(tweet.createdAt),
-        author_username: tweet.author?.userName || "unknown",
-        author_name: tweet.author?.name,
-        author_profile_picture: tweet.author?.profilePicture,
-        is_reply: !!tweet.isReply,
-        is_quote: !!tweet.quoted_tweet,
-        in_reply_to_id: tweet.inReplyToId,
+        author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+        author_name: tweet.author?.name || tweet.user?.name,
+        author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+        is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+        is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+        in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
         quoted_tweet_id: tweet.quoted_tweet?.id,
         quoted_tweet_text: tweet.quoted_tweet?.text,
-        quoted_tweet_author: tweet.quoted_tweet?.author?.userName,
+        quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                             (tweet.quoted_tweet?.user?.screen_name),
         entities: tweet.entities || {},
-        extended_entities: tweet.extendedEntities || {},
+        extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
       }));
       
       // Store tweets in the database
@@ -123,7 +123,7 @@ serve(async (req) => {
       }
       
       // Update cursor for next page if available
-      nextCursor = data.cursor;
+      nextCursor = data.next_cursor;
       latestCursor = nextCursor;
       
       if (!nextCursor) {
