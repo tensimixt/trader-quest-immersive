@@ -1,3 +1,4 @@
+
 export interface TweetAuthor {
   userName: string;
   name: string;
@@ -87,6 +88,7 @@ export interface HistoricalTweetBatch {
   pagesProcessed: number;
   message: string;
   cursorMode: 'newer' | 'older';
+  isAtEnd?: boolean;
   error?: string;
 }
 
