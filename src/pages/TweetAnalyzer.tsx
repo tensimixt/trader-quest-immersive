@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SearchIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
@@ -147,11 +146,11 @@ const TweetAnalyzer = () => {
   });
 
   return (
-    <div className="min-h-screen overflow-hidden bat-grid">
+    <div className="min-h-screen overflow-hidden">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto p-4 flex flex-col h-screen relative"
+        className="container mx-auto p-4 flex flex-col min-h-screen"
       >
         <AppHeader />
         
@@ -193,7 +192,7 @@ const TweetAnalyzer = () => {
           </div>
         </div>
         
-        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
+        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-140px)]">
           <TweetClassifier tweets={filteredTweets} isLoading={isLoading} />
         </div>
       </motion.div>

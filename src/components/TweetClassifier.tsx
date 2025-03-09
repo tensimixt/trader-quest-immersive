@@ -360,8 +360,8 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
   }, []);
 
   return (
-    <div className="glass-card rounded-xl p-4 h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           Tweet Classifier
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -392,8 +392,8 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
         </div>
       </div>
       
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full overflow-hidden">
-        <TabsList className="bg-transparent border-b border-emerald-400/20 rounded-none mb-4 px-0 gap-4">
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full">
+        <TabsList className="bg-transparent border-b border-emerald-400/20 rounded-none mb-4 px-0 gap-4 flex-shrink-0">
           <TabsTrigger 
             value="raw" 
             className="data-[state=active]:bg-emerald-400/10 data-[state=active]:text-emerald-400 rounded px-4"
@@ -408,7 +408,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="raw" className="flex-1 flex flex-col h-full overflow-hidden">
+        <TabsContent value="raw" className="flex-1 flex flex-col overflow-hidden h-full">
           <div className="relative mb-4 flex-shrink-0">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
             <Input
@@ -419,7 +419,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             />
           </div>
           
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2" style={{ height: 'calc(100% - 3.5rem)', minHeight: '70vh' }}>
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 min-h-[600px]">
             {rawTweets.map((tweet) => (
               <motion.div 
                 key={tweet.id}
@@ -490,7 +490,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
           </div>
         </TabsContent>
         
-        <TabsContent value="classified" className="flex-1 flex flex-col h-full overflow-hidden">
+        <TabsContent value="classified" className="flex-1 flex flex-col overflow-hidden h-full">
           <div className="flex flex-col sm:flex-row gap-3 mb-4 flex-shrink-0">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
@@ -529,7 +529,7 @@ const TweetClassifier: React.FC<TweetClassifierProps> = ({ tweets: initialTweets
             </Select>
           </div>
           
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2" style={{ height: 'calc(100% - 5.5rem)', minHeight: '70vh' }}>
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 min-h-[600px]">
             {filteredClassifiedTweets.map((tweet) => (
               <motion.div 
                 key={tweet.id}
