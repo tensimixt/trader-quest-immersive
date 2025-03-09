@@ -51,56 +51,47 @@ Format your response as a valid JSON object with these exact fields:
 }
 `;
 
-    try {
-      const chatResponse = await client.chat.complete({
-        model: 'mistral-tiny',
-        messages: [{ role: 'user', content: prompt }],
-      });
+    const chatResponse = await client.chat.complete({
+      model: 'mistral-tiny',
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-      const responseText = chatResponse.choices[0].message.content;
-      console.log('Raw Mistral response:', responseText);
+    const responseText = chatResponse.choices[0].message.content;
+    
+    // Try to parse the JSON response
+    let parsedResponse;
+    try {
+      // Look for JSON in the response - it might be wrapped in markdown code blocks
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                        responseText.match(/```\n([\s\S]*?)\n```/) || 
+                        responseText.match(/{[\s\S]*?}/);
+                        
+      const jsonString = jsonMatch ? jsonMatch[0].replace(/```json\n|```\n|```/g, '') : responseText;
+      parsedResponse = JSON.parse(jsonString);
       
-      // Try to parse the JSON response
-      let parsedResponse;
-      try {
-        // Look for JSON in the response - it might be wrapped in markdown code blocks
-        const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
-                          responseText.match(/```\n([\s\S]*?)\n```/) || 
-                          responseText.match(/{[\s\S]*?}/);
-                          
-        const jsonString = jsonMatch ? jsonMatch[0].replace(/```json\n|```\n|```/g, '') : responseText;
-        parsedResponse = JSON.parse(jsonString);
-        
-        // Validate required fields
-        if (!parsedResponse.market || !parsedResponse.direction || parsedResponse.confidence === undefined) {
-          throw new Error('Missing required fields in AI response');
-        }
-        
-        console.log('Successfully classified tweet:', tweet.id, parsedResponse);
-        
-        return new Response(JSON.stringify(parsedResponse), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } catch (parseError) {
-        console.error('Error parsing AI response:', parseError);
-        console.log('Raw response that could not be parsed:', responseText);
-        
-        // Fallback classification
-        parsedResponse = {
-          market: "UNKNOWN",
-          direction: "NEUTRAL",
-          confidence: 50,
-          explanation: "Classification based on fallback logic due to parsing error."
-        };
-        
-        return new Response(JSON.stringify(parsedResponse), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      // Validate required fields
+      if (!parsedResponse.market || !parsedResponse.direction || parsedResponse.confidence === undefined) {
+        throw new Error('Missing required fields in AI response');
       }
-    } catch (mistralError) {
-      console.error('Error calling Mistral API:', mistralError);
-      throw new Error(`Mistral API error: ${mistralError.message}`);
+      
+      console.log('Successfully classified tweet:', tweet.id);
+    } catch (error) {
+      console.error('Error parsing AI response:', error);
+      console.log('Raw response:', responseText);
+      
+      // Fallback classification
+      parsedResponse = {
+        market: "UNKNOWN",
+        direction: "NEUTRAL",
+        confidence: 50,
+        explanation: "Classification based on fallback logic due to parsing error."
+      };
     }
+    
+    return new Response(JSON.stringify(parsedResponse), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    
   } catch (error) {
     console.error('Error in tweet classification:', error);
     

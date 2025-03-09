@@ -47,32 +47,14 @@ serve(async (req) => {
       query = query.or(`text.ilike.%${search}%,quoted_tweet_text.ilike.%${search}%,author_username.ilike.%${search}%,author_name.ilike.%${search}%`);
     }
     
-    // Log the constructed query for debugging
-    console.log(`Query constructed for historical tweets: market=${market}, direction=${direction}, search=${search}`);
-    
     // Count total matching records first (for pagination)
-    const countQuery = supabase
+    const { count: totalCount, error: countError } = await supabase
       .from('historical_tweets')
-      .select('*', { count: 'exact', head: true });
-      
-    // Add the same filters to the count query
-    if (market && market !== 'all') {
-      countQuery.filter('classification->market', 'eq', market);
-    }
-    
-    if (direction && direction !== 'all') {
-      countQuery.filter('classification->direction', 'eq', direction);
-    }
-    
-    if (search) {
-      countQuery.or(`text.ilike.%${search}%,quoted_tweet_text.ilike.%${search}%,author_username.ilike.%${search}%,author_name.ilike.%${search}%`);
-    }
-    
-    const { count: totalCount, error: countError } = await countQuery;
+      .select('*', { count: 'exact', head: true })
+      .or(`text.ilike.%${search || ''}%,quoted_tweet_text.ilike.%${search || ''}%,author_username.ilike.%${search || ''}%,author_name.ilike.%${search || ''}%`);
       
     if (countError) {
       console.error('Error counting records:', countError);
-      throw new Error(`Count error: ${countError.message}`);
     }
     
     console.log(`Found ${totalCount} total matching records`);
@@ -83,10 +65,9 @@ serve(async (req) => {
     query = query.range(from, to);
     
     // Execute the query
-    const { data: tweets, error } = await query;
+    const { data: tweets, error, count } = await query;
     
     if (error) {
-      console.error('Database query error:', error);
       throw new Error(`Database error: ${error.message}`);
     }
     

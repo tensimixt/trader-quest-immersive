@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -6,9 +5,10 @@ const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a8
 // Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
+const TWEETS_PER_REQUEST = 100; // Maximum allowed by Twitter API
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 1000; // Number of API requests to make per batch operation
+const DEFAULT_BATCH_SIZE = 20; // Default batch size to 20 since we get fewer tweets per page
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,11 +103,14 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older' } = await req.json();
+    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older', tweetsPerRequest = TWEETS_PER_REQUEST } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize} API requests, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
+    // Allow customization of tweets per request, but ensure it doesn't exceed the maximum
+    const actualTweetsPerRequest = Math.min(parseInt(tweetsPerRequest), TWEETS_PER_REQUEST);
+    
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, tweets per request: ${actualTweetsPerRequest}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -128,12 +131,11 @@ serve(async (req) => {
     let consecutiveErrors = 0;
     let emptyResultCount = 0; // Track empty results to handle API inconsistency
     let lowTweetCountPages = 0; // Track pages with very few tweets
-    const expectedTweetsPerPage = 20; // Twitter typically returns around 20 tweets per page
+    const expectedTweetsPerPage = 20; // Adjust our expectations - we typically get around 20 tweets per page
     
-    // Loop through the batch, making API requests until we hit our batch size limit
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
-      // Construct URL with pagination parameters - removed count parameter as Twitter defaults to ~20
-      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
+      // Construct URL with pagination parameters
+      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}&count=${actualTweetsPerRequest}`;
       if (nextCursor) {
         url += `&cursor=${nextCursor}`;
       }
@@ -276,43 +278,22 @@ serve(async (req) => {
         extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
       }));
       
-      // Add detailed logging about the tweets we're about to store
-      console.log(`Processing ${processedTweets.length} tweets for storage`);
+      // Store tweets in the database
       if (processedTweets.length > 0) {
-        console.log(`Sample tweet being stored: ID=${processedTweets[0].id}, Author=${processedTweets[0].author_username}`);
-      }
-      
-      // Store tweets in the database - log the actual SQL operation being performed
-      if (processedTweets.length > 0) {
-        try {
-          console.log(`Attempting to upsert ${processedTweets.length} tweets to the database`);
-          const { data, error, count } = await supabase
-            .from('historical_tweets')
-            .upsert(processedTweets, { 
-              onConflict: 'id',
-              count: 'exact' // Get the count of affected rows
-            });
-          
-          if (error) {
-            console.error('Error storing tweets in database:', error);
-            // Try to get more information about the error
-            if (error.details) {
-              console.error('Error details:', error.details);
-            }
-            if (error.hint) {
-              console.error('Error hint:', error.hint);
-            }
-            
-            // Continue with the next batch even if there's an error
-          } else {
-            console.log(`Successfully stored ${count} tweets in the database (data response: ${data ? 'exists' : 'null'})`);
-            totalStored += count || 0;
-          }
-        } catch (storeError) {
-          console.error('Exception occurred while storing tweets:', storeError);
+        const { error, count } = await supabase
+          .from('historical_tweets')
+          .upsert(processedTweets, { 
+            onConflict: 'id',
+            count: 'exact' // Get the count of affected rows
+          });
+        
+        if (error) {
+          console.error('Error storing tweets in database:', error);
+          // Continue with the next batch even if there's an error
+        } else {
+          console.log(`Successfully stored ${count} tweets in the database`);
+          totalStored += count || 0;
         }
-      } else {
-        console.log('No tweets to store in this batch');
       }
       
       // Update cursor for next page if available
@@ -327,8 +308,8 @@ serve(async (req) => {
       
       // Handle Twitter API inconsistency: If we have a next_cursor but very few tweets
       // or a page with no new tweets (totalStored didn't increase), we might be at the end
-      if (data.tweets.length < 5 || (processedTweets.length > 0 && count === 0)) {
-        console.log(`Warning: Only ${data.tweets.length} tweets returned or no new tweets stored. Might be approaching end of data`);
+      if (data.tweets.length < 5 || (processedTweets.length > 0 && totalStored === 0)) {
+        console.log(`Warning: Only ${data.tweets.length} tweets returned, or no new tweets stored. Might be approaching end of data`);
         emptyResultCount += 0.5; // Count low tweet counts as "half empty"
         
         if (emptyResultCount >= 2) {
