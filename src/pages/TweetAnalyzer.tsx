@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
@@ -301,7 +300,13 @@ const TweetAnalyzer = () => {
         
         setApiErrorCount(0);
         
-        fetchTweets();
+        await fetchTweets();
+        
+        return {
+          success: true,
+          isAtEnd: data.isAtEnd || !data.nextCursor,
+          hasData: data.totalFetched > 0
+        };
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
       }
@@ -316,6 +321,12 @@ const TweetAnalyzer = () => {
           icon: <AlertTriangle className="text-red-500" />
         });
       }
+      
+      return {
+        success: false,
+        isAtEnd: false,
+        hasData: false
+      };
     } finally {
       setIsHistoricalLoading(false);
     }
@@ -382,31 +393,49 @@ const TweetAnalyzer = () => {
     toast.info(`Starting continuous fetch for up to ${maxFetchCount} iterations`);
     
     let fetchesCompleted = 0;
+    let consecutiveEmptyFetches = 0;
     
-    while (fetchesCompleted < maxFetchCount && !isPossiblyAtEnd && isContinuousFetching) {
-      try {
-        await fetchHistoricalTweets(false);
+    try {
+      while (fetchesCompleted < maxFetchCount && !isPossiblyAtEnd && isContinuousFetching) {
+        console.log(`Starting fetch iteration ${fetchesCompleted + 1}/${maxFetchCount}`);
+        
+        const result = await fetchHistoricalTweets(fetchesCompleted === 0 ? false : false);
+        
         fetchesCompleted++;
         setContinuousFetchCount(fetchesCompleted);
         setRemainingFetches(maxFetchCount - fetchesCompleted);
         
-        // Early exit conditions
-        if (isPossiblyAtEnd) {
-          toast.info('Reached possible end of available tweets. Stopping auto-fetch.');
+        console.log('Fetch result:', result);
+        
+        if (!result.hasData) {
+          consecutiveEmptyFetches++;
+          console.log(`Empty fetch #${consecutiveEmptyFetches}`);
+          
+          if (consecutiveEmptyFetches >= 3) {
+            toast.info('Received 3 consecutive empty responses. Stopping auto-fetch.');
+            setIsPossiblyAtEnd(true);
+            break;
+          }
+        } else {
+          consecutiveEmptyFetches = 0;
+        }
+        
+        if (result.isAtEnd) {
+          toast.info('Reached end of available tweets. Stopping auto-fetch.');
+          setIsPossiblyAtEnd(true);
           break;
         }
         
-        // Small delay between fetches to allow UI updates
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (error) {
-        console.error('Error in continuous fetch:', error);
-        toast.error('Error during continuous fetch. Stopping.');
-        break;
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
+      
+      toast.success(`Completed ${fetchesCompleted} fetches`);
+    } catch (error) {
+      console.error('Error in continuous fetch:', error);
+      toast.error(`Error during continuous fetch: ${error.message}`);
+    } finally {
+      setIsContinuousFetching(false);
     }
-    
-    setIsContinuousFetching(false);
-    toast.success(`Completed ${fetchesCompleted} fetches`);
   };
 
   const stopContinuousFetch = () => {
