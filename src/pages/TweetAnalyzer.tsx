@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,11 @@ const TweetAnalyzer = () => {
   const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  
+  const [isContinuousFetching, setIsContinuousFetching] = useState(false);
+  const [continuousFetchCount, setContinuousFetchCount] = useState(0);
+  const [maxFetchCount, setMaxFetchCount] = useState(100);
+  const [remainingFetches, setRemainingFetches] = useState(0);
+
   useEffect(() => {
     const initialTweets = marketIntelligence
       .filter(item => item.screenName)
@@ -364,6 +368,34 @@ const TweetAnalyzer = () => {
       .catch(err => toast.error(`Failed to start new fetch: ${err.message}`));
   };
 
+  const startContinuousFetch = async () => {
+    setIsContinuousFetching(true);
+    setRemainingFetches(maxFetchCount);
+    toast.info(`Starting continuous fetch for ${maxFetchCount} iterations`);
+    
+    while (remainingFetches > 0 && !isPossiblyAtEnd && isContinuousFetching) {
+      try {
+        await fetchHistoricalTweets(false);
+        setContinuousFetchCount(prev => prev + 1);
+        setRemainingFetches(prev => prev - 1);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error('Error in continuous fetch:', error);
+        toast.error('Error during continuous fetch. Stopping.');
+        break;
+      }
+    }
+    
+    setIsContinuousFetching(false);
+    toast.success(`Completed ${continuousFetchCount} fetches`);
+  };
+
+  const stopContinuousFetch = () => {
+    setIsContinuousFetching(false);
+    toast.info('Stopping continuous fetch after current iteration');
+  };
+
   return (
     <div className="min-h-screen overflow-hidden">
       <motion.div
@@ -453,6 +485,25 @@ const TweetAnalyzer = () => {
                         <Info className="h-3 w-3 inline-block mr-1 text-amber-400" />
                         <span>Each request typically returns around 20 tweets regardless of the setting. The batch size determines how many API calls will be made in one batch operation.</span>
                       </div>
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm text-white/70">Max Continuous Fetches: {maxFetchCount}</span>
+                        <span className="text-xs text-amber-400/70">Number of automatic fetches</span>
+                      </div>
+                      <Slider
+                        value={[maxFetchCount]}
+                        min={1}
+                        max={1000}
+                        step={10}
+                        onValueChange={(value) => setMaxFetchCount(value[0])}
+                        className="w-full"
+                      />
+                      
+                      {isContinuousFetching && (
+                        <div className="mt-2 text-sm text-white/70">
+                          Remaining fetches: {remainingFetches}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </PopoverContent>
