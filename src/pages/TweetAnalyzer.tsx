@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
@@ -369,17 +370,34 @@ const TweetAnalyzer = () => {
   };
 
   const startContinuousFetch = async () => {
+    if (isHistoricalLoading) {
+      toast.warning('Please wait for the current fetch operation to complete');
+      return;
+    }
+    
+    setContinuousFetchCount(0);
     setIsContinuousFetching(true);
     setRemainingFetches(maxFetchCount);
-    toast.info(`Starting continuous fetch for ${maxFetchCount} iterations`);
+    setIsPossiblyAtEnd(false);
+    toast.info(`Starting continuous fetch for up to ${maxFetchCount} iterations`);
     
-    while (remainingFetches > 0 && !isPossiblyAtEnd && isContinuousFetching) {
+    let fetchesCompleted = 0;
+    
+    while (fetchesCompleted < maxFetchCount && !isPossiblyAtEnd && isContinuousFetching) {
       try {
         await fetchHistoricalTweets(false);
-        setContinuousFetchCount(prev => prev + 1);
-        setRemainingFetches(prev => prev - 1);
+        fetchesCompleted++;
+        setContinuousFetchCount(fetchesCompleted);
+        setRemainingFetches(maxFetchCount - fetchesCompleted);
         
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Early exit conditions
+        if (isPossiblyAtEnd) {
+          toast.info('Reached possible end of available tweets. Stopping auto-fetch.');
+          break;
+        }
+        
+        // Small delay between fetches to allow UI updates
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
         console.error('Error in continuous fetch:', error);
         toast.error('Error during continuous fetch. Stopping.');
@@ -388,7 +406,7 @@ const TweetAnalyzer = () => {
     }
     
     setIsContinuousFetching(false);
-    toast.success(`Completed ${continuousFetchCount} fetches`);
+    toast.success(`Completed ${fetchesCompleted} fetches`);
   };
 
   const stopContinuousFetch = () => {
@@ -513,7 +531,7 @@ const TweetAnalyzer = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleStartNewHistorical}
-                disabled={isHistoricalLoading}
+                disabled={isHistoricalLoading || isContinuousFetching}
                 className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
               >
                 <History className="h-4 w-4 mr-2" />
@@ -527,7 +545,7 @@ const TweetAnalyzer = () => {
                       variant="outline"
                       size="sm"
                       onClick={handleRetryHistorical}
-                      disabled={isHistoricalLoading}
+                      disabled={isHistoricalLoading || isContinuousFetching}
                       className={`border-purple-500/30 text-purple-400 hover:bg-purple-500/10 ${isPossiblyAtEnd ? 'border-yellow-500/50 text-yellow-400' : ''}`}
                     >
                       <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
@@ -542,6 +560,28 @@ const TweetAnalyzer = () => {
                   )}
                 </Tooltip>
               </TooltipProvider>
+              
+              {isContinuousFetching ? (
+                <Button
+                  variant="autofetch"
+                  size="sm"
+                  onClick={stopContinuousFetch}
+                  className="border-red-500/50"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  Stop Auto Fetch ({remainingFetches})
+                </Button>
+              ) : (
+                <Button
+                  variant="autofetch" 
+                  size="sm"
+                  onClick={startContinuousFetch}
+                  disabled={isHistoricalLoading}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Start Auto Fetch
+                </Button>
+              )}
             </div>
             <Button
               variant="outline"
