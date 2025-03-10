@@ -30,6 +30,16 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 
+// Define a return type for fetchHistoricalTweets function
+type HistoricalFetchResult = {
+  success: boolean;
+  isAtEnd?: boolean;
+  totalFetched?: number;
+  totalStored?: number;
+  pagesProcessed?: number;
+  error?: string;
+};
+
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -265,7 +275,7 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const fetchHistoricalTweets = async (startNew = false) => {
+  const fetchHistoricalTweets = async (startNew = false): Promise<HistoricalFetchResult> => {
     if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
       toast.warning('Please wait a moment before fetching again');
       return { success: false, error: 'Rate limited' };
@@ -426,7 +436,8 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const retryWithBackoff = async (fn: () => Promise<void>, maxRetries = 3) => {
+  // Updated retryWithBackoff to support the return type from fetchHistoricalTweets
+  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -440,6 +451,8 @@ const TweetAnalyzer = () => {
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
+    
+    throw new Error("Max retries reached");
   };
 
   const toggleFetchingMode = () => {
@@ -456,21 +469,34 @@ const TweetAnalyzer = () => {
     fetchTweets();
   };
 
+  // Update the handlers to use the typed retryWithBackoff function
   const handleRetryFetch = () => {
-    retryWithBackoff(fetchTweets)
+    retryWithBackoff(() => fetchTweets())
       .then(() => toast.success('Refresh successful!'))
       .catch(err => toast.error(`Refresh failed after multiple attempts: ${err.message}`));
   };
 
   const handleRetryHistorical = () => {
     retryWithBackoff(() => fetchHistoricalTweets(false))
-      .then(() => toast.success('Historical fetch successful!'))
+      .then((result) => {
+        if (result.success) {
+          toast.success('Historical fetch successful!');
+        } else {
+          toast.error(`Historical fetch failed: ${result.error}`);
+        }
+      })
       .catch(err => toast.error(`Historical fetch failed after multiple attempts: ${err.message}`));
   };
   
   const handleStartNewHistorical = () => {
     retryWithBackoff(() => fetchHistoricalTweets(true))
-      .then(() => toast.success('Started new fetch sequence!'))
+      .then((result) => {
+        if (result.success) {
+          toast.success('Started new fetch sequence!');
+        } else {
+          toast.error(`Failed to start new fetch: ${result.error}`);
+        }
+      })
       .catch(err => toast.error(`Failed to start new fetch: ${err.message}`));
   };
 
