@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Pause, StopCircle } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -26,19 +25,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-
-// Define a return type for fetchHistoricalTweets function
-type HistoricalFetchResult = {
-  success: boolean;
-  isAtEnd?: boolean;
-  totalFetched?: number;
-  totalStored?: number;
-  pagesProcessed?: number;
-  error?: string;
-};
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -55,13 +41,6 @@ const TweetAnalyzer = () => {
   const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  
-  // Continuous fetch settings
-  const [isContinuousFetchActive, setIsContinuousFetchActive] = useState(false);
-  const [continuousFetchCount, setContinuousFetchCount] = useState(5);
-  const [continuousFetchCompleted, setContinuousFetchCompleted] = useState(0);
-  const continuousFetchIntervalRef = useRef<number | null>(null);
-  const continuousFetchTimeoutRef = useRef<number | null>(null);
   
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -93,16 +72,6 @@ const TweetAnalyzer = () => {
     fetchTweets();
     
     checkStoredCursors();
-    
-    // Cleanup function for continuous fetch timers
-    return () => {
-      if (continuousFetchIntervalRef.current) {
-        clearInterval(continuousFetchIntervalRef.current);
-      }
-      if (continuousFetchTimeoutRef.current) {
-        clearTimeout(continuousFetchTimeoutRef.current);
-      }
-    };
   }, []);
 
   useEffect(() => {
@@ -114,13 +83,6 @@ const TweetAnalyzer = () => {
     
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
-
-  // Stop continuous fetch if we reach the end of data
-  useEffect(() => {
-    if (isPossiblyAtEnd && isContinuousFetchActive) {
-      stopContinuousFetch("Reached end of available data");
-    }
-  }, [isPossiblyAtEnd]);
 
   const checkStoredCursors = async () => {
     try {
@@ -275,10 +237,10 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const fetchHistoricalTweets = async (startNew = false): Promise<HistoricalFetchResult> => {
+  const fetchHistoricalTweets = async (startNew = false) => {
     if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
       toast.warning('Please wait a moment before fetching again');
-      return { success: false, error: 'Rate limited' };
+      return;
     }
     
     setLastFetchAttempt(new Date());
@@ -335,14 +297,6 @@ const TweetAnalyzer = () => {
         setApiErrorCount(0);
         
         fetchTweets();
-        
-        return { 
-          success: true, 
-          isAtEnd: data.isAtEnd || !data.nextCursor || data.totalFetched === 0,
-          totalFetched: data.totalFetched,
-          totalStored: data.totalStored,
-          pagesProcessed: data.pagesProcessed
-        };
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
       }
@@ -357,87 +311,12 @@ const TweetAnalyzer = () => {
           icon: <AlertTriangle className="text-red-500" />
         });
       }
-      
-      return { success: false, error: error.message };
     } finally {
       setIsHistoricalLoading(false);
     }
   };
 
-  // Function to start continuous fetching
-  const startContinuousFetch = () => {
-    if (isContinuousFetchActive || continuousFetchCount <= 0) return;
-    
-    // Reset counters
-    setContinuousFetchCompleted(0);
-    setIsContinuousFetchActive(true);
-    
-    toast.info(`Starting continuous fetch: Will fetch ${continuousFetchCount} batches of historical tweets`, {
-      duration: 5000
-    });
-    
-    // Start the first fetch immediately
-    continuousFetchCycle();
-  };
-  
-  // Function for a single fetch cycle in the continuous mode
-  const continuousFetchCycle = async () => {
-    if (!isContinuousFetchActive) return;
-    
-    const result = await fetchHistoricalTweets(false);
-    
-    if (result.success) {
-      const newCompletedCount = continuousFetchCompleted + 1;
-      setContinuousFetchCompleted(newCompletedCount);
-      
-      // Check if we've reached the end of available data
-      if (result.isAtEnd) {
-        stopContinuousFetch("Reached end of available data");
-        return;
-      }
-      
-      // Check if we've reached the target count
-      if (newCompletedCount >= continuousFetchCount) {
-        stopContinuousFetch("Completed all requested fetches");
-        return;
-      }
-      
-      // Schedule the next fetch with a delay to prevent rate limiting
-      continuousFetchTimeoutRef.current = setTimeout(() => {
-        continuousFetchCycle();
-      }, 3000) as unknown as number;
-      
-    } else {
-      // If we hit an error, stop the continuous fetch
-      stopContinuousFetch(`Error: ${result.error}`);
-    }
-  };
-  
-  // Function to stop continuous fetching
-  const stopContinuousFetch = (reason: string = "Manually stopped") => {
-    if (!isContinuousFetchActive) return;
-    
-    setIsContinuousFetchActive(false);
-    
-    if (continuousFetchTimeoutRef.current) {
-      clearTimeout(continuousFetchTimeoutRef.current);
-      continuousFetchTimeoutRef.current = null;
-    }
-    
-    toast.info(`Continuous fetch stopped: ${reason}`, {
-      duration: 5000
-    });
-    
-    // Display a summary of what was completed
-    if (continuousFetchCompleted > 0) {
-      toast.success(`Completed ${continuousFetchCompleted} of ${continuousFetchCount} planned fetch operations`, {
-        duration: 5000
-      });
-    }
-  };
-
-  // Updated retryWithBackoff to support the return type from fetchHistoricalTweets
-  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const retryWithBackoff = async (fn: () => Promise<void>, maxRetries = 3) => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -451,8 +330,6 @@ const TweetAnalyzer = () => {
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
-    
-    throw new Error("Max retries reached");
   };
 
   const toggleFetchingMode = () => {
@@ -469,34 +346,21 @@ const TweetAnalyzer = () => {
     fetchTweets();
   };
 
-  // Update the handlers to use the typed retryWithBackoff function
   const handleRetryFetch = () => {
-    retryWithBackoff(() => fetchTweets())
+    retryWithBackoff(fetchTweets)
       .then(() => toast.success('Refresh successful!'))
       .catch(err => toast.error(`Refresh failed after multiple attempts: ${err.message}`));
   };
 
   const handleRetryHistorical = () => {
     retryWithBackoff(() => fetchHistoricalTweets(false))
-      .then((result) => {
-        if (result.success) {
-          toast.success('Historical fetch successful!');
-        } else {
-          toast.error(`Historical fetch failed: ${result.error}`);
-        }
-      })
+      .then(() => toast.success('Historical fetch successful!'))
       .catch(err => toast.error(`Historical fetch failed after multiple attempts: ${err.message}`));
   };
   
   const handleStartNewHistorical = () => {
     retryWithBackoff(() => fetchHistoricalTweets(true))
-      .then((result) => {
-        if (result.success) {
-          toast.success('Started new fetch sequence!');
-        } else {
-          toast.error(`Failed to start new fetch: ${result.error}`);
-        }
-      })
+      .then(() => toast.success('Started new fetch sequence!'))
       .catch(err => toast.error(`Failed to start new fetch: ${err.message}`));
   };
 
@@ -585,71 +449,9 @@ const TweetAnalyzer = () => {
                         className="w-full"
                       />
                       
-                      <Separator className="my-4 bg-amber-500/20" />
-                      
-                      <h4 className="font-medium text-amber-400">Continuous Fetch</h4>
-                      
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="continuous-count" className="text-sm text-white/70">
-                          Number of batches to fetch: {continuousFetchCount}
-                        </Label>
-                      </div>
-                      <Slider
-                        id="continuous-count"
-                        value={[continuousFetchCount]}
-                        min={1}
-                        max={100}
-                        step={1}
-                        onValueChange={(value) => setContinuousFetchCount(value[0])}
-                        className="w-full"
-                        disabled={isContinuousFetchActive}
-                      />
-                      
-                      <div className="flex justify-between mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-green-500/30 text-green-400 hover:bg-green-500/10"
-                          onClick={startContinuousFetch}
-                          disabled={isContinuousFetchActive || isHistoricalLoading}
-                        >
-                          <Play className="h-3 w-3 mr-1" />
-                          Start Loop
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                          onClick={() => stopContinuousFetch("Manually stopped")}
-                          disabled={!isContinuousFetchActive}
-                        >
-                          <StopCircle className="h-3 w-3 mr-1" />
-                          Stop Loop
-                        </Button>
-                      </div>
-                      
-                      {isContinuousFetchActive && (
-                        <div className="mt-2 text-center">
-                          <Badge variant="outline" className="border-blue-500/30 text-blue-400">
-                            Batch {continuousFetchCompleted} of {continuousFetchCount} completed
-                          </Badge>
-                          <div className="w-full bg-gray-700/30 h-1 mt-2 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-blue-500 h-1"
-                              style={{ width: `${(continuousFetchCompleted / continuousFetchCount) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
-                      
                       <div className="mt-4 text-xs text-white/70 p-2 bg-amber-500/10 rounded">
                         <Info className="h-3 w-3 inline-block mr-1 text-amber-400" />
-                        <span>The continuous fetch feature will automatically fetch multiple batches of historical tweets in sequence. A 3-second delay is added between batches to prevent rate limiting.</span>
-                      </div>
-                      
-                      <div className="mt-2 text-xs text-white/70 p-2 bg-amber-500/10 rounded">
-                        <AlertTriangle className="h-3 w-3 inline-block mr-1 text-amber-400" />
-                        <span>Continuous fetch will automatically stop if it reaches the end of available data or encounters an error.</span>
+                        <span>Each request typically returns around 20 tweets regardless of the setting. The batch size determines how many API calls will be made in one batch operation.</span>
                       </div>
                     </div>
                   </div>
@@ -660,7 +462,7 @@ const TweetAnalyzer = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleStartNewHistorical}
-                disabled={isHistoricalLoading || isContinuousFetchActive}
+                disabled={isHistoricalLoading}
                 className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
               >
                 <History className="h-4 w-4 mr-2" />
@@ -674,7 +476,7 @@ const TweetAnalyzer = () => {
                       variant="outline"
                       size="sm"
                       onClick={handleRetryHistorical}
-                      disabled={isHistoricalLoading || isContinuousFetchActive}
+                      disabled={isHistoricalLoading}
                       className={`border-purple-500/30 text-purple-400 hover:bg-purple-500/10 ${isPossiblyAtEnd ? 'border-yellow-500/50 text-yellow-400' : ''}`}
                     >
                       <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
@@ -694,7 +496,7 @@ const TweetAnalyzer = () => {
               variant="outline"
               size="sm"
               onClick={handleRetryFetch}
-              disabled={isLoading || isContinuousFetchActive}
+              disabled={isLoading}
               className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
             >
               <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
