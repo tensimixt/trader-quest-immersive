@@ -368,15 +368,23 @@ const TweetAnalyzer = () => {
       .catch(err => toast.error(`Refresh failed after multiple attempts: ${err.message}`));
   };
 
-  const handleRetryHistorical = () => {
-    retryWithBackoff(() => fetchHistoricalTweets(false))
-      .then(() => toast.success('Historical fetch successful!'))
+  const handleRetryHistorical = async () => {
+    retryWithBackoff(async () => {
+      const result = await fetchHistoricalTweets(false);
+      if (result.success) {
+        toast.success('Historical fetch successful!');
+      }
+    })
       .catch(err => toast.error(`Historical fetch failed after multiple attempts: ${err.message}`));
   };
   
-  const handleStartNewHistorical = () => {
-    retryWithBackoff(() => fetchHistoricalTweets(true))
-      .then(() => toast.success('Started new fetch sequence!'))
+  const handleStartNewHistorical = async () => {
+    retryWithBackoff(async () => {
+      const result = await fetchHistoricalTweets(true);
+      if (result.success) {
+        toast.success('Started new fetch sequence!');
+      }
+    })
       .catch(err => toast.error(`Failed to start new fetch: ${err.message}`));
   };
 
@@ -639,3 +647,4 @@ const TweetAnalyzer = () => {
 };
 
 export default TweetAnalyzer;
+
