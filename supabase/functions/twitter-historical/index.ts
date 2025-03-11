@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -8,7 +7,7 @@ const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 20; // Default batch size set to 20
+const DEFAULT_BATCH_SIZE = 100; // Increased default batch size from 20 to 100
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

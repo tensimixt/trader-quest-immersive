@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
@@ -37,7 +38,7 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(20);
+  const [batchSize, setBatchSize] = useState(100); // Changed default from 20 to 100
   const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
