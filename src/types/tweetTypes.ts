@@ -96,8 +96,8 @@ export interface FetchHistoricalResult {
   success: boolean;
   isAtEnd: boolean;
   hasData: boolean;
-  totalFetched?: number;  // Add this missing property
-  totalStored?: number;   // Add this property as well for better tracking
+  totalFetched?: number;
+  totalStored?: number;
 }
 
 export interface HistoricalTweetResponse {

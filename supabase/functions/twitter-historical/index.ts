@@ -279,10 +279,29 @@ serve(async (req) => {
         // Enhanced debug logging for each tweet
         console.log(`Processing tweet ID: ${tweet.id}, author: ${tweet.author?.userName || tweet.user?.screen_name || "unknown"}`);
         
+        // Safely convert dates and handle null values
+        const createdAt = tweet.createdAt ? new Date(tweet.createdAt).toISOString() : new Date().toISOString();
+        
+        // Ensure entities and extended_entities are valid JSON strings
+        let entities = '{}';
+        let extendedEntities = '{}';
+        
+        try {
+          entities = JSON.stringify(tweet.entities || {});
+        } catch (e) {
+          console.error(`Error stringifying entities for tweet ${tweet.id}:`, e);
+        }
+        
+        try {
+          extendedEntities = JSON.stringify(tweet.extendedEntities || tweet.extended_entities || {});
+        } catch (e) {
+          console.error(`Error stringifying extendedEntities for tweet ${tweet.id}:`, e);
+        }
+        
         return {
           id: tweet.id,
-          text: tweet.text,
-          created_at: new Date(tweet.createdAt).toISOString(),
+          text: tweet.text || "",
+          created_at: createdAt,
           author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
           author_name: tweet.author?.name || tweet.user?.name || "Unknown",
           author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https || null,
@@ -293,8 +312,8 @@ serve(async (req) => {
           quoted_tweet_text: tweet.quoted_tweet?.text || null,
           quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
                              (tweet.quoted_tweet?.user?.screen_name) || null,
-          entities: JSON.stringify(tweet.entities || {}),
-          extended_entities: JSON.stringify(tweet.extendedEntities || tweet.extended_entities || {}),
+          entities: entities,
+          extended_entities: extendedEntities,
         };
       });
       
@@ -316,7 +335,40 @@ serve(async (req) => {
           if (error) {
             console.error('Error storing tweets in database:', error);
             console.error('Error details:', JSON.stringify(error, null, 2));
-            // Continue with the next batch even if there's an error
+            
+            // Try to debug specific issues
+            if (error.code === '23502') { // Not-null violation
+              console.error('Column not-null constraint violated. Checking which tweet has null values...');
+              // Check each tweet for null values in required fields
+              for (let i = 0; i < processedTweets.length; i++) {
+                const tweet = processedTweets[i];
+                if (!tweet.id || !tweet.text || !tweet.created_at || !tweet.author_username) {
+                  console.error(`Tweet at index ${i} has null values in required fields:`, JSON.stringify(tweet, null, 2));
+                }
+              }
+            } else if (error.code === '22P02') { // Invalid text representation
+              console.error('Invalid text representation. This may be due to invalid JSON in entities or extended_entities');
+            }
+            
+            // Try storing tweets one by one to identify problematic tweets
+            console.log('Attempting to store tweets individually to identify problematic ones...');
+            let individualSuccessCount = 0;
+            
+            for (let i = 0; i < processedTweets.length; i++) {
+              const tweet = processedTweets[i];
+              const { error: individualError } = await supabase
+                .from('historical_tweets')
+                .upsert([tweet], { onConflict: 'id' });
+              
+              if (individualError) {
+                console.error(`Error storing tweet ${i} (ID: ${tweet.id}):`, individualError);
+              } else {
+                individualSuccessCount++;
+              }
+            }
+            
+            console.log(`Successfully stored ${individualSuccessCount}/${processedTweets.length} tweets individually`);
+            totalStored += individualSuccessCount;
           } else {
             console.log(`Successfully stored ${count} tweets in the database`);
             totalStored += count || 0;
