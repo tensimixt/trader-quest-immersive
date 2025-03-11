@@ -356,6 +356,7 @@ const TweetAnalyzer = () => {
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
+    throw new Error("Max retries exceeded");
   };
 
   const toggleFetchingMode = () => {
@@ -424,32 +425,57 @@ const TweetAnalyzer = () => {
     
     try {
       while (fetchesCompleted < maxFetchCount && shouldContinue && isSimpleFetching) {
-        console.log(`Starting fetch iteration ${fetchesCompleted + 1}/${maxFetchCount}`);
+        console.log(`Running fetch iteration ${fetchesCompleted + 1}/${maxFetchCount}`);
+        toast.info(`Running fetch ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
         
-        const result = await fetchHistoricalTweets(fetchesCompleted === 0 ? false : false);
-        
-        fetchesCompleted++;
-        setFetchCount(fetchesCompleted);
-        setRemainingFetches(maxFetchCount - fetchesCompleted);
-        
-        if (!result.success || result.isAtEnd || !result.hasData) {
-          if (!result.success) {
-            toast.error('Error during auto-fetch. Stopping.');
-          } else if (result.isAtEnd || !result.hasData) {
-            toast.info('Reached end of available tweets. Stopping auto-fetch.');
-          }
-          shouldContinue = false;
+        if (fetchesCompleted > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
         
-        if (shouldContinue && fetchesCompleted < maxFetchCount) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
+        if (!isSimpleFetching) {
+          console.log("Auto-fetch was stopped by user");
+          break;
+        }
+        
+        try {
+          const result = await fetchHistoricalTweets(false);
+          fetchesCompleted++;
+          setFetchCount(fetchesCompleted);
+          setRemainingFetches(maxFetchCount - fetchesCompleted);
+          
+          console.log(`Fetch ${fetchesCompleted} completed, result:`, result);
+          
+          if (!result.success || result.isAtEnd || !result.hasData) {
+            if (!result.success) {
+              toast.error('Error during auto-fetch. Stopping.');
+              shouldContinue = false;
+            } else if (result.isAtEnd) {
+              toast.info('Reached end of available tweets. Stopping auto-fetch.');
+              shouldContinue = false;
+            } else if (!result.hasData) {
+              toast.info('No new data retrieved. Stopping auto-fetch.');
+              shouldContinue = false;
+            }
+          }
+        } catch (error) {
+          console.error(`Error in fetch iteration ${fetchesCompleted + 1}:`, error);
+          toast.error(`Error in auto-fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          
+          fetchesCompleted++;
+          setFetchCount(fetchesCompleted);
+          setRemainingFetches(maxFetchCount - fetchesCompleted);
+          
+          if (fetchesCompleted >= 3) {
+            toast.error('Multiple errors in auto-fetch. Stopping.');
+            shouldContinue = false;
+          }
         }
       }
       
       toast.success(`Completed ${fetchesCompleted} fetches`);
     } catch (error) {
       console.error('Error in simple auto-fetch:', error);
-      toast.error(`Error during auto-fetch: ${error.message}`);
+      toast.error(`Error during auto-fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSimpleFetching(false);
     }
