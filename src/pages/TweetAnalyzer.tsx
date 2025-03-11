@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square, RotateCw } from 'lucide-react';
@@ -424,29 +425,38 @@ const TweetAnalyzer = () => {
     let reachedEnd = false;
     
     try {
-      while (fetchesCompleted < maxFetchCount && isSimpleFetching && !reachedEnd) {
-        console.log(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`);
-        toast.info(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
-        
-        const result = await fetchHistoricalTweets(false);
-        
-        if (!result.success || result.isAtEnd || !result.hasData) {
-          console.log("Auto-fetch detected end of data:", result);
-          toast.info('Reached the end of available tweets');
-          reachedEnd = true;
-        }
-        
+      while (fetchesCompleted < maxFetchCount && !reachedEnd) {
+        // Check if user stopped the auto-fetch
         if (!isSimpleFetching) {
           console.log("Auto-fetch was stopped by user");
           break;
         }
         
+        console.log(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`);
+        toast.info(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
+        
+        // Use await to ensure each fetch completes before moving to the next one
+        const result = await fetchHistoricalTweets(fetchesCompleted === 0 ? false : false);
+        console.log("Auto-fetch iteration result:", result);
+        
+        // Increment counter right after fetch attempt, even if it failed
         fetchesCompleted++;
         setFetchCount(fetchesCompleted);
         setRemainingFetches(maxFetchCount - fetchesCompleted);
         
+        if (!result.success) {
+          console.log("Auto-fetch encountered an error, trying again...");
+          // Just continue, we'll try again
+        } else if (result.isAtEnd || !result.hasData) {
+          console.log("Auto-fetch detected end of data:", result);
+          toast.info('Reached the end of available tweets');
+          reachedEnd = true;
+          break;
+        }
+        
+        // Wait before next iteration
         if (!reachedEnd && fetchesCompleted < maxFetchCount) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
       
