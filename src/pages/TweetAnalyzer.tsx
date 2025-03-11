@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
@@ -51,6 +51,7 @@ const TweetAnalyzer = () => {
   const [fetchCount, setFetchCount] = useState(0);
   const [maxFetchCount, setMaxFetchCount] = useState(100);
   const [remainingFetches, setRemainingFetches] = useState(0);
+  const continueOlderRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -413,23 +414,35 @@ const TweetAnalyzer = () => {
       return;
     }
     
+    if (!continueOlderRef.current) {
+      toast.error('Cannot find the Continue Older button reference');
+      return;
+    }
+    
     setFetchCount(0);
     setIsSimpleFetching(true);
     setRemainingFetches(maxFetchCount);
-    setIsPossiblyAtEnd(false);
     
-    toast.info(`Starting simple auto-fetch for up to ${maxFetchCount} iterations`);
+    toast.info(`Starting auto-fetch for up to ${maxFetchCount} clicks on Continue Older`);
     
     let fetchesCompleted = 0;
-    let shouldContinue = true;
     
     try {
-      while (fetchesCompleted < maxFetchCount && shouldContinue && isSimpleFetching) {
-        console.log(`Running fetch iteration ${fetchesCompleted + 1}/${maxFetchCount}`);
-        toast.info(`Running fetch ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
+      while (fetchesCompleted < maxFetchCount && isSimpleFetching) {
+        if (isHistoricalLoading || isPossiblyAtEnd) {
+          if (isPossiblyAtEnd) {
+            toast.info('Reached possible end of tweets. Stopping auto-fetch.');
+          }
+          break;
+        }
         
-        if (fetchesCompleted > 0) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`Auto-clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`);
+        toast.info(`Clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
+        
+        continueOlderRef.current.click();
+        
+        while (isHistoricalLoading && isSimpleFetching) {
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         if (!isSimpleFetching) {
@@ -437,44 +450,16 @@ const TweetAnalyzer = () => {
           break;
         }
         
-        try {
-          const result = await fetchHistoricalTweets(false);
-          fetchesCompleted++;
-          setFetchCount(fetchesCompleted);
-          setRemainingFetches(maxFetchCount - fetchesCompleted);
-          
-          console.log(`Fetch ${fetchesCompleted} completed, result:`, result);
-          
-          if (!result.success || result.isAtEnd || !result.hasData) {
-            if (!result.success) {
-              toast.error('Error during auto-fetch. Stopping.');
-              shouldContinue = false;
-            } else if (result.isAtEnd) {
-              toast.info('Reached end of available tweets. Stopping auto-fetch.');
-              shouldContinue = false;
-            } else if (!result.hasData) {
-              toast.info('No new data retrieved. Stopping auto-fetch.');
-              shouldContinue = false;
-            }
-          }
-        } catch (error) {
-          console.error(`Error in fetch iteration ${fetchesCompleted + 1}:`, error);
-          toast.error(`Error in auto-fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          
-          fetchesCompleted++;
-          setFetchCount(fetchesCompleted);
-          setRemainingFetches(maxFetchCount - fetchesCompleted);
-          
-          if (fetchesCompleted >= 3) {
-            toast.error('Multiple errors in auto-fetch. Stopping.');
-            shouldContinue = false;
-          }
-        }
+        fetchesCompleted++;
+        setFetchCount(fetchesCompleted);
+        setRemainingFetches(maxFetchCount - fetchesCompleted);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
-      toast.success(`Completed ${fetchesCompleted} fetches`);
+      toast.success(`Completed ${fetchesCompleted} auto-clicks on Continue Older`);
     } catch (error) {
-      console.error('Error in simple auto-fetch:', error);
+      console.error('Error in auto-fetch:', error);
       toast.error(`Error during auto-fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSimpleFetching(false);
@@ -614,6 +599,7 @@ const TweetAnalyzer = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      ref={continueOlderRef}
                       variant="outline"
                       size="sm"
                       onClick={handleRetryHistorical}
