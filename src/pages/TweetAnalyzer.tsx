@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -414,41 +414,27 @@ const TweetAnalyzer = () => {
       return;
     }
     
-    if (!continueOlderRef.current) {
-      toast.error('Cannot find the Continue Older button reference');
-      return;
-    }
-    
     setFetchCount(0);
     setIsSimpleFetching(true);
     setRemainingFetches(maxFetchCount);
     
-    toast.info(`Starting auto-fetch for up to ${maxFetchCount} clicks on Continue Older`);
+    toast.info(`Starting auto-fetch for up to ${maxFetchCount} iterations`);
     
     let fetchesCompleted = 0;
+    let reachedEnd = false;
     
     try {
-      while (fetchesCompleted < maxFetchCount && isSimpleFetching) {
-        if (isPossiblyAtEnd) {
-          toast.info('Reached possible end of tweets. Stopping auto-fetch.');
-          break;
+      while (fetchesCompleted < maxFetchCount && isSimpleFetching && !reachedEnd) {
+        console.log(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`);
+        toast.info(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
+        
+        const result = await fetchHistoricalTweets(false);
+        
+        if (!result.success || result.isAtEnd || !result.hasData) {
+          console.log("Auto-fetch detected end of data:", result);
+          toast.info('Reached the end of available tweets');
+          reachedEnd = true;
         }
-        
-        console.log(`Auto-clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`);
-        toast.info(`Clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
-        
-        if (continueOlderRef.current) {
-          await handleRetryHistorical();
-        }
-        
-        await new Promise(resolve => {
-          const checkInterval = setInterval(() => {
-            if (!isHistoricalLoading) {
-              clearInterval(checkInterval);
-              resolve(true);
-            }
-          }, 500);
-        });
         
         if (!isSimpleFetching) {
           console.log("Auto-fetch was stopped by user");
@@ -459,10 +445,18 @@ const TweetAnalyzer = () => {
         setFetchCount(fetchesCompleted);
         setRemainingFetches(maxFetchCount - fetchesCompleted);
         
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!reachedEnd && fetchesCompleted < maxFetchCount) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
       }
       
-      toast.success(`Completed ${fetchesCompleted} auto-clicks on Continue Older`);
+      if (reachedEnd) {
+        toast.success(`Completed ${fetchesCompleted} iterations and reached the end of available tweets`);
+      } else if (fetchesCompleted >= maxFetchCount) {
+        toast.success(`Completed maximum ${maxFetchCount} iterations of tweet fetching`);
+      } else {
+        toast.info(`Auto-fetch stopped after ${fetchesCompleted} iterations`);
+      }
     } catch (error) {
       console.error('Error in auto-fetch:', error);
       toast.error(`Error during auto-fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -635,13 +629,13 @@ const TweetAnalyzer = () => {
                 </Button>
               ) : (
                 <Button
-                  variant="simplefetch" 
+                  variant="autofetchnew" 
                   size="sm"
                   onClick={startSimpleFetch}
                   disabled={isHistoricalLoading}
                 >
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Auto Fetch
+                  <RotateCw className="h-4 w-4 mr-2" />
+                  Auto Fetch Loop
                 </Button>
               )}
             </div>

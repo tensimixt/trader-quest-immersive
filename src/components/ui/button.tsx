@@ -23,6 +23,7 @@ const buttonVariants = cva(
         autofetch: "bg-amber-600 text-white hover:bg-amber-700 border border-amber-500",
         navlink: "bg-purple-600 text-white hover:bg-purple-700 border border-purple-500",
         simplefetch: "bg-pink-600 text-white hover:bg-pink-700 border border-pink-500 font-semibold",
+        autofetchnew: "bg-blue-600 text-white hover:bg-blue-700 border border-blue-500 font-semibold",
       },
       size: {
         default: "h-10 px-4 py-2",
