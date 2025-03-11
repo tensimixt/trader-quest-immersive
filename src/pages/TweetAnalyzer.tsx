@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,7 +9,7 @@ import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
-import { HistoricalTweetBatch, FetchHistoricalResult } from '@/types/tweetTypes';
+import { HistoricalTweetBatch } from '@/types/tweetTypes';
 import {
   Popover,
   PopoverContent,
@@ -27,6 +26,12 @@ import {
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 
+interface FetchHistoricalResult {
+  success: boolean;
+  isAtEnd: boolean;
+  hasData: boolean;
+}
+
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -38,15 +43,14 @@ const TweetAnalyzer = () => {
   const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
   const [apiErrorCount, setApiErrorCount] = useState(0);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
-  const [batchSize, setBatchSize] = useState(100); // Changed default from 20 to 100
+  const [batchSize, setBatchSize] = useState(20);
   const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isSimpleFetching, setIsSimpleFetching] = useState(false);
-  const [fetchCount, setFetchCount] = useState(0);
+  const [isContinuousFetching, setIsContinuousFetching] = useState(false);
+  const [continuousFetchCount, setContinuousFetchCount] = useState(0);
   const [maxFetchCount, setMaxFetchCount] = useState(100);
   const [remainingFetches, setRemainingFetches] = useState(0);
-  const continueOlderRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -282,8 +286,6 @@ const TweetAnalyzer = () => {
       if (data?.success) {
         setCurrentCursor(data.nextCursor);
         
-        console.log(`Tweets fetched: ${data.totalFetched}, Tweets stored: ${data.totalStored}`);
-        
         if (data.totalFetched > 0) {
           toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
         } else {
@@ -313,9 +315,7 @@ const TweetAnalyzer = () => {
         return {
           success: true,
           isAtEnd: data.isAtEnd || !data.nextCursor,
-          hasData: data.totalFetched > 0,
-          totalFetched: data.totalFetched,
-          totalStored: data.totalStored
+          hasData: data.totalFetched > 0
         };
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
@@ -356,7 +356,6 @@ const TweetAnalyzer = () => {
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
-    throw new Error("Max retries exceeded");
   };
 
   const toggleFetchingMode = () => {
@@ -407,67 +406,67 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const startSimpleFetch = async () => {
+  const startContinuousFetch = async () => {
     if (isHistoricalLoading) {
       toast.warning('Please wait for the current fetch operation to complete');
       return;
     }
     
-    if (!continueOlderRef.current) {
-      toast.error('Cannot find the Continue Older button reference');
-      return;
-    }
-    
-    setFetchCount(0);
-    setIsSimpleFetching(true);
+    setContinuousFetchCount(0);
+    setIsContinuousFetching(true);
     setRemainingFetches(maxFetchCount);
-    
-    toast.info(`Starting auto-fetch for up to ${maxFetchCount} clicks on Continue Older`);
+    setIsPossiblyAtEnd(false);
+    toast.info(`Starting continuous fetch for up to ${maxFetchCount} iterations`);
     
     let fetchesCompleted = 0;
+    let consecutiveEmptyFetches = 0;
     
     try {
-      while (fetchesCompleted < maxFetchCount && isSimpleFetching) {
-        if (isHistoricalLoading || isPossiblyAtEnd) {
-          if (isPossiblyAtEnd) {
-            toast.info('Reached possible end of tweets. Stopping auto-fetch.');
-          }
-          break;
-        }
+      while (fetchesCompleted < maxFetchCount && !isPossiblyAtEnd && isContinuousFetching) {
+        console.log(`Starting fetch iteration ${fetchesCompleted + 1}/${maxFetchCount}`);
         
-        console.log(`Auto-clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`);
-        toast.info(`Clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
-        
-        continueOlderRef.current.click();
-        
-        while (isHistoricalLoading && isSimpleFetching) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        if (!isSimpleFetching) {
-          console.log("Auto-fetch was stopped by user");
-          break;
-        }
+        const result = await fetchHistoricalTweets(fetchesCompleted === 0 ? false : false);
         
         fetchesCompleted++;
-        setFetchCount(fetchesCompleted);
+        setContinuousFetchCount(fetchesCompleted);
         setRemainingFetches(maxFetchCount - fetchesCompleted);
         
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Fetch result:', result);
+        
+        if (!result.hasData) {
+          consecutiveEmptyFetches++;
+          console.log(`Empty fetch #${consecutiveEmptyFetches}`);
+          
+          if (consecutiveEmptyFetches >= 3) {
+            toast.info('Received 3 consecutive empty responses. Stopping auto-fetch.');
+            setIsPossiblyAtEnd(true);
+            break;
+          }
+        } else {
+          consecutiveEmptyFetches = 0;
+        }
+        
+        if (result.isAtEnd) {
+          toast.info('Reached end of available tweets. Stopping auto-fetch.');
+          setIsPossiblyAtEnd(true);
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
-      toast.success(`Completed ${fetchesCompleted} auto-clicks on Continue Older`);
+      toast.success(`Completed ${fetchesCompleted} fetches`);
     } catch (error) {
-      console.error('Error in auto-fetch:', error);
-      toast.error(`Error during auto-fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error in continuous fetch:', error);
+      toast.error(`Error during continuous fetch: ${error.message}`);
     } finally {
-      setIsSimpleFetching(false);
+      setIsContinuousFetching(false);
     }
   };
 
-  const stopSimpleFetch = () => {
-    setIsSimpleFetching(false);
-    toast.info('Stopping auto-fetch');
+  const stopContinuousFetch = () => {
+    setIsContinuousFetching(false);
+    toast.info('Stopping continuous fetch after current iteration');
   };
 
   return (
@@ -561,7 +560,7 @@ const TweetAnalyzer = () => {
                       </div>
                       
                       <div className="flex items-center justify-between mt-4">
-                        <span className="text-sm text-white/70">Max Auto Fetches: {maxFetchCount}</span>
+                        <span className="text-sm text-white/70">Max Continuous Fetches: {maxFetchCount}</span>
                         <span className="text-xs text-amber-400/70">Number of automatic fetches</span>
                       </div>
                       <Slider
@@ -573,7 +572,7 @@ const TweetAnalyzer = () => {
                         className="w-full"
                       />
                       
-                      {isSimpleFetching && (
+                      {isContinuousFetching && (
                         <div className="mt-2 text-sm text-white/70">
                           Remaining fetches: {remainingFetches}
                         </div>
@@ -587,7 +586,7 @@ const TweetAnalyzer = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleStartNewHistorical}
-                disabled={isHistoricalLoading || isSimpleFetching}
+                disabled={isHistoricalLoading || isContinuousFetching}
                 className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
               >
                 <History className="h-4 w-4 mr-2" />
@@ -598,11 +597,10 @@ const TweetAnalyzer = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      ref={continueOlderRef}
                       variant="outline"
                       size="sm"
                       onClick={handleRetryHistorical}
-                      disabled={isHistoricalLoading || isSimpleFetching}
+                      disabled={isHistoricalLoading || isContinuousFetching}
                       className={`border-purple-500/30 text-purple-400 hover:bg-purple-500/10 ${isPossiblyAtEnd ? 'border-yellow-500/50 text-yellow-400' : ''}`}
                     >
                       <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
@@ -618,20 +616,21 @@ const TweetAnalyzer = () => {
                 </Tooltip>
               </TooltipProvider>
               
-              {isSimpleFetching ? (
+              {isContinuousFetching ? (
                 <Button
-                  variant="simplefetch"
+                  variant="autofetch"
                   size="sm"
-                  onClick={stopSimpleFetch}
+                  onClick={stopContinuousFetch}
+                  className="border-red-500/50"
                 >
                   <Square className="h-4 w-4 mr-2" />
                   Stop Auto Fetch ({remainingFetches})
                 </Button>
               ) : (
                 <Button
-                  variant="simplefetch" 
+                  variant="autofetch" 
                   size="sm"
-                  onClick={startSimpleFetch}
+                  onClick={startContinuousFetch}
                   disabled={isHistoricalLoading}
                 >
                   <Play className="h-4 w-4 mr-2" />
@@ -666,3 +665,4 @@ const TweetAnalyzer = () => {
 };
 
 export default TweetAnalyzer;
+

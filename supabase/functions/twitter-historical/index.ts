@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -7,7 +8,7 @@ const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
 const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 100; // Increased default batch size from 20 to 100
+const DEFAULT_BATCH_SIZE = 20; // Default batch size set to 20
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -273,108 +274,40 @@ serve(async (req) => {
         console.log(`API reports has_next_page: ${data.has_next_page}`);
       }
       
-      // Process tweets for storage - improved mapping of tweet properties
-      const processedTweets = data.tweets.map(tweet => {
-        // Enhanced debug logging for each tweet
-        console.log(`Processing tweet ID: ${tweet.id}, author: ${tweet.author?.userName || tweet.user?.screen_name || "unknown"}`);
-        
-        // Safely convert dates and handle null values
-        const createdAt = tweet.createdAt ? new Date(tweet.createdAt).toISOString() : new Date().toISOString();
-        
-        // Ensure entities and extended_entities are valid JSON strings
-        let entities = '{}';
-        let extendedEntities = '{}';
-        
-        try {
-          entities = JSON.stringify(tweet.entities || {});
-        } catch (e) {
-          console.error(`Error stringifying entities for tweet ${tweet.id}:`, e);
-        }
-        
-        try {
-          extendedEntities = JSON.stringify(tweet.extendedEntities || tweet.extended_entities || {});
-        } catch (e) {
-          console.error(`Error stringifying extendedEntities for tweet ${tweet.id}:`, e);
-        }
-        
-        return {
-          id: tweet.id,
-          text: tweet.text || "",
-          created_at: createdAt,
-          author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
-          author_name: tweet.author?.name || tweet.user?.name || "Unknown",
-          author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https || null,
-          is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
-          is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
-          in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id || null,
-          quoted_tweet_id: tweet.quoted_tweet?.id || null,
-          quoted_tweet_text: tweet.quoted_tweet?.text || null,
-          quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
-                             (tweet.quoted_tweet?.user?.screen_name) || null,
-          entities: entities,
-          extended_entities: extendedEntities,
-        };
-      });
+      // Process tweets for storage - filter out tweets that already exist in the database
+      const processedTweets = data.tweets.map(tweet => ({
+        id: tweet.id,
+        text: tweet.text,
+        created_at: new Date(tweet.createdAt),
+        author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+        author_name: tweet.author?.name || tweet.user?.name,
+        author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+        is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+        is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+        in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+        quoted_tweet_id: tweet.quoted_tweet?.id,
+        quoted_tweet_text: tweet.quoted_tweet?.text,
+        quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                             (tweet.quoted_tweet?.user?.screen_name),
+        entities: tweet.entities || {},
+        extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+      }));
       
-      // Store tweets in the database with better error handling
+      // Store tweets in the database
       if (processedTweets.length > 0) {
-        try {
-          console.log(`Attempting to store ${processedTweets.length} tweets in database...`);
-          
-          // Log a sample of what we're trying to insert (first tweet)
-          console.log('Sample tweet being inserted:', JSON.stringify(processedTweets[0], null, 2));
-          
-          const { error, count } = await supabase
-            .from('historical_tweets')
-            .upsert(processedTweets, { 
-              onConflict: 'id',
-              count: 'exact' // Get the count of affected rows
-            });
-          
-          if (error) {
-            console.error('Error storing tweets in database:', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
-            
-            // Try to debug specific issues
-            if (error.code === '23502') { // Not-null violation
-              console.error('Column not-null constraint violated. Checking which tweet has null values...');
-              // Check each tweet for null values in required fields
-              for (let i = 0; i < processedTweets.length; i++) {
-                const tweet = processedTweets[i];
-                if (!tweet.id || !tweet.text || !tweet.created_at || !tweet.author_username) {
-                  console.error(`Tweet at index ${i} has null values in required fields:`, JSON.stringify(tweet, null, 2));
-                }
-              }
-            } else if (error.code === '22P02') { // Invalid text representation
-              console.error('Invalid text representation. This may be due to invalid JSON in entities or extended_entities');
-            }
-            
-            // Try storing tweets one by one to identify problematic tweets
-            console.log('Attempting to store tweets individually to identify problematic ones...');
-            let individualSuccessCount = 0;
-            
-            for (let i = 0; i < processedTweets.length; i++) {
-              const tweet = processedTweets[i];
-              const { error: individualError } = await supabase
-                .from('historical_tweets')
-                .upsert([tweet], { onConflict: 'id' });
-              
-              if (individualError) {
-                console.error(`Error storing tweet ${i} (ID: ${tweet.id}):`, individualError);
-              } else {
-                individualSuccessCount++;
-              }
-            }
-            
-            console.log(`Successfully stored ${individualSuccessCount}/${processedTweets.length} tweets individually`);
-            totalStored += individualSuccessCount;
-          } else {
-            console.log(`Successfully stored ${count} tweets in the database`);
-            totalStored += count || 0;
-          }
-        } catch (storageError) {
-          console.error('Exception during tweet storage:', storageError);
-          console.error('Exception details:', JSON.stringify(storageError, null, 2));
+        const { error, count } = await supabase
+          .from('historical_tweets')
+          .upsert(processedTweets, { 
+            onConflict: 'id',
+            count: 'exact' // Get the count of affected rows
+          });
+        
+        if (error) {
+          console.error('Error storing tweets in database:', error);
+          // Continue with the next batch even if there's an error
+        } else {
+          console.log(`Successfully stored ${count} tweets in the database`);
+          totalStored += count || 0;
         }
       }
       

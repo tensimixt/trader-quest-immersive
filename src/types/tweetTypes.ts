@@ -92,14 +92,6 @@ export interface HistoricalTweetBatch {
   error?: string;
 }
 
-export interface FetchHistoricalResult {
-  success: boolean;
-  isAtEnd: boolean;
-  hasData: boolean;
-  totalFetched?: number;
-  totalStored?: number;
-}
-
 export interface HistoricalTweetResponse {
   tweets: Tweet[];
   total: number;

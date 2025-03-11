@@ -22,8 +22,6 @@ const buttonVariants = cva(
         crypto: "bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-500",
         autofetch: "bg-amber-600 text-white hover:bg-amber-700 border border-amber-500",
         navlink: "bg-purple-600 text-white hover:bg-purple-700 border border-purple-500",
-        simplefetch: "bg-pink-600 text-white hover:bg-pink-700 border border-pink-500 font-semibold",
-        debug: "bg-cyan-600 text-white hover:bg-cyan-700 border border-cyan-500",
       },
       size: {
         default: "h-10 px-4 py-2",
