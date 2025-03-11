@@ -274,40 +274,56 @@ serve(async (req) => {
         console.log(`API reports has_next_page: ${data.has_next_page}`);
       }
       
-      // Process tweets for storage - filter out tweets that already exist in the database
-      const processedTweets = data.tweets.map(tweet => ({
-        id: tweet.id,
-        text: tweet.text,
-        created_at: new Date(tweet.createdAt),
-        author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
-        author_name: tweet.author?.name || tweet.user?.name,
-        author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
-        is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
-        is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
-        in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
-        quoted_tweet_id: tweet.quoted_tweet?.id,
-        quoted_tweet_text: tweet.quoted_tweet?.text,
-        quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
-                             (tweet.quoted_tweet?.user?.screen_name),
-        entities: tweet.entities || {},
-        extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
-      }));
-      
-      // Store tweets in the database
-      if (processedTweets.length > 0) {
-        const { error, count } = await supabase
-          .from('historical_tweets')
-          .upsert(processedTweets, { 
-            onConflict: 'id',
-            count: 'exact' // Get the count of affected rows
-          });
+      // Process tweets for storage - improved mapping of tweet properties
+      const processedTweets = data.tweets.map(tweet => {
+        // Enhanced debug logging for each tweet
+        console.log(`Processing tweet ID: ${tweet.id}, author: ${tweet.author?.userName || tweet.user?.screen_name || "unknown"}`);
         
-        if (error) {
-          console.error('Error storing tweets in database:', error);
-          // Continue with the next batch even if there's an error
-        } else {
-          console.log(`Successfully stored ${count} tweets in the database`);
-          totalStored += count || 0;
+        return {
+          id: tweet.id,
+          text: tweet.text,
+          created_at: new Date(tweet.createdAt).toISOString(),
+          author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+          author_name: tweet.author?.name || tweet.user?.name || "Unknown",
+          author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https || null,
+          is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+          is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+          in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id || null,
+          quoted_tweet_id: tweet.quoted_tweet?.id || null,
+          quoted_tweet_text: tweet.quoted_tweet?.text || null,
+          quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                             (tweet.quoted_tweet?.user?.screen_name) || null,
+          entities: JSON.stringify(tweet.entities || {}),
+          extended_entities: JSON.stringify(tweet.extendedEntities || tweet.extended_entities || {}),
+        };
+      });
+      
+      // Store tweets in the database with better error handling
+      if (processedTweets.length > 0) {
+        try {
+          console.log(`Attempting to store ${processedTweets.length} tweets in database...`);
+          
+          // Log a sample of what we're trying to insert (first tweet)
+          console.log('Sample tweet being inserted:', JSON.stringify(processedTweets[0], null, 2));
+          
+          const { error, count } = await supabase
+            .from('historical_tweets')
+            .upsert(processedTweets, { 
+              onConflict: 'id',
+              count: 'exact' // Get the count of affected rows
+            });
+          
+          if (error) {
+            console.error('Error storing tweets in database:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            // Continue with the next batch even if there's an error
+          } else {
+            console.log(`Successfully stored ${count} tweets in the database`);
+            totalStored += count || 0;
+          }
+        } catch (storageError) {
+          console.error('Exception during tweet storage:', storageError);
+          console.error('Exception details:', JSON.stringify(storageError, null, 2));
         }
       }
       

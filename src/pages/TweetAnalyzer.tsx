@@ -9,7 +9,7 @@ import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
-import { HistoricalTweetBatch } from '@/types/tweetTypes';
+import { HistoricalTweetBatch, FetchHistoricalResult } from '@/types/tweetTypes';
 import {
   Popover,
   PopoverContent,
@@ -25,12 +25,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
-
-interface FetchHistoricalResult {
-  success: boolean;
-  isAtEnd: boolean;
-  hasData: boolean;
-}
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -287,6 +281,8 @@ const TweetAnalyzer = () => {
       if (data?.success) {
         setCurrentCursor(data.nextCursor);
         
+        console.log(`Tweets fetched: ${data.totalFetched}, Tweets stored: ${data.totalStored}`);
+        
         if (data.totalFetched > 0) {
           toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
         } else {
@@ -316,7 +312,9 @@ const TweetAnalyzer = () => {
         return {
           success: true,
           isAtEnd: data.isAtEnd || !data.nextCursor,
-          hasData: data.totalFetched > 0
+          hasData: data.totalFetched > 0,
+          totalFetched: data.totalFetched,
+          totalStored: data.totalStored
         };
       } else {
         throw new Error(data?.error || 'Failed to fetch historical tweets');
