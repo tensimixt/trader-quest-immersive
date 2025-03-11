@@ -52,6 +52,9 @@ const TweetAnalyzer = () => {
   const [fetchCount, setFetchCount] = useState(0);
   const [maxFetchCount, setMaxFetchCount] = useState(100);
   const [remainingFetches, setRemainingFetches] = useState(0);
+  const [loopFactor, setLoopFactor] = useState(1);
+  const [completedLoops, setCompletedLoops] = useState(0);
+  const [totalTweetsFetched, setTotalTweetsFetched] = useState(0);
   const continueOlderRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -418,54 +421,85 @@ const TweetAnalyzer = () => {
     setFetchCount(0);
     setIsSimpleFetching(true);
     setRemainingFetches(maxFetchCount);
+    setCompletedLoops(0);
+    setTotalTweetsFetched(0);
     
-    toast.info(`Starting auto-fetch for up to ${maxFetchCount} iterations`);
+    toast.info(`Starting auto-fetch for up to ${maxFetchCount} iterations with loop factor ${loopFactor} (potentially ${maxFetchCount * loopFactor} total batches)`);
     
-    let fetchesCompleted = 0;
+    let mainLoopCount = 0;
     let reachedEnd = false;
     
     try {
-      while (fetchesCompleted < maxFetchCount && !reachedEnd) {
-        // Check if user stopped the auto-fetch
-        if (!isSimpleFetching) {
-          console.log("Auto-fetch was stopped by user");
+      // Main loop - runs for loop factor times
+      while (mainLoopCount < loopFactor && !reachedEnd) {
+        let fetchesCompleted = 0;
+        let subLoopReachedEnd = false;
+        
+        toast.info(`Starting loop ${mainLoopCount + 1}/${loopFactor}`, { duration: 3000 });
+        console.log(`Starting main loop ${mainLoopCount + 1}/${loopFactor}`);
+        
+        // Sub-loop - each one fetches up to maxFetchCount batches
+        while (fetchesCompleted < maxFetchCount && !subLoopReachedEnd) {
+          // Check if user stopped the auto-fetch
+          if (!isSimpleFetching) {
+            console.log("Auto-fetch was stopped by user");
+            return;
+          }
+          
+          const totalIteration = mainLoopCount * maxFetchCount + fetchesCompleted + 1;
+          console.log(`Auto-fetch iteration: ${totalIteration}/${maxFetchCount * loopFactor} (Loop: ${mainLoopCount + 1}/${loopFactor}, Sub-iteration: ${fetchesCompleted + 1}/${maxFetchCount})`);
+          toast.info(`Auto-fetch: ${totalIteration}/${maxFetchCount * loopFactor} (Loop: ${mainLoopCount + 1}/${loopFactor})`, { duration: 2000 });
+          
+          // Use await to ensure each fetch completes before moving to the next one
+          const result = await fetchHistoricalTweets(fetchesCompleted === 0 && mainLoopCount === 0 ? false : false);
+          console.log("Auto-fetch iteration result:", result);
+          
+          // Increment counter right after fetch attempt, even if it failed
+          fetchesCompleted++;
+          setFetchCount(fetchesCompleted + (mainLoopCount * maxFetchCount));
+          setRemainingFetches((maxFetchCount * loopFactor) - (fetchesCompleted + (mainLoopCount * maxFetchCount)));
+          
+          if (result.success && result.totalFetched) {
+            setTotalTweetsFetched(prev => prev + result.totalFetched);
+          }
+          
+          if (!result.success) {
+            console.log("Auto-fetch encountered an error, trying again...");
+            // Just continue, we'll try again
+          } else if (result.isAtEnd || !result.hasData) {
+            console.log("Auto-fetch detected end of data:", result);
+            toast.info('Reached the end of available tweets');
+            subLoopReachedEnd = true;
+            reachedEnd = true;
+            break;
+          }
+          
+          // Wait before next iteration
+          if (!subLoopReachedEnd && fetchesCompleted < maxFetchCount) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+        
+        mainLoopCount++;
+        setCompletedLoops(mainLoopCount);
+        
+        if (reachedEnd) {
           break;
         }
         
-        console.log(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`);
-        toast.info(`Auto-fetch iteration: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
-        
-        // Use await to ensure each fetch completes before moving to the next one
-        const result = await fetchHistoricalTweets(fetchesCompleted === 0 ? false : false);
-        console.log("Auto-fetch iteration result:", result);
-        
-        // Increment counter right after fetch attempt, even if it failed
-        fetchesCompleted++;
-        setFetchCount(fetchesCompleted);
-        setRemainingFetches(maxFetchCount - fetchesCompleted);
-        
-        if (!result.success) {
-          console.log("Auto-fetch encountered an error, trying again...");
-          // Just continue, we'll try again
-        } else if (result.isAtEnd || !result.hasData) {
-          console.log("Auto-fetch detected end of data:", result);
-          toast.info('Reached the end of available tweets');
-          reachedEnd = true;
-          break;
-        }
-        
-        // Wait before next iteration
-        if (!reachedEnd && fetchesCompleted < maxFetchCount) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        // Pause between major loops
+        if (mainLoopCount < loopFactor) {
+          toast.info(`Completed loop ${mainLoopCount}/${loopFactor}. Pausing for 5 seconds before next loop...`, { duration: 5000 });
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       }
       
       if (reachedEnd) {
-        toast.success(`Completed ${fetchesCompleted} iterations and reached the end of available tweets`);
-      } else if (fetchesCompleted >= maxFetchCount) {
-        toast.success(`Completed maximum ${maxFetchCount} iterations of tweet fetching`);
+        toast.success(`Completed ${mainLoopCount} loops (${fetchCount} iterations) and reached the end of available tweets. Total tweets fetched: ~${totalTweetsFetched}`);
+      } else if (mainLoopCount >= loopFactor) {
+        toast.success(`Completed all ${loopFactor} loops (${fetchCount} iterations). Total tweets fetched: ~${totalTweetsFetched}`);
       } else {
-        toast.info(`Auto-fetch stopped after ${fetchesCompleted} iterations`);
+        toast.info(`Auto-fetch stopped after ${mainLoopCount} loops (${fetchCount} iterations). Total tweets fetched: ~${totalTweetsFetched}`);
       }
     } catch (error) {
       console.error('Error in auto-fetch:', error);
@@ -572,7 +606,7 @@ const TweetAnalyzer = () => {
                       
                       <div className="flex items-center justify-between mt-4">
                         <span className="text-sm text-white/70">Max Auto Fetches: {maxFetchCount}</span>
-                        <span className="text-xs text-amber-400/70">Number of automatic fetches</span>
+                        <span className="text-xs text-amber-400/70">Fetches per loop</span>
                       </div>
                       <Slider
                         value={[maxFetchCount]}
@@ -583,9 +617,37 @@ const TweetAnalyzer = () => {
                         className="w-full"
                       />
                       
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm text-white/70">Loop Factor: {loopFactor}</span>
+                        <span className="text-xs text-amber-400/70">Total loops to run (each ~400 tweets)</span>
+                      </div>
+                      <Slider
+                        value={[loopFactor]}
+                        min={1}
+                        max={100}
+                        step={1}
+                        onValueChange={(value) => setLoopFactor(value[0])}
+                        className="w-full"
+                      />
+                      
+                      <div className="mt-2 p-2 bg-blue-500/10 rounded">
+                        <div className="text-xs text-white/80 flex gap-1 items-center">
+                          <Info className="h-3 w-3 inline-block text-blue-400" />
+                          <span>With current settings, auto-fetch will attempt up to {loopFactor} loops of {maxFetchCount} batches each (approximately {loopFactor * maxFetchCount * 20} API calls, potentially fetching {loopFactor * maxFetchCount * 20 * 20} tweets)</span>
+                        </div>
+                      </div>
+                      
                       {isSimpleFetching && (
-                        <div className="mt-2 text-sm text-white/70">
-                          Remaining fetches: {remainingFetches}
+                        <div className="mt-4 space-y-2">
+                          <div className="text-sm text-white/70">
+                            Completed loops: {completedLoops}/{loopFactor}
+                          </div>
+                          <div className="text-sm text-white/70">
+                            Remaining fetches: {remainingFetches}
+                          </div>
+                          <div className="text-sm text-white/70">
+                            Total tweets fetched: ~{totalTweetsFetched}
+                          </div>
                         </div>
                       )}
                     </div>
