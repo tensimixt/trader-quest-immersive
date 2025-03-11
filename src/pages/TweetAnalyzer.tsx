@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Play, Square } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -47,10 +48,9 @@ const TweetAnalyzer = () => {
   const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isContinuousFetching, setIsContinuousFetching] = useState(false);
-  const [continuousFetchCount, setContinuousFetchCount] = useState(0);
-  const [maxFetchCount, setMaxFetchCount] = useState(100);
-  const [remainingFetches, setRemainingFetches] = useState(0);
+  const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const initialTweets = marketIntelligence
@@ -93,6 +93,33 @@ const TweetAnalyzer = () => {
     
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
+
+  // Auto-click "Continue Older" button after successful fetch
+  useEffect(() => {
+    return () => {
+      // Clean up timeout on component unmount
+      if (autoClickTimeoutRef.current) {
+        clearTimeout(autoClickTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const setupAutoClick = () => {
+    if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
+      // Clear any existing timeout
+      if (autoClickTimeoutRef.current) {
+        clearTimeout(autoClickTimeoutRef.current);
+      }
+      
+      // Set new timeout to click the button after 5 seconds
+      autoClickTimeoutRef.current = setTimeout(() => {
+        if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
+          toast.info("Auto-clicking Continue Older...");
+          continueButtonRef.current.click();
+        }
+      }, 5000);
+    }
+  };
 
   const checkStoredCursors = async () => {
     try {
@@ -312,6 +339,9 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
+        // Schedule auto-click after successful fetch
+        setupAutoClick();
+        
         return {
           success: true,
           isAtEnd: data.isAtEnd || !data.nextCursor,
@@ -406,69 +436,6 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const startContinuousFetch = async () => {
-    if (isHistoricalLoading) {
-      toast.warning('Please wait for the current fetch operation to complete');
-      return;
-    }
-    
-    setContinuousFetchCount(0);
-    setIsContinuousFetching(true);
-    setRemainingFetches(maxFetchCount);
-    setIsPossiblyAtEnd(false);
-    toast.info(`Starting continuous fetch for up to ${maxFetchCount} iterations`);
-    
-    let fetchesCompleted = 0;
-    let consecutiveEmptyFetches = 0;
-    
-    try {
-      while (fetchesCompleted < maxFetchCount && !isPossiblyAtEnd && isContinuousFetching) {
-        console.log(`Starting fetch iteration ${fetchesCompleted + 1}/${maxFetchCount}`);
-        
-        const result = await fetchHistoricalTweets(fetchesCompleted === 0 ? false : false);
-        
-        fetchesCompleted++;
-        setContinuousFetchCount(fetchesCompleted);
-        setRemainingFetches(maxFetchCount - fetchesCompleted);
-        
-        console.log('Fetch result:', result);
-        
-        if (!result.hasData) {
-          consecutiveEmptyFetches++;
-          console.log(`Empty fetch #${consecutiveEmptyFetches}`);
-          
-          if (consecutiveEmptyFetches >= 3) {
-            toast.info('Received 3 consecutive empty responses. Stopping auto-fetch.');
-            setIsPossiblyAtEnd(true);
-            break;
-          }
-        } else {
-          consecutiveEmptyFetches = 0;
-        }
-        
-        if (result.isAtEnd) {
-          toast.info('Reached end of available tweets. Stopping auto-fetch.');
-          setIsPossiblyAtEnd(true);
-          break;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
-      
-      toast.success(`Completed ${fetchesCompleted} fetches`);
-    } catch (error) {
-      console.error('Error in continuous fetch:', error);
-      toast.error(`Error during continuous fetch: ${error.message}`);
-    } finally {
-      setIsContinuousFetching(false);
-    }
-  };
-
-  const stopContinuousFetch = () => {
-    setIsContinuousFetching(false);
-    toast.info('Stopping continuous fetch after current iteration');
-  };
-
   return (
     <div className="min-h-screen overflow-hidden">
       <motion.div
@@ -559,24 +526,17 @@ const TweetAnalyzer = () => {
                         <span>Each request typically returns around 20 tweets regardless of the setting. The batch size determines how many API calls will be made in one batch operation.</span>
                       </div>
                       
-                      <div className="flex items-center justify-between mt-4">
-                        <span className="text-sm text-white/70">Max Continuous Fetches: {maxFetchCount}</span>
-                        <span className="text-xs text-amber-400/70">Number of automatic fetches</span>
+                      <div className="flex items-center gap-2 mt-4">
+                        <span className="text-sm text-white/70">Auto-click Continue (5s):</span>
+                        <Button
+                          variant={isAutoClickEnabled ? "autofetch" : "outline"}
+                          size="xs"
+                          onClick={() => setIsAutoClickEnabled(!isAutoClickEnabled)}
+                          className={isAutoClickEnabled ? "" : "border-gray-500/30 text-gray-400"}
+                        >
+                          {isAutoClickEnabled ? "Enabled" : "Disabled"}
+                        </Button>
                       </div>
-                      <Slider
-                        value={[maxFetchCount]}
-                        min={1}
-                        max={1000}
-                        step={10}
-                        onValueChange={(value) => setMaxFetchCount(value[0])}
-                        className="w-full"
-                      />
-                      
-                      {isContinuousFetching && (
-                        <div className="mt-2 text-sm text-white/70">
-                          Remaining fetches: {remainingFetches}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </PopoverContent>
@@ -586,7 +546,7 @@ const TweetAnalyzer = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleStartNewHistorical}
-                disabled={isHistoricalLoading || isContinuousFetching}
+                disabled={isHistoricalLoading}
                 className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
               >
                 <History className="h-4 w-4 mr-2" />
@@ -597,10 +557,11 @@ const TweetAnalyzer = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      ref={continueButtonRef}
                       variant="outline"
                       size="sm"
                       onClick={handleRetryHistorical}
-                      disabled={isHistoricalLoading || isContinuousFetching}
+                      disabled={isHistoricalLoading}
                       className={`border-purple-500/30 text-purple-400 hover:bg-purple-500/10 ${isPossiblyAtEnd ? 'border-yellow-500/50 text-yellow-400' : ''}`}
                     >
                       <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
@@ -615,28 +576,6 @@ const TweetAnalyzer = () => {
                   )}
                 </Tooltip>
               </TooltipProvider>
-              
-              {isContinuousFetching ? (
-                <Button
-                  variant="autofetch"
-                  size="sm"
-                  onClick={stopContinuousFetch}
-                  className="border-red-500/50"
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  Stop Auto Fetch ({remainingFetches})
-                </Button>
-              ) : (
-                <Button
-                  variant="autofetch" 
-                  size="sm"
-                  onClick={startContinuousFetch}
-                  disabled={isHistoricalLoading}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Auto Fetch
-                </Button>
-              )}
             </div>
             <Button
               variant="outline"
@@ -665,4 +604,3 @@ const TweetAnalyzer = () => {
 };
 
 export default TweetAnalyzer;
-
