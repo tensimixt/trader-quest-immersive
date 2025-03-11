@@ -429,21 +429,26 @@ const TweetAnalyzer = () => {
     
     try {
       while (fetchesCompleted < maxFetchCount && isSimpleFetching) {
-        if (isHistoricalLoading || isPossiblyAtEnd) {
-          if (isPossiblyAtEnd) {
-            toast.info('Reached possible end of tweets. Stopping auto-fetch.');
-          }
+        if (isPossiblyAtEnd) {
+          toast.info('Reached possible end of tweets. Stopping auto-fetch.');
           break;
         }
         
         console.log(`Auto-clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`);
         toast.info(`Clicking Continue Older: ${fetchesCompleted + 1}/${maxFetchCount}`, { duration: 2000 });
         
-        continueOlderRef.current.click();
-        
-        while (isHistoricalLoading && isSimpleFetching) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+        if (continueOlderRef.current) {
+          await handleRetryHistorical();
         }
+        
+        await new Promise(resolve => {
+          const checkInterval = setInterval(() => {
+            if (!isHistoricalLoading) {
+              clearInterval(checkInterval);
+              resolve(true);
+            }
+          }, 500);
+        });
         
         if (!isSimpleFetching) {
           console.log("Auto-fetch was stopped by user");
