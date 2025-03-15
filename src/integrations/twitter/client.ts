@@ -3,7 +3,7 @@
 
 // Default Twitter API key - stored here for demonstration purposes only
 // In a production environment, this should be stored in environment variables
-const TWITTER_API_KEY = '63b174ff7c2f44af89a86e7022509709';
+const TWITTER_API_KEY = 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
 
 // Function to fetch tweets from Twitter API
 export const fetchTweets = async () => {

@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '63b174ff7c2f44af89a86e7022509709';
+const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
 // Twitter crypto list ID - using the correct list ID provided by the user
 const TWITTER_LIST_ID = '1674940005557387266';
 const MAX_RETRIES = 3; // Maximum number of retries for API requests
