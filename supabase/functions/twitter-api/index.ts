@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -73,6 +72,290 @@ Deno.serve(async (req) => {
           success: true,
           latest_cursor: latestCursor,
           stored_cursor: newerCursor?.cursor_value || null
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    // Smart Newer Tweets Mode - Fetch newer tweets with duplicate detection
+    else if (mode === 'fetch-newer-smart') {
+      console.log('Starting smart newer tweet fetch operation');
+      
+      // Fetch the latest tweets to get current cursor
+      const apiUrl = new URL('https://api.twitterapi.io/twitter/list/tweets');
+      apiUrl.searchParams.append('listId', '1674940005557387266'); // Crypto list ID
+      
+      const response = await fetch(apiUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'X-API-Key': TWITTER_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Twitter API error:', errorText);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Error fetching tweets from Twitter API',
+            details: errorText,
+          }),
+          {
+            status: response.status,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+
+      const data = await response.json();
+      const latestCursor = data.next_cursor;
+      const latestTweets = data.tweets || [];
+      
+      // Get most recent tweet IDs from our database to detect duplicates
+      const { data: recentTweetIds, error: recentError } = await supabase
+        .from('historical_tweets')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (recentError) {
+        console.error('Error fetching recent tweets from database:', recentError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Error fetching recent tweets from database',
+            details: recentError.message,
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+      
+      // Create a set of existing tweet IDs for fast lookup
+      const existingTweetIds = new Set(recentTweetIds?.map(t => t.id) || []);
+      console.log(`Found ${existingTweetIds.size} recent tweets in database for comparison`);
+      
+      let batchesProcessed = 1;
+      let totalProcessed = 0;
+      let totalStored = 0;
+      let isComplete = false;
+      let duplicatesFound = 0;
+      let currentCursor = latestCursor;
+      const MAX_BATCHES = 10; // Safety limit
+      
+      // Process the initial batch of tweets
+      if (latestTweets && latestTweets.length > 0) {
+        // Filter out tweets that are already in our database
+        const newTweets = latestTweets.filter(tweet => !existingTweetIds.has(tweet.id));
+        duplicatesFound += (latestTweets.length - newTweets.length);
+        
+        console.log(`Initial batch: ${latestTweets.length} tweets, ${newTweets.length} new, ${duplicatesFound} duplicates`);
+        totalProcessed += latestTweets.length;
+        
+        if (newTweets.length > 0) {
+          const processedTweets = newTweets.map(tweet => ({
+            id: tweet.id,
+            text: tweet.text,
+            created_at: new Date(tweet.createdAt),
+            author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+            author_name: tweet.author?.name || tweet.user?.name,
+            author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+            is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+            is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+            in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+            quoted_tweet_id: tweet.quoted_tweet?.id,
+            quoted_tweet_text: tweet.quoted_tweet?.text,
+            quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                              (tweet.quoted_tweet?.user?.screen_name),
+            entities: tweet.entities || {},
+            extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+            fetched_at: new Date()
+          }));
+          
+          // Store the new tweets
+          const { error: insertError, count } = await supabase
+            .from('historical_tweets')
+            .upsert(processedTweets, { 
+              onConflict: 'id',
+              count: 'exact'
+            });
+          
+          if (insertError) {
+            console.error('Error storing tweets in database:', insertError);
+          } else {
+            totalStored += count || 0;
+            console.log(`Stored ${count} new tweets in database`);
+          }
+          
+          // Update the cursor for future requests
+          if (currentCursor) {
+            const { error: updateError } = await supabase
+              .from('twitter_cursors')
+              .upsert(
+                { 
+                  cursor_type: 'newer', 
+                  cursor_value: currentCursor,
+                  updated_at: new Date().toISOString()
+                },
+                { onConflict: 'cursor_type' }
+              );
+            
+            if (updateError) {
+              console.error('Error updating cursor:', updateError);
+            }
+          }
+        }
+      }
+      
+      // If we found a significant number of duplicates, we're likely caught up
+      // or if there are no new tweets, we're also caught up
+      if (duplicatesFound > Math.max(1, latestTweets.length * 0.5) || newTweets.length === 0) {
+        isComplete = true;
+        console.log('Found significant duplicates or no new tweets, considering operation complete');
+      }
+      
+      // Continue fetching if not complete and we have a cursor and we haven't hit the batch limit
+      while (!isComplete && currentCursor && batchesProcessed < MAX_BATCHES) {
+        console.log(`Fetching additional batch #${batchesProcessed + 1} with cursor: ${currentCursor}`);
+        
+        // Fetch the next batch
+        const nextUrl = new URL('https://api.twitterapi.io/twitter/list/tweets');
+        nextUrl.searchParams.append('listId', '1674940005557387266');
+        nextUrl.searchParams.append('cursor', currentCursor);
+        
+        const nextResponse = await fetch(nextUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'X-API-Key': TWITTER_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!nextResponse.ok) {
+          console.error(`Error fetching batch #${batchesProcessed + 1}:`, await nextResponse.text());
+          break;
+        }
+        
+        const nextData = await nextResponse.json();
+        const nextTweets = nextData.tweets || [];
+        
+        batchesProcessed++;
+        totalProcessed += nextTweets.length;
+        
+        // Update cursor for next iteration if provided
+        if (nextData.next_cursor) {
+          currentCursor = nextData.next_cursor;
+        } else {
+          isComplete = true;
+          console.log('No next cursor, reached end of available tweets');
+          break;
+        }
+        
+        // If no tweets in this batch, we're done
+        if (nextTweets.length === 0) {
+          isComplete = true;
+          console.log('No tweets in this batch, reached end of available tweets');
+          break;
+        }
+        
+        // Filter out tweets that are already in our database
+        // Also add any new tweet IDs to our existingTweetIds set
+        const newTweets = nextTweets.filter(tweet => !existingTweetIds.has(tweet.id));
+        nextTweets.forEach(tweet => existingTweetIds.add(tweet.id));
+        
+        const batchDuplicates = nextTweets.length - newTweets.length;
+        duplicatesFound += batchDuplicates;
+        
+        console.log(`Batch #${batchesProcessed}: ${nextTweets.length} tweets, ${newTweets.length} new, ${batchDuplicates} duplicates`);
+        
+        // If this batch has a significant number of duplicates, we can stop
+        if (batchDuplicates > Math.max(1, nextTweets.length * 0.5)) {
+          console.log('Found significant duplicates in this batch, considering operation complete');
+          isComplete = true;
+        }
+        
+        // Process and store the new tweets
+        if (newTweets.length > 0) {
+          const processedTweets = newTweets.map(tweet => ({
+            id: tweet.id,
+            text: tweet.text,
+            created_at: new Date(tweet.createdAt),
+            author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+            author_name: tweet.author?.name || tweet.user?.name,
+            author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+            is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+            is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+            in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+            quoted_tweet_id: tweet.quoted_tweet?.id,
+            quoted_tweet_text: tweet.quoted_tweet?.text,
+            quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                              (tweet.quoted_tweet?.user?.screen_name),
+            entities: tweet.entities || {},
+            extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+            fetched_at: new Date()
+          }));
+          
+          // Store the new tweets
+          const { error: insertError, count } = await supabase
+            .from('historical_tweets')
+            .upsert(processedTweets, { 
+              onConflict: 'id',
+              count: 'exact'
+            });
+          
+          if (insertError) {
+            console.error('Error storing tweets in database:', insertError);
+          } else {
+            totalStored += count || 0;
+            console.log(`Stored ${count} new tweets in database from batch #${batchesProcessed}`);
+          }
+          
+          // Update the cursor for future requests
+          const { error: updateError } = await supabase
+            .from('twitter_cursors')
+            .upsert(
+              { 
+                cursor_type: 'newer', 
+                cursor_value: currentCursor,
+                updated_at: new Date().toISOString()
+              },
+              { onConflict: 'cursor_type' }
+            );
+          
+          if (updateError) {
+            console.error('Error updating cursor:', updateError);
+          }
+        }
+        
+        // Small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`Smart tweet fetch complete. Processed ${totalProcessed} tweets, stored ${totalStored} new tweets in ${batchesProcessed} batches`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tweetsStored: totalStored,
+          batchesProcessed,
+          isComplete,
+          duplicatesFound,
+          totalProcessed,
+          message: `Processed ${totalProcessed} tweets across ${batchesProcessed} batches and stored ${totalStored} new tweets`
         }),
         {
           headers: {
@@ -316,3 +599,4 @@ Deno.serve(async (req) => {
     );
   }
 });
+

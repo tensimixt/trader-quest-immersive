@@ -1,4 +1,3 @@
-
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -58,65 +57,32 @@ export const fetchLatestCursor = async () => {
   }
 };
 
-// Function to fetch and store tweets using cursor pagination until caught up
+// Function to fetch and store newer tweets intelligently with duplicate detection
 export const fetchAndStoreNewerTweets = async () => {
   try {
-    // First, get the latest cursor from a fresh tweet fetch
-    const latestCursorResult = await fetchLatestCursor();
-    if (!latestCursorResult.success || !latestCursorResult.latest_cursor) {
-      throw new Error('Failed to get latest cursor');
+    // Get latest tweets and check if we have duplicates
+    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-newer-smart`;
+    
+    const response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`API error: ${errorData.error || response.statusText}`);
     }
     
-    const targetCursor = latestCursorResult.latest_cursor;
-    let currentCursor = latestCursorResult.stored_cursor || null;
-    let isComplete = false;
-    let totalTweetsStored = 0;
-    let batchesProcessed = 0;
-    const MAX_BATCHES = 10; // Safety limit to prevent infinite loops
-    
-    // Loop until we've caught up or hit the maximum batch limit
-    while (!isComplete && batchesProcessed < MAX_BATCHES) {
-      batchesProcessed++;
-      
-      // Fetch the next batch of tweets
-      const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-and-store&targetCursor=${encodeURIComponent(targetCursor)}`;
-      
-      const response = await fetch(EDGE_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ currentCursor })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`API error: ${errorData.error || response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      // Update stats
-      totalTweetsStored += result.tweetsStored || 0;
-      
-      // Update cursor for next iteration
-      currentCursor = result.nextCursor;
-      
-      // Check if we've reached the target or have no more tweets
-      if (result.reachedTarget || result.tweetsProcessed === 0 || !result.nextCursor) {
-        isComplete = true;
-      }
-      
-      // Small delay to avoid overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    const result = await response.json();
     
     return {
       success: true,
-      tweetsStored: totalTweetsStored,
-      batchesProcessed,
-      isComplete,
-      message: `Processed ${batchesProcessed} batches and stored ${totalTweetsStored} tweets`
+      tweetsStored: result.tweetsStored || 0,
+      batchesProcessed: result.batchesProcessed || 0,
+      isComplete: result.isComplete || false,
+      message: result.message || 'Completed tweet fetch operation'
     };
   } catch (error) {
     console.error('Error fetching and storing newer tweets:', error);
