@@ -111,7 +111,7 @@ export const fetchAndStoreNewerTweets = async () => {
 };
 
 // Function to fetch tweets by timestamp rather than cursor
-export const fetchTweetsByTimestamp = async () => {
+export const fetchTweetsByTimestamp = async (targetDate?: string) => {
   try {
     // Use specific mode to indicate we want to fetch by timestamp
     const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-by-timestamp`;
@@ -122,7 +122,10 @@ export const fetchTweetsByTimestamp = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({
+        targetDate: targetDate || '2025-03-09 13:23:54+00'  // Use the provided target date or default
+      })
     });
     
     if (!response.ok) {
@@ -151,7 +154,8 @@ export const fetchTweetsByTimestamp = async () => {
       batchesProcessed: result.batchesProcessed || 0,
       isComplete: result.isComplete || false,
       latestTweetDate: result.latestTweetDate || null,
-      message: result.message || 'Completed tweet fetch operation by timestamp'
+      message: result.message || 'Completed tweet fetch operation by timestamp',
+      error: null
     };
   } catch (error) {
     console.error('Error fetching tweets by timestamp:', error);

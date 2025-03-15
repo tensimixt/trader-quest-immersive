@@ -85,47 +85,51 @@ Deno.serve(async (req) => {
     else if (mode === 'fetch-by-timestamp') {
       console.log('Starting timestamp-based tweet fetch operation');
       
-      // First, get the timestamp of the most recent tweet in our database
-      const { data: latestTweet, error: latestTweetError } = await supabase
-        .from('historical_tweets')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (latestTweetError) {
-        console.error('Error fetching latest tweet timestamp:', latestTweetError);
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Error fetching latest tweet timestamp',
-            details: latestTweetError.message,
-          }),
-          {
-            status: 500,
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+      // Get target date from request body if provided
+      let targetDate = null;
+      if (req.method === 'POST') {
+        try {
+          const body = await req.json();
+          targetDate = body.targetDate || null;
+          console.log('Target date from request:', targetDate);
+        } catch (e) {
+          console.error('Error parsing request body:', e);
+        }
       }
       
-      const latestTweetDate = latestTweet && latestTweet.length > 0 ? new Date(latestTweet[0].created_at) : null;
-      console.log('Latest tweet date in database:', latestTweetDate ? latestTweetDate.toISOString() : 'No tweets found');
+      // If no target date provided in request, get the timestamp of the most recent tweet in our database
+      if (!targetDate) {
+        const { data: latestTweet, error: latestTweetError } = await supabase
+          .from('historical_tweets')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (latestTweetError) {
+          console.error('Error fetching latest tweet timestamp:', latestTweetError);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Error fetching latest tweet timestamp',
+              details: latestTweetError.message,
+            }),
+            {
+              status: 500,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        }
+        
+        targetDate = latestTweet && latestTweet.length > 0 ? new Date(latestTweet[0].created_at).toISOString() : null;
+      }
       
-      if (!latestTweetDate) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'No tweets found in database',
-          }),
-          {
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+      console.log('Target tweet date to reach:', targetDate ? targetDate : 'No target date (will fetch all available)');
+      
+      if (!targetDate) {
+        console.log('No target date available, will fetch tweets without a target stop date');
       }
       
       let batchesProcessed = 0;
@@ -133,6 +137,7 @@ Deno.serve(async (req) => {
       let isComplete = false;
       let currentCursor = null;
       const MAX_BATCHES = 10;
+      let targetDateObj = targetDate ? new Date(targetDate) : null;
       
       while (!isComplete && batchesProcessed < MAX_BATCHES) {
         console.log(`Processing batch #${batchesProcessed + 1}, current cursor: ${currentCursor}`);
@@ -171,33 +176,38 @@ Deno.serve(async (req) => {
         }
         
         // Process tweets and check timestamps
-        const processedTweets = tweets.map((tweet: any) => ({
-          id: tweet.id,
-          text: tweet.text,
-          created_at: new Date(tweet.createdAt),
-          author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
-          author_name: tweet.author?.name || tweet.user?.name,
-          author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
-          is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
-          is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
-          in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
-          quoted_tweet_id: tweet.quoted_tweet?.id,
-          quoted_tweet_text: tweet.quoted_tweet?.text,
-          quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+        const processedTweets = tweets.map((tweet: any) => {
+          const tweetCreatedAt = new Date(tweet.createdAt);
+          return {
+            id: tweet.id,
+            text: tweet.text,
+            created_at: tweetCreatedAt,
+            author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+            author_name: tweet.author?.name || tweet.user?.name,
+            author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+            is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+            is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+            in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+            quoted_tweet_id: tweet.quoted_tweet?.id,
+            quoted_tweet_text: tweet.quoted_tweet?.text,
+            quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
                             (tweet.quoted_tweet?.user?.screen_name),
-          entities: tweet.entities || {},
-          extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
-          fetched_at: new Date()
-        }));
+            entities: tweet.entities || {},
+            extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+            fetched_at: new Date()
+          };
+        });
         
-        // Check if we've reached tweets older than our latest stored tweet
-        const oldestTweetInBatch = new Date(Math.min(...processedTweets.map(t => t.created_at.getTime())));
-        console.log('Oldest tweet in batch:', oldestTweetInBatch.toISOString());
-        console.log('Latest tweet in DB:', latestTweetDate.toISOString());
-        
-        if (oldestTweetInBatch <= latestTweetDate) {
-          console.log('Reached tweets older than or equal to our latest stored tweet, stopping');
-          isComplete = true;
+        // Check if we've reached target date in this batch
+        if (targetDateObj) {
+          const oldestTweetInBatch = new Date(Math.min(...processedTweets.map(t => t.created_at.getTime())));
+          console.log('Oldest tweet in batch:', oldestTweetInBatch.toISOString());
+          console.log('Target date to reach:', targetDateObj.toISOString());
+          
+          if (oldestTweetInBatch <= targetDateObj) {
+            console.log('Reached tweets older than or equal to our target date, stopping');
+            isComplete = true;
+          }
         }
         
         // Store new tweets
@@ -234,8 +244,8 @@ Deno.serve(async (req) => {
           tweetsStored: totalTweetsStored,
           batchesProcessed,
           isComplete,
-          latestTweetDate: latestTweetDate.toISOString(),
-          message: `Processed ${batchesProcessed} batches and stored ${totalTweetsStored} new tweets up to ${latestTweetDate.toISOString()}`
+          latestTweetDate: targetDate,
+          message: `Processed ${batchesProcessed} batches and stored ${totalTweetsStored} new tweets${targetDate ? ` up to ${targetDate}` : ''}`
         }),
         {
           headers: {

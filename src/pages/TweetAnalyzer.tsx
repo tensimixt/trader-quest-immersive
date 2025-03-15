@@ -510,26 +510,22 @@ const TweetAnalyzer = () => {
     
     setIsNewTweetsLoading(true);
     try {
-      toast.info('Fetching new tweets from database...');
-      const localResult = await fetchLocalTweetsByTimestamp();
+      toast.info('Fetching new tweets from Twitter API...');
       
-      if (localResult.success && localResult.tweetsStored > 0) {
-        toast.success(`Successfully loaded ${localResult.tweetsStored} tweets from database`);
-      } else {
-        toast.info('Fetching new tweets from API...');
-        console.log('Calling Twitter API client fetchTweetsByTimestamp');
-        const result = await fetchTweetsByTimestamp();
-        
-        if (result.success) {
-          if (result.tweetsStored > 0) {
-            toast.success(`Successfully fetched and stored ${result.tweetsStored} new tweets`);
-            fetchTweets(); // Refresh the tweet display
-          } else {
-            toast.info('No new tweets found');
-          }
+      const targetDate = '2025-03-09 13:23:54+00';
+      console.log('Calling Twitter API client fetchTweetsByTimestamp with target date:', targetDate);
+      
+      const result = await fetchTweetsByTimestamp(targetDate);
+      
+      if (result.success) {
+        if (result.tweetsStored > 0) {
+          toast.success(`Successfully fetched and stored ${result.tweetsStored} new tweets`);
+          fetchTweets(); // Refresh the tweet display
         } else {
-          toast.error(`Failed to fetch newer tweets: ${result.error || 'Unknown error'}`);
+          toast.info('No new tweets found');
         }
+      } else {
+        toast.error(`Failed to fetch newer tweets: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error fetching newer tweets:', error);
