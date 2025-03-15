@@ -72,11 +72,27 @@ export const fetchAndStoreNewerTweets = async () => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API error: ${errorData.error || response.statusText}`);
+      // Try to parse error as JSON, but handle cases where it's not valid JSON
+      try {
+        const errorData = await response.json();
+        throw new Error(`API error: ${errorData.error || response.statusText}`);
+      } catch (parseError) {
+        // If response is not valid JSON, use the status text
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
     }
     
-    const result = await response.json();
+    // Check if response has content before parsing
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      return {
+        success: false,
+        error: 'Empty response from server'
+      };
+    }
+    
+    // Parse the response text as JSON
+    const result = JSON.parse(responseText);
     
     return {
       success: true,
@@ -107,11 +123,23 @@ export const fetchTweetsByTimestamp = async () => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API error: ${errorData.error || response.statusText}`);
+      try {
+        const errorData = await response.json();
+        throw new Error(`API error: ${errorData.error || response.statusText}`);
+      } catch (parseError) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
     }
     
-    const result = await response.json();
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      return {
+        success: false,
+        error: 'Empty response from server'
+      };
+    }
+    
+    const result = JSON.parse(responseText);
     
     return {
       success: true,
