@@ -116,26 +116,30 @@ interface FetchTweetsByTimestampOptions {
   targetDate?: string;
   tweetsPerRequest?: number;
   cursorType?: string;
+  startNew?: boolean;
 }
 
-// Function to fetch tweets using cursor-based pagination
+// Function to fetch tweets using cursor-based pagination, similar to "Continue Older" but for newer tweets
 export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOptions = {}) => {
   try {
-    // Use mode to indicate we want cursor-based pagination
-    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=cursor-pagination`;
+    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-historical`;
     
-    console.log('Fetching tweets with cursor pagination:', EDGE_FUNCTION_URL);
+    console.log('Fetching tweets with cursor pagination:', options);
+    
+    const payload = {
+      batchSize: options.maxBatches || 3,
+      startNew: options.startNew || false,
+      mode: options.cursorType || 'newer'
+    };
+    
+    console.log('Sending payload to twitter-historical:', payload);
     
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        ...options,
-        maxBatches: options.maxBatches || 10,  // Default to 10 batches max
-        cursorType: options.cursorType || 'newer'  // Default to 'newer' cursor type
-      })
+      body: JSON.stringify(payload)
     });
     
     if (!response.ok) {
@@ -160,10 +164,10 @@ export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOpti
     
     return {
       success: true,
-      tweetsStored: result.tweetsStored || 0,
-      batchesProcessed: result.batchesProcessed || 0,
-      isComplete: result.isComplete || false,
-      lastCursor: result.lastCursor || null,
+      tweetsStored: result.totalStored || 0,
+      batchesProcessed: result.pagesProcessed || 0,
+      isComplete: result.isAtEnd || false,
+      lastCursor: result.nextCursor || null,
       message: result.message || 'Completed tweet fetch operation with cursor pagination',
       error: null
     };
