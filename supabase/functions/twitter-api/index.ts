@@ -15,31 +15,41 @@ Deno.serve(async (req) => {
   // Parse URL to get parameters
   const url = new URL(req.url);
   const mode = url.searchParams.get('mode') || 'fetch';
+  const targetCursor = url.searchParams.get('targetCursor');
 
   try {
     const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
     
-    if (mode === 'fetch-and-store') {
-      // Create Supabase client for database operations
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create Supabase client for database operations
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Get Latest Cursor Mode - Fetch latest tweets and their cursor
+    if (mode === 'get-cursor') {
+      // Fetch the latest tweets to get current cursor
+      const apiUrl = new URL('https://api.twitterapi.io/twitter/list/tweets');
+      apiUrl.searchParams.append('listId', '1674940005557387266'); // Crypto list ID
       
-      // Get the 'newer' cursor from the database
-      const { data: newerCursor, error: cursorError } = await supabase
-        .from('twitter_cursors')
-        .select('cursor_value')
-        .eq('cursor_type', 'newer')
-        .single();
-      
-      if (cursorError && cursorError.code !== 'PGRST116') {
+      const response = await fetch(apiUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'X-API-Key': TWITTER_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Twitter API error:', errorText);
         return new Response(
           JSON.stringify({
-            error: 'Error fetching cursor',
-            details: cursorError.message,
+            success: false,
+            error: 'Error fetching tweets from Twitter API',
+            details: errorText,
           }),
           {
-            status: 500,
+            status: response.status,
             headers: {
               ...corsHeaders,
               'Content-Type': 'application/json',
@@ -47,13 +57,60 @@ Deno.serve(async (req) => {
           }
         );
       }
+
+      const data = await response.json();
+      const latestCursor = data.next_cursor;
+      
+      // Also get our stored newer cursor
+      const { data: newerCursor, error: cursorError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'newer')
+        .single();
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          latest_cursor: latestCursor,
+          stored_cursor: newerCursor?.cursor_value || null
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    // Fetch and Store Mode - Fetch newer tweets and store them in the database
+    else if (mode === 'fetch-and-store') {
+      let currentCursor = null;
+      
+      // Get the current cursor from request body if it's a POST request
+      if (req.method === 'POST') {
+        const body = await req.json();
+        currentCursor = body.currentCursor;
+      }
+      
+      // If no cursor in the request, try to get the stored 'newer' cursor
+      if (!currentCursor) {
+        const { data: newerCursor, error: cursorError } = await supabase
+          .from('twitter_cursors')
+          .select('cursor_value')
+          .eq('cursor_type', 'newer')
+          .single();
+        
+        if (!cursorError && newerCursor) {
+          currentCursor = newerCursor.cursor_value;
+        }
+      }
       
       // Fetch tweets from Twitter API, optionally using cursor
       const apiUrl = new URL('https://api.twitterapi.io/twitter/list/tweets');
       apiUrl.searchParams.append('listId', '1674940005557387266'); // Crypto list ID
       
-      if (newerCursor?.cursor_value) {
-        apiUrl.searchParams.append('cursor', newerCursor.cursor_value);
+      if (currentCursor) {
+        apiUrl.searchParams.append('cursor', currentCursor);
       }
       
       const response = await fetch(apiUrl.toString(), {
@@ -69,6 +126,7 @@ Deno.serve(async (req) => {
         console.error('Twitter API error:', errorText);
         return new Response(
           JSON.stringify({
+            success: false,
             error: 'Error fetching tweets from Twitter API',
             details: errorText,
           }),
@@ -83,8 +141,16 @@ Deno.serve(async (req) => {
       }
 
       const data = await response.json();
+      let reachedTarget = false;
+      
+      // Check if we've reached the target cursor
+      if (targetCursor && data.next_cursor === targetCursor) {
+        reachedTarget = true;
+      }
       
       // Process the tweets and store them in the historical_tweets table
+      let tweetsStored = 0;
+      
       if (data.tweets && Array.isArray(data.tweets)) {
         const processedTweets = data.tweets.map(tweet => ({
           id: tweet.id,
@@ -118,6 +184,7 @@ Deno.serve(async (req) => {
             console.error('Error storing tweets in database:', insertError);
             return new Response(
               JSON.stringify({
+                success: false,
                 error: 'Error storing tweets in database',
                 details: insertError.message,
               }),
@@ -130,6 +197,8 @@ Deno.serve(async (req) => {
               }
             );
           }
+          
+          tweetsStored = count || 0;
           
           // Update the cursor for future requests if provided
           if (data.next_cursor) {
@@ -148,30 +217,17 @@ Deno.serve(async (req) => {
               console.error('Error updating cursor:', updateError);
             }
           }
-          
-          return new Response(
-            JSON.stringify({
-              success: true,
-              tweetsProcessed: processedTweets.length,
-              tweetsStored: count || 0,
-              nextCursor: data.next_cursor,
-              tweets: processedTweets
-            }),
-            {
-              headers: {
-                ...corsHeaders,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
         }
       }
       
       return new Response(
         JSON.stringify({
           success: true,
-          tweetsProcessed: 0,
-          message: 'No new tweets found'
+          tweetsProcessed: data.tweets?.length || 0,
+          tweetsStored,
+          nextCursor: data.next_cursor,
+          reachedTarget,
+          targetCursor
         }),
         {
           headers: {
