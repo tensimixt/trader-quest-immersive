@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Download } from 'lucide-react';
@@ -515,8 +516,11 @@ const TweetAnalyzer = () => {
       console.log('Calling Twitter API client fetchTweetsByTimestamp with cursor pagination');
       
       const result = await fetchTweetsByTimestamp({
-        maxBatches: 5
+        maxBatches: 5,
+        cursorType: 'newer'
       });
+      
+      console.log('Result from fetchTweetsByTimestamp:', result);
       
       if (result.success) {
         if (result.tweetsStored > 0) {

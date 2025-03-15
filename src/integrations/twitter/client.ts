@@ -1,4 +1,3 @@
-
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -122,8 +121,8 @@ interface FetchTweetsByTimestampOptions {
 // Function to fetch tweets using cursor-based pagination, similar to "Continue Older" but for newer tweets
 export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOptions = {}) => {
   try {
-    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-historical`;
-    
+    // Import Supabase client from global environment
+    const { supabase } = window as any;
     console.log('Fetching tweets with cursor pagination:', options);
     
     const payload = {
@@ -132,43 +131,27 @@ export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOpti
       mode: options.cursorType || 'newer'
     };
     
-    console.log('Sending payload to twitter-historical:', payload);
+    console.log('Sending payload to twitter-historical supabase function:', payload);
     
-    const response = await fetch(EDGE_FUNCTION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    // Use Supabase functions.invoke instead of direct fetch
+    const result = await supabase.functions.invoke('twitter-historical', {
+      body: payload
     });
     
-    if (!response.ok) {
-      try {
-        const errorData = await response.json();
-        throw new Error(`API error: ${errorData.error || response.statusText}`);
-      } catch (parseError) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
+    if (result.error) {
+      console.error('Supabase function error:', result.error);
+      throw new Error(`Function error: ${result.error.message}`);
     }
     
-    const responseText = await response.text();
-    if (!responseText || responseText.trim() === '') {
-      return {
-        success: false,
-        error: 'Empty response from server',
-        tweetsStored: 0
-      };
-    }
-    
-    const result = JSON.parse(responseText);
+    console.log('Supabase function response:', result.data);
     
     return {
       success: true,
-      tweetsStored: result.totalStored || 0,
-      batchesProcessed: result.pagesProcessed || 0,
-      isComplete: result.isAtEnd || false,
-      lastCursor: result.nextCursor || null,
-      message: result.message || 'Completed tweet fetch operation with cursor pagination',
+      tweetsStored: result.data?.totalStored || 0,
+      batchesProcessed: result.data?.pagesProcessed || 0,
+      isComplete: result.data?.isAtEnd || false,
+      lastCursor: result.data?.nextCursor || null,
+      message: result.data?.message || 'Completed tweet fetch operation with cursor pagination',
       error: null
     };
   } catch (error) {
