@@ -1,4 +1,3 @@
-
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -110,8 +109,15 @@ export const fetchAndStoreNewerTweets = async () => {
   }
 };
 
+// Define the options type for fetchTweetsByTimestamp
+interface FetchTweetsByTimestampOptions {
+  maxBatches?: number;
+  targetDate?: string;
+  tweetsPerRequest?: number;
+}
+
 // Function to fetch tweets using cursor-based pagination
-export const fetchTweetsByTimestamp = async (options = {}) => {
+export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOptions = {}) => {
   try {
     // Use mode to indicate we want cursor-based pagination
     const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=cursor-pagination`;
