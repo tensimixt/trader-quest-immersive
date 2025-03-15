@@ -368,7 +368,74 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const fetchTweetsByTimestamp = async () => {
+    if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
+      toast.warning('Please wait a moment before fetching again');
+      return {
+        success: false,
+        tweetsStored: 0
+      };
+    }
+    
+    setLastFetchAttempt(new Date());
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('twitter-feed-by-timestamp');
+      
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
+      }
+      
+      console.log('Supabase function response:', data);
+      
+      if (data && data.tweets && Array.isArray(data.tweets)) {
+        const formattedTweets = data.tweets.map((tweet: any) => ({
+          id: tweet.id,
+          text: tweet.text,
+          createdAt: tweet.createdAt,
+          author: {
+            userName: tweet.author?.userName || "unknown",
+            name: tweet.author?.name || "Unknown User",
+            profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          },
+          isReply: tweet.isReply || false,
+          isQuote: tweet.isQuote || false,
+          quoted_tweet: tweet.quoted_tweet ? {
+            text: tweet.quoted_tweet.text,
+            author: {
+              userName: tweet.quoted_tweet.author?.userName || "unknown",
+              name: tweet.quoted_tweet.author?.name || "Unknown User",
+              profilePicture: tweet.quoted_tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+            },
+            entities: tweet.quoted_tweet.entities || { media: [] },
+            extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
+          } : undefined,
+          entities: tweet.entities || { media: [] },
+          extendedEntities: tweet.extendedEntities || { media: [] }
+        }));
+        
+        setTweetData(formattedTweets);
+        toast.success('Tweets loaded successfully');
+        return {
+          success: true,
+          tweetsStored: formattedTweets.length
+        };
+      } else {
+        throw new Error('Invalid response format from function');
+      }
+    } catch (error) {
+      console.error('Error fetching tweets:', error);
+      toast.error('Failed to load tweets from API, using sample data');
+      return {
+        success: false,
+        tweetsStored: 0
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -437,7 +504,7 @@ const TweetAnalyzer = () => {
     
     setIsNewTweetsLoading(true);
     try {
-      const result = await fetchAndStoreNewerTweets();
+      const result = await fetchTweetsByTimestamp();
       
       if (result.success) {
         if (result.tweetsStored > 0) {
@@ -447,11 +514,11 @@ const TweetAnalyzer = () => {
           toast.info('No new tweets found');
         }
       } else {
-        toast.error('Failed to fetch newer tweets');
+        toast.error(`Failed to fetch newer tweets: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error fetching newer tweets:', error);
-      toast.error('Error fetching newer tweets');
+      toast.error(`Error fetching newer tweets: ${error.message}`);
     } finally {
       setIsNewTweetsLoading(false);
     }
