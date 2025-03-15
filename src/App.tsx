@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { SolanaWalletProvider } from "./components/WalletProvider";
-import { ThemeProvider } from "./components/theme-provider";
 import { Button } from "@/components/ui/button";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
@@ -30,25 +29,23 @@ const Navigation = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="dark">
-      <TooltipProvider>
-        <SolanaWalletProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Navigation />
-            <div className="pt-16"> {/* Add padding to account for the fixed navigation */}
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/tweet-analyzer" element={<TweetAnalyzer />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-          </BrowserRouter>
-        </SolanaWalletProvider>
-      </TooltipProvider>
-    </ThemeProvider>
+    <TooltipProvider>
+      <SolanaWalletProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Navigation />
+          <div className="pt-16"> {/* Add padding to account for the fixed navigation */}
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/tweet-analyzer" element={<TweetAnalyzer />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+        </BrowserRouter>
+      </SolanaWalletProvider>
+    </TooltipProvider>
   </QueryClientProvider>
 );
 

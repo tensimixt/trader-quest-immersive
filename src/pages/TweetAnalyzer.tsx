@@ -1,784 +1,606 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Download } from 'lucide-react';
-import { toast } from 'sonner'
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Slider } from "@/components/ui/slider"
-import { fetchTweets, classifyTweet, fetchTweetsByTimestamp } from '@/integrations/twitter/client';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from '@/hooks/use-mobile';
+import { AppHeader } from '@/components/AppHeader';
+import TweetClassifier from '@/components/TweetClassifier';
+import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
-import { CopyButton } from '@/components/copy-button';
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
+import { HistoricalTweetBatch } from '@/types/tweetTypes';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreVertical } from 'lucide-react';
-import { useTheme } from "@/components/theme-provider"
-import { ModeToggle } from '@/components/mode-toggle';
-import { Github } from 'lucide-react';
-import { Twitter } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { enUS } from 'date-fns/locale'
-import { DateRange } from "react-day-picker"
-import { addDays } from 'date-fns';
+  Slider
+} from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 
-const TweetAnalyzer: React.FC = () => {
-  const [tweets, setTweets] = useState<any[]>([]);
+interface FetchHistoricalResult {
+  success: boolean;
+  isAtEnd: boolean;
+  hasData: boolean;
+}
+
+const TweetAnalyzer = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState('Idle');
-  const [confidenceThreshold, setConfidenceThreshold] = useState(50);
-  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(60); // seconds
-  const [isHistoricalMode, setIsHistoricalMode] = useState(false);
-  const [historicalSince, setHistoricalSince] = useState<DateRange | undefined>(undefined);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [isHistoricalSettingsOpen, setIsHistoricalSettingsOpen] = useState(false);
   const [isHistoricalLoading, setIsHistoricalLoading] = useState(false);
-  const [historicalStatus, setHistoricalStatus] = useState('Idle');
-  const [isHistoricalComplete, setIsHistoricalComplete] = useState(false);
-  const [isHistoricalError, setIsHistoricalError] = useState(false);
-  const [historicalError, setHistoricalError] = useState('');
-  const [isHistoricalModeNewer, setIsHistoricalModeNewer] = useState(false);
-  const [isHistoricalModeOlder, setIsHistoricalModeOlder] = useState(false);
-  const [isHistoricalModeRange, setIsHistoricalModeRange] = useState(false);
-  const [isHistoricalModeNewerLoading, setIsHistoricalModeNewerLoading] = useState(false);
-  const [isHistoricalModeOlderLoading, setIsHistoricalModeOlderLoading] = useState(false);
-  const [isHistoricalModeRangeLoading, setIsHistoricalModeRangeLoading] = useState(false);
-  const [isHistoricalModeNewerComplete, setIsHistoricalModeNewerComplete] = useState(false);
-  const [isHistoricalModeOlderComplete, setIsHistoricalModeOlderComplete] = useState(false);
-  const [isHistoricalModeRangeComplete, setIsHistoricalModeRangeComplete] = useState(false);
-  const [isHistoricalModeNewerError, setIsHistoricalModeNewerError] = useState(false);
-  const [isHistoricalModeOlderError, setIsHistoricalModeOlderError] = useState(false);
-  const [isHistoricalModeRangeError, setIsHistoricalModeRangeError] = useState(false);
-  const [historicalModeNewerError, setHistoricalModeNewerError] = useState('');
-  const [historicalModeOlderError, setHistoricalModeOlderError] = useState('');
-  const [historicalModeRangeError, setHistoricalModeRangeError] = useState('');
-  const [historicalModeNewerStatus, setHistoricalModeNewerStatus] = useState('Idle');
-  const [historicalModeOlderStatus, setHistoricalModeOlderStatus] = useState('Idle');
-  const [historicalModeRangeStatus, setHistoricalModeRangeStatus] = useState('Idle');
-  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const [downloadFormat, setDownloadFormat] = useState('json');
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isHistoricalModeNewerRunning, setIsHistoricalModeNewerRunning] = useState(false);
-  const [isHistoricalModeOlderRunning, setIsHistoricalModeOlderRunning] = useState(false);
-  const [isHistoricalModeRangeRunning, setIsHistoricalModeRangeRunning] = useState(false);
-
-  const autoRefreshIntervalRef = useRef<number | null>(null);
-
-  const refreshTweets = async () => {
-    try {
-      setIsLoading(true);
-      setStatus('Refreshing tweets...');
-      const fetchedTweets = await fetchTweets();
-      if (fetchedTweets && Array.isArray(fetchedTweets.tweets)) {
-        const classifiedTweets = fetchedTweets.tweets.map(tweet => classifyTweet(tweet));
-        setTweets(classifiedTweets);
-        setStatus(`Successfully refreshed ${classifiedTweets.length} tweets.`);
-        toast(`Successfully refreshed ${classifiedTweets.length} tweets.`);
-      } else {
-        setStatus('Failed to refresh tweets: Invalid data format.');
-        toast('Failed to refresh tweets: Invalid data format.');
-      }
-    } catch (error: any) {
-      console.error('Error refreshing tweets:', error);
-      setStatus(`Error: ${error.message}`);
-      toast(`Error: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [searchTerm, setSearchTerm] = useState('');
+  const [tweetData, setTweetData] = useState<any[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [fetchingMode, setFetchingMode] = useState<'newer' | 'older'>('older');
+  const [apiErrorCount, setApiErrorCount] = useState(0);
+  const [lastFetchAttempt, setLastFetchAttempt] = useState<Date | null>(null);
+  const [batchSize, setBatchSize] = useState(20);
+  const [tweetsPerRequest, setTweetsPerRequest] = useState(20);
+  const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isAutoRefresh) {
-      if (!autoRefreshIntervalRef.current) {
-        autoRefreshIntervalRef.current = window.setInterval(refreshTweets, refreshInterval * 1000);
-        console.log(`Auto-refresh started. Interval: ${refreshInterval} seconds`);
-      }
-    } else {
-      if (autoRefreshIntervalRef.current) {
-        window.clearInterval(autoRefreshIntervalRef.current);
-        autoRefreshIntervalRef.current = null;
-        console.log('Auto-refresh stopped.');
-      }
-    }
+    const initialTweets = marketIntelligence
+      .filter(item => item.screenName)
+      .map(item => ({
+        id: item.id.toString(),
+        text: item.message,
+        createdAt: item.timestamp,
+        author: {
+          userName: item.screenName || "unknown",
+          name: item.screenName || "Unknown User",
+          profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+        },
+        isReply: item.isReply || false,
+        isQuote: item.isQuote || false,
+        quoted_tweet: item.quoteTweet ? {
+          text: item.quoteTweet,
+          author: {
+            userName: item.screenName,
+            name: item.screenName || "Unknown User",
+            profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+          }
+        } : undefined,
+        entities: { media: [] },
+        extendedEntities: { media: [] }
+      }));
+    
+    setTweetData(initialTweets);
+    fetchTweets();
+    
+    checkStoredCursors();
+  }, []);
 
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm.trim()) {
+        fetchTweets();
+      }
+    }, 500);
+    
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
+  // Auto-click "Continue Older" button after successful fetch
+  useEffect(() => {
     return () => {
-      if (autoRefreshIntervalRef.current) {
-        window.clearInterval(autoRefreshIntervalRef.current);
-        console.log('Auto-refresh cleanup.');
+      // Clean up timeout on component unmount
+      if (autoClickTimeoutRef.current) {
+        clearTimeout(autoClickTimeoutRef.current);
       }
     };
-  }, [isAutoRefresh, refreshInterval]);
+  }, []);
 
-  const handleConfidenceChange = (value: number[]) => {
-    setConfidenceThreshold(value[0]);
-  };
-
-  const filteredTweets = tweets.filter(tweet => tweet.confidence >= confidenceThreshold);
-
-  const clearTweets = () => {
-    setTweets([]);
-    setStatus('Tweets cleared.');
-    toast({
-      title: "Tweets cleared",
-      description: "All tweets have been cleared from the display.",
-    })
-  };
-
-  const fetchHistoricalTweetsNewer = async () => {
-    setIsHistoricalModeNewerRunning(true);
-    setIsHistoricalModeNewerComplete(false);
-    setIsHistoricalModeNewerError(false);
-    setHistoricalModeNewerStatus('Fetching historical tweets (newer)...');
-    try {
-      setIsHistoricalModeNewerLoading(true);
-      const result = await fetchTweetsByTimestamp({ cursorType: 'newer', maxBatches: 5 });
-      if (result.success) {
-        setHistoricalModeNewerStatus(`Successfully fetched ${result.tweetsStored} historical tweets (newer).`);
-        toast(`Successfully fetched ${result.tweetsStored} historical tweets (newer).`);
-        setIsHistoricalModeNewerComplete(true);
-        await refreshTweets();
-      } else {
-        setHistoricalModeNewerStatus(`Error: ${result.error}`);
-        setHistoricalModeNewerError(result.error);
-        setIsHistoricalModeNewerError(true);
-        toast(`Historical tweets fetch failed (newer): ${result.error}`);
+  const setupAutoClick = () => {
+    if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
+      // Clear any existing timeout
+      if (autoClickTimeoutRef.current) {
+        clearTimeout(autoClickTimeoutRef.current);
       }
-    } catch (error: any) {
-      console.error('Error fetching historical tweets (newer):', error);
-      setHistoricalModeNewerStatus(`Error: ${error.message}`);
-      setHistoricalModeNewerError(error.message);
-      setIsHistoricalModeNewerError(true);
-      toast(`Error fetching historical tweets (newer): ${error.message}`);
-    } finally {
-      setIsHistoricalModeNewerLoading(false);
-      setIsHistoricalModeNewerRunning(false);
+      
+      // Set new timeout to click the button after 5 seconds
+      autoClickTimeoutRef.current = setTimeout(() => {
+        if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
+          toast.info("Auto-clicking Continue Older...");
+          continueButtonRef.current.click();
+        }
+      }, 5000);
     }
   };
 
-  const fetchHistoricalTweetsOlder = async () => {
-    setIsHistoricalModeOlderRunning(true);
-    setIsHistoricalModeOlderComplete(false);
-    setIsHistoricalModeOlderError(false);
-    setHistoricalModeOlderStatus('Fetching historical tweets (older)...');
+  const checkStoredCursors = async () => {
     try {
-      setIsHistoricalModeOlderLoading(true);
-      const result = await fetchTweetsByTimestamp({ cursorType: 'older', maxBatches: 5 });
-      if (result.success) {
-        setHistoricalModeOlderStatus(`Successfully fetched ${result.tweetsStored} historical tweets (older).`);
-        toast(`Successfully fetched ${result.tweetsStored} historical tweets (older).`);
-        setIsHistoricalModeOlderComplete(true);
-        await refreshTweets();
-      } else {
-        setHistoricalModeOlderStatus(`Error: ${result.error}`);
-        setHistoricalModeOlderError(result.error);
-        setIsHistoricalModeOlderError(true);
-        toast(`Historical tweets fetch failed (older): ${result.error}`);
+      const { data: newerCursor, error: newerError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'newer')
+        .single();
+      
+      const { data: olderCursor, error: olderError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'older')
+        .single();
+      
+      if (!olderError && olderCursor) {
+        toast.info('Found stored position for older tweets. Click "Continue Older" to resume.');
       }
-    } catch (error: any) {
-      console.error('Error fetching historical tweets (older):', error);
-      setHistoricalModeOlderStatus(`Error: ${error.message}`);
-      setHistoricalModeOlderError(error.message);
-      setIsHistoricalModeOlderError(true);
-      toast(`Error fetching historical tweets (older): ${error.message}`);
-    } finally {
-      setIsHistoricalModeOlderLoading(false);
-      setIsHistoricalModeOlderRunning(false);
+      
+      if (!newerError && newerCursor) {
+        toast.info('Found stored position for newer tweets. Click "Continue Newer" to resume.');
+      }
+      
+      if (fetchingMode === 'newer' && !newerError && newerCursor) {
+        setCurrentCursor(newerCursor.cursor_value);
+      } else if (fetchingMode === 'older' && !olderError && olderCursor) {
+        setCurrentCursor(olderCursor.cursor_value);
+      }
+    } catch (error) {
+      console.error('Error checking stored cursors:', error);
     }
   };
 
-  const fetchHistoricalTweetsRange = async () => {
-    setIsHistoricalModeRangeRunning(true);
-    setIsHistoricalModeRangeComplete(false);
-    setIsHistoricalModeRangeError(false);
-    setHistoricalModeRangeStatus('Fetching historical tweets (range)...');
+  const fetchTweets = async () => {
+    if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
+      toast.warning('Please wait a moment before refreshing again');
+      return;
+    }
+    
+    setLastFetchAttempt(new Date());
+    setIsLoading(true);
     try {
-      setIsHistoricalModeRangeLoading(true);
-      setHistoricalModeRangeStatus('Range fetching not implemented yet.');
-      toast({
-        title: "Historical tweets fetch (range)",
-        description: "Range fetching not implemented yet.",
-      })
-      setIsHistoricalModeRangeComplete(true);
-    } catch (error: any) {
-      console.error('Error fetching historical tweets (range):', error);
-      setHistoricalModeRangeStatus(`Error: ${error.message}`);
-      setHistoricalModeRangeError(error.message);
-      setIsHistoricalModeRangeError(true);
-      toast({
-        variant: "destructive",
-        title: "Historical tweets fetch failed (range)",
-        description: error.message,
-      })
-    } finally {
-      setIsHistoricalModeRangeLoading(false);
-      setIsHistoricalModeRangeRunning(false);
-    }
-  };
-
-  const downloadTweets = async () => {
-    setIsDownloading(true);
-    try {
-      const dataStr = downloadFormat === 'json' ?
-        JSON.stringify(tweets, null, 2) :
-        convertToCSV(tweets);
-
-      const blob = new Blob([dataStr], { type: `text/${downloadFormat === 'json' ? 'json' : 'csv'}` });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tweets.${downloadFormat}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({
-        title: "Download started",
-        description: `Tweets downloaded successfully in ${downloadFormat} format.`,
-      })
-    } catch (error: any) {
-      console.error('Error downloading tweets:', error);
-      toast({
-        variant: "destructive",
-        title: "Download failed",
-        description: error.message,
-      })
-    } finally {
-      setIsDownloading(false);
-      setIsDownloadModalOpen(false);
-    }
-  };
-
-  const convertToCSV = (data: any[]) => {
-    const csvRows = [];
-    const headers = Object.keys(data[0] || {});
-    csvRows.push(headers.join(','));
-
-    for (const row of data) {
-      const values = headers.map(header => {
-        const value = row[header];
-        return `"${value ? String(value).replace(/"/g, '""') : ''}"`;
-      });
-      csvRows.push(values.join(','));
-    }
-    return csvRows.join('\n');
-  };
-
-  const fetchNewerTweets = async () => {
-    try {
-      setIsLoading(true);
-      setStatus('Fetching newer tweets...');
-      
-      console.log('Calling Twitter API client fetchTweetsByTimestamp with cutoff date');
-      
-      const result = await fetchTweetsByTimestamp({
-        maxBatches: 5,
-        cursorType: 'newer',
-        cutoffDate: '2025-03-09T13:25:14.763946+00:00' // Your specified cutoff date
-      });
-      
-      console.log('Result from fetchTweetsByTimestamp:', result);
-      
-      if (result.success) {
-        if (result.tweetsStored > 0) {
-          setStatus(`Successfully fetched ${result.tweetsStored} new tweets from ${result.batchesProcessed} pages.`);
-          toast(`Stored ${result.tweetsStored} new tweets from ${result.batchesProcessed} pages`);
-        } else {
-          setStatus('No new tweets found.');
-          toast('No new tweets were found to store.');
+      if (searchTerm) {
+        setIsSearching(true);
+        const { data, error } = await supabase.functions.invoke('get-historical-tweets', {
+          body: { 
+            page: 1, 
+            pageSize: 1000, 
+            search: searchTerm 
+          }
+        });
+        
+        if (error) {
+          throw new Error(`Function error: ${error.message}`);
         }
         
-        if (result.tweetsStored > 0) {
-          await refreshTweets();
+        console.log('Supabase function response (search):', data);
+        
+        if (data && data.tweets && Array.isArray(data.tweets)) {
+          setTweetData(data.tweets);
+          toast.success(`Found ${data.tweets.length} tweets matching "${searchTerm}"`);
+        } else {
+          toast.info(`No tweets found matching "${searchTerm}"`);
+          setTweetData([]);
         }
       } else {
-        setStatus(`Error: ${result.error}`);
-        toast(`Error fetching tweets: ${result.error}`);
+        setIsSearching(false);
+        const { data, error } = await supabase.functions.invoke('twitter-feed');
+        
+        if (error) {
+          throw new Error(`Function error: ${error.message}`);
+        }
+        
+        console.log('Supabase function response:', data);
+        
+        if (data && data.tweets && Array.isArray(data.tweets)) {
+          const formattedTweets = data.tweets.map((tweet: any) => ({
+            id: tweet.id,
+            text: tweet.text,
+            createdAt: tweet.createdAt,
+            author: {
+              userName: tweet.author?.userName || "unknown",
+              name: tweet.author?.name || "Unknown User",
+              profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+            },
+            isReply: tweet.isReply || false,
+            isQuote: tweet.isQuote || false,
+            quoted_tweet: tweet.quoted_tweet ? {
+              text: tweet.quoted_tweet.text,
+              author: {
+                userName: tweet.quoted_tweet.author?.userName || "unknown",
+                name: tweet.quoted_tweet.author?.name || "Unknown User",
+                profilePicture: tweet.quoted_tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+              },
+              entities: tweet.quoted_tweet.entities || { media: [] },
+              extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
+            } : undefined,
+            entities: tweet.entities || { media: [] },
+            extendedEntities: tweet.extendedEntities || { media: [] }
+          }));
+          
+          setTweetData(formattedTweets);
+          toast.success('Tweets loaded successfully');
+        } else {
+          throw new Error('Invalid response format from function');
+        }
       }
-    } catch (error: any) {
-      console.error('Error fetching newer tweets:', error);
-      setStatus(`Error: ${error.message}`);
-      toast(`Error fetching tweets: ${error.message}`);
+      
+      setApiErrorCount(0);
+    } catch (error) {
+      console.error('Error fetching tweets:', error);
+      toast.error('Failed to load tweets from API, using sample data');
+      setApiErrorCount(prev => prev + 1);
+      
+      if (apiErrorCount > 2) {
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.', {
+          duration: 5000,
+          icon: <AlertTriangle className="text-red-500" />
+        });
+      }
+      
+      if (!searchTerm) {
+        const sampleTweets = marketIntelligence
+          .filter(item => item.screenName)
+          .map(item => ({
+            id: item.id.toString(),
+            text: item.message,
+            createdAt: item.timestamp,
+            author: {
+              userName: item.screenName || "unknown",
+              name: item.screenName || "Unknown User",
+              profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+            },
+            isReply: item.isReply || false,
+            isQuote: item.isQuote || false,
+            quoted_tweet: item.quoteTweet ? {
+              text: item.quoteTweet,
+              author: {
+                userName: item.screenName,
+                name: item.screenName || "Unknown User",
+                profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+              }
+            } : undefined,
+            entities: { media: [] },
+            extendedEntities: { media: [] }
+          }));
+        
+        setTweetData(sampleTweets);
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchHistoricalTweets = async (startNew = false): Promise<FetchHistoricalResult> => {
+    if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
+      toast.warning('Please wait a moment before fetching again');
+      return {
+        success: false,
+        isAtEnd: false,
+        hasData: false
+      };
+    }
+    
+    setLastFetchAttempt(new Date());
+    setIsHistoricalLoading(true);
+    setIsPossiblyAtEnd(false);
+    
+    try {
+      toast.info(`Starting ${fetchingMode} tweet fetch (batch size: ${batchSize})...`);
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
+        body: { 
+          cursor: startNew ? null : currentCursor,
+          batchSize: batchSize,
+          startNew: startNew,
+          mode: fetchingMode,
+          tweetsPerRequest: tweetsPerRequest
+        }
+      });
+      
+      if (result.error) {
+        throw new Error(`Function error: ${result.error.message}`);
+      }
+      
+      const data = result.data;
+      console.log('Historical tweets response:', data);
+      
+      if (data?.success) {
+        setCurrentCursor(data.nextCursor);
+        
+        if (data.totalFetched > 0) {
+          toast.success(`Fetched ${data.totalFetched} historical tweets (stored ${data.totalStored} new/updated tweets) from ${data.pagesProcessed} pages`);
+        } else {
+          toast.info('No new tweets found in this batch.');
+          setIsPossiblyAtEnd(true);
+        }
+        
+        if (data.isAtEnd) {
+          setIsPossiblyAtEnd(true);
+          toast.info(
+            `Only ${data.totalFetched} tweets retrieved despite ${data.pagesProcessed} requests. You may have reached the end of available data.`, 
+            { duration: 5000 }
+          );
+        }
+        
+        if (data.nextCursor && !data.isAtEnd) {
+          toast.info(`More historical tweets may be available. Click "Continue ${fetchingMode === 'newer' ? 'Newer' : 'Older'}" to try getting more.`);
+        } else if (!data.nextCursor || data.isAtEnd) {
+          toast.info(`You may have reached the end of ${fetchingMode === 'newer' ? 'recent' : 'historical'} tweets.`);
+          setIsPossiblyAtEnd(true);
+        }
+        
+        setApiErrorCount(0);
+        
+        await fetchTweets();
+        
+        // Schedule auto-click after successful fetch
+        setupAutoClick();
+        
+        return {
+          success: true,
+          isAtEnd: data.isAtEnd || !data.nextCursor,
+          hasData: data.totalFetched > 0
+        };
+      } else {
+        throw new Error(data?.error || 'Failed to fetch historical tweets');
+      }
+    } catch (error) {
+      console.error('Error fetching historical tweets:', error);
+      toast.error('Failed to fetch historical tweets');
+      setApiErrorCount(prev => prev + 1);
+      
+      if (apiErrorCount > 2) {
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.', {
+          duration: 5000,
+          icon: <AlertTriangle className="text-red-500" />
+        });
+      }
+      
+      return {
+        success: false,
+        isAtEnd: false,
+        hasData: false
+      };
+    } finally {
+      setIsHistoricalLoading(false);
+    }
+  };
+
+  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+    let retries = 0;
+    
+    while (retries < maxRetries) {
+      try {
+        return await fn();
+      } catch (error) {
+        retries++;
+        if (retries >= maxRetries) throw error;
+        console.log(`Retry ${retries}/${maxRetries} after error:`, error);
+        toast.info(`Retry attempt ${retries}/${maxRetries}...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+      }
+    }
+  };
+
+  const toggleFetchingMode = () => {
+    const newMode = fetchingMode === 'newer' ? 'older' : 'newer';
+    setFetchingMode(newMode);
+    
+    checkStoredCursors();
+    
+    toast.info(`Switched to fetching ${newMode} tweets`);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchTweets();
+  };
+
+  const handleRetryFetch = () => {
+    retryWithBackoff(fetchTweets)
+      .then(() => toast.success('Refresh successful!'))
+      .catch(err => toast.error(`Refresh failed after multiple attempts: ${err.message}`));
+  };
+
+  const handleRetryHistorical = async () => {
+    try {
+      await retryWithBackoff(async () => {
+        const result = await fetchHistoricalTweets(false);
+        if (result.success) {
+          toast.success('Historical fetch successful!');
+        }
+        return result;
+      });
+    } catch (err) {
+      toast.error(`Historical fetch failed after multiple attempts: ${err.message}`);
+    }
+  };
+  
+  const handleStartNewHistorical = async () => {
+    try {
+      await retryWithBackoff(async () => {
+        const result = await fetchHistoricalTweets(true);
+        if (result.success) {
+          toast.success('Started new fetch sequence!');
+        }
+        return result;
+      });
+    } catch (err) {
+      toast.error(`Failed to start new fetch: ${err.message}`);
     }
   };
 
   return (
-    <motion.div
-      className="flex flex-col h-screen bg-background text-foreground"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center space-x-2">
-          <ArrowLeft className="h-5 w-5 cursor-pointer" onClick={() => window.history.back()} />
-          <h1 className="text-xl font-semibold">Tweet Analyzer</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <ModeToggle />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open user menu</span>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={refreshTweets} disabled={isLoading}>
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                {isLoading ? 'Refreshing...' : 'Refresh Tweets'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={clearTweets}>
-                Clear Tweets
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsAboutOpen(true)}>
-                <Info className="mr-2 h-4 w-4" />
-                About
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row h-full p-4 space-y-4 md:space-y-0 md:space-x-4">
-        <div className="md:w-1/4 flex flex-col space-y-4">
-          <div className="bg-card rounded-md p-4 shadow-sm">
-            <h2 className="text-lg font-semibold mb-2">Controls</h2>
-            <Button variant="outline" className="w-full mb-4" onClick={refreshTweets} disabled={isLoading}>
-              {isLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Refreshing...</> : <><RefreshCcw className="mr-2 h-4 w-4" /> Refresh Tweets</>}
+    <div className="min-h-screen overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="container mx-auto p-4 flex flex-col min-h-screen"
+      >
+        <AppHeader />
+        
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
             </Button>
-            <Button variant="outline" className="w-full mb-4" onClick={fetchNewerTweets} disabled={isLoading}>
-              {isLoading ? <> Fetching Newer Tweets...</> : <> Fetch Newer Tweets</>}
-            </Button>
-            <Button variant="destructive" className="w-full mb-4" onClick={clearTweets}>
-              Clear Tweets
-            </Button>
-            <Separator className="my-2" />
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="confidence">Confidence Threshold: {confidenceThreshold}%</Label>
-              </div>
-              <Slider
-                id="confidence"
-                defaultValue={[confidenceThreshold]}
-                max={100}
-                step={1}
-                onValueChange={handleConfidenceChange}
-                className="mb-4"
+            <h1 className="text-xl font-bold text-white">Tweet Analyzer</h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Input
+                type="text"
+                placeholder="Search tweets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-black/20 border-purple-500/30 text-white placeholder:text-gray-400 w-full"
               />
             </div>
-            <Separator className="my-2" />
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="auto-refresh">Auto Refresh</Label>
-                <Switch
-                  id="auto-refresh"
-                  checked={isAutoRefresh}
-                  onCheckedChange={(checked) => setIsAutoRefresh(checked)}
-                />
-              </div>
-              {isAutoRefresh && (
-                <div>
-                  <Label htmlFor="refresh-interval">Refresh Interval (seconds):</Label>
-                  <Input
-                    type="number"
-                    id="refresh-interval"
-                    value={refreshInterval.toString()}
-                    onChange={(e) => setRefreshInterval(parseInt(e.target.value))}
-                    min="10"
-                    className="w-full"
-                  />
-                </div>
-              )}
-            </div>
-            <Separator className="my-2" />
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="historical-mode">Historical Mode</Label>
-                <Switch
-                  id="historical-mode"
-                  checked={isHistoricalMode}
-                  onCheckedChange={(checked) => setIsHistoricalMode(checked)}
-                />
-              </div>
-              {isHistoricalMode && (
-                <Button variant="secondary" className="w-full" onClick={() => setIsHistoricalSettingsOpen(true)}>
-                  Historical Settings
-                </Button>
-              )}
-            </div>
-            <Separator className="my-2" />
-            <Button className="w-full" onClick={() => setIsDownloadModalOpen(true)} disabled={tweets.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Download Tweets
-            </Button>
-            <Separator className="my-2" />
-            <div className="text-sm text-muted-foreground">
-              Status: {status}
-            </div>
-          </div>
-        </div>
-
-        <div className="md:w-3/4 bg-card rounded-md p-4 shadow-sm flex flex-col">
-          <h2 className="text-lg font-semibold mb-2">
-            Tweets
-            <Badge className="ml-2">{filteredTweets.length}</Badge>
-          </h2>
-          <ScrollArea className="rounded-md border h-full">
-            <Table>
-              <TableCaption>A list of tweets that meet the confidence threshold.</TableCaption>
-              <TableHead>
-                <TableRow>
-                  <TableHead className="w-[100px]">Author</TableHead>
-                  <TableHead>Tweet</TableHead>
-                  <TableHead>Market</TableHead>
-                  <TableHead>Direction</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTweets.map((tweet) => (
-                  <TableRow key={tweet.tweet.id}>
-                    <TableCell className="font-medium">{tweet.tweet.author?.userName}</TableCell>
-                    <TableCell>{tweet.tweet.text}</TableCell>
-                    <TableCell>{tweet.market}</TableCell>
-                    <TableCell>{tweet.direction}</TableCell>
-                    <TableCell>{tweet.confidence}</TableCell>
-                    <TableCell>
-                      <CopyButton text={tweet.tweet.text} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredTweets.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center">No tweets match the current criteria.</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </div>
-      </div>
-
-      <AlertDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Settings</AlertDialogTitle>
-            <AlertDialogDescription>
-              Adjust application settings to your preference.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Theme</div>
-              <ModeToggle />
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Auto Refresh</div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="auto-refresh-modal"
-                  checked={isAutoRefresh}
-                  onCheckedChange={(checked) => setIsAutoRefresh(checked)}
-                />
-                <Label htmlFor="auto-refresh-modal">Enable Auto Refresh</Label>
-              </div>
-              {isAutoRefresh && (
-                <div>
-                  <Label htmlFor="refresh-interval-modal">Refresh Interval (seconds):</Label>
-                  <Input
-                    type="number"
-                    id="refresh-interval-modal"
-                    value={refreshInterval.toString()}
-                    onChange={(e) => setRefreshInterval(parseInt(e.target.value))}
-                    min="10"
-                    className="w-full"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsSettingsOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setIsSettingsOpen(false)}>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isAboutOpen} onOpenChange={setIsAboutOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>About Tweet Analyzer</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tweet Analyzer is a tool for analyzing tweets from a specific Twitter list.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <p className="text-sm">
-                This tool fetches tweets, classifies them based on market direction, and displays them in a table.
-              </p>
-              <p className="text-sm">
-                It uses a simple heuristic approach to classify tweets and provides a confidence score for each classification.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Links</div>
-              <div className="flex items-center space-x-2">
-                <a href="https://github.com/whoisdsmith/twitter-analyzer" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
-                  <Github className="h-4 w-4" />
-                  <span>GitHub</span>
-                </a>
-                <a href="https://twitter.com/dsmithxyz" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
-                  <Twitter className="h-4 w-4" />
-                  <span>Twitter</span>
-                </a>
-              </div>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsAboutOpen(false)}>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isHistoricalSettingsOpen} onOpenChange={setIsHistoricalSettingsOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Historical Settings</AlertDialogTitle>
-            <AlertDialogDescription>
-              Fetch historical tweets based on different modes.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Historical Mode</div>
-              <div className="flex flex-col space-y-2">
-                <Button
-                  variant={isHistoricalModeNewer ? "default" : "outline"}
-                  onClick={() => {
-                    setIsHistoricalModeNewer(true);
-                    setIsHistoricalModeOlder(false);
-                    setIsHistoricalModeRange(false);
-                  }}
-                  disabled={isHistoricalModeNewerRunning}
-                >
-                  {isHistoricalModeNewerLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Fetching Newer...</> : <><History className="mr-2 h-4 w-4" /> Fetch Newer Tweets</>}
-                </Button>
-                <Button
-                  variant={isHistoricalModeOlder ? "default" : "outline"}
-                  onClick={() => {
-                    setIsHistoricalModeNewer(false);
-                    setIsHistoricalModeOlder(true);
-                    setIsHistoricalModeRange(false);
-                  }}
-                  disabled={isHistoricalModeOlderRunning}
-                >
-                  {isHistoricalModeOlderLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Fetching Older...</> : <><History className="mr-2 h-4 w-4" /> Fetch Older Tweets</>}
-                </Button>
-                <Button
-                  variant={isHistoricalModeRange ? "default" : "outline"}
-                  onClick={() => {
-                    setIsHistoricalModeNewer(false);
-                    setIsHistoricalModeOlder(false);
-                    setIsHistoricalModeRange(true);
-                  }}
-                  disabled={isHistoricalModeRangeRunning}
-                >
-                  {isHistoricalModeRangeLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Fetching Range...</> : <><History className="mr-2 h-4 w-4" /> Fetch Tweets in Range</>}
-                </Button>
-              </div>
-            </div>
-            {isHistoricalModeNewer && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Newer Tweets Settings</div>
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={fetchHistoricalTweetsNewer}
-                  disabled={isHistoricalModeNewerLoading}
-                >
-                  {isHistoricalModeNewerLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Fetching...</> : <><History className="mr-2 h-4 w-4" /> Fetch Newer Tweets</>}
-                </Button>
-                {isHistoricalModeNewerError && (
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                )}
-                {isHistoricalModeNewerComplete && (
-                  <Badge variant="outline">Complete</Badge>
-                )}
-                <div className="text-sm text-muted-foreground">
-                  Status: {historicalModeNewerStatus}
-                </div>
-              </div>
-            )}
-            {isHistoricalModeOlder && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Older Tweets Settings</div>
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={fetchHistoricalTweetsOlder}
-                  disabled={isHistoricalModeOlderLoading}
-                >
-                  {isHistoricalModeOlderLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Fetching...</> : <><History className="mr-2 h-4 w-4" /> Fetch Older Tweets</>}
-                </Button>
-                {isHistoricalModeOlderError && (
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                )}
-                {isHistoricalModeOlderComplete && (
-                  <Badge variant="outline">Complete</Badge>
-                )}
-                <div className="text-sm text-muted-foreground">
-                  Status: {historicalModeOlderStatus}
-                </div>
-              </div>
-            )}
-            {isHistoricalModeRange && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Tweets in Range Settings</div>
-                <Popover>
-                  <PopoverTrigger asChild>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleFetchingMode}
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+              >
+                {fetchingMode === 'older' ? "Switch to Newer" : "Switch to Older"}
+              </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Fetch Settings
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 bg-black/80 border-amber-500/30">
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-amber-400">Batch Settings</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-white/70">Batch Size: {batchSize}</span>
+                        <span className="text-xs text-amber-400/70">API calls per batch</span>
+                      </div>
+                      <Slider
+                        value={[batchSize]}
+                        min={1}
+                        max={1000}
+                        step={10}
+                        onValueChange={(value) => setBatchSize(value[0])}
+                        className="w-full"
+                      />
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm text-white/70">Tweets Per Request: {tweetsPerRequest}</span>
+                        <span className="text-xs text-amber-400/70">Max tweets per page</span>
+                      </div>
+                      <Slider
+                        value={[tweetsPerRequest]}
+                        min={20}
+                        max={100}
+                        step={20}
+                        onValueChange={(value) => setTweetsPerRequest(value[0])}
+                        className="w-full"
+                      />
+                      
+                      <div className="mt-4 text-xs text-white/70 p-2 bg-amber-500/10 rounded">
+                        <Info className="h-3 w-3 inline-block mr-1 text-amber-400" />
+                        <span>Each request typically returns around 20 tweets regardless of the setting. The batch size determines how many API calls will be made in one batch operation.</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-4">
+                        <span className="text-sm text-white/70">Auto-click Continue (5s):</span>
+                        <Button
+                          variant={isAutoClickEnabled ? "autofetch" : "outline"}
+                          size="xs"
+                          onClick={() => setIsAutoClickEnabled(!isAutoClickEnabled)}
+                          className={isAutoClickEnabled ? "" : "border-gray-500/30 text-gray-400"}
+                        >
+                          {isAutoClickEnabled ? "Enabled" : "Disabled"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStartNewHistorical}
+                disabled={isHistoricalLoading}
+                className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Start New
+              </Button>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-[240px] justify-start text-left font-normal",
-                        !historicalSince && "text-muted-foreground"
-                      )}
+                      ref={continueButtonRef}
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetryHistorical}
+                      disabled={isHistoricalLoading}
+                      className={`border-purple-500/30 text-purple-400 hover:bg-purple-500/10 ${isPossiblyAtEnd ? 'border-yellow-500/50 text-yellow-400' : ''}`}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {historicalSince?.from ? (
-                        historicalSince.to ? (
-                          `${format(historicalSince.from, "LLL dd, y")} - ${format(historicalSince.to, "LLL dd, y")}`
-                        ) : (
-                          format(historicalSince.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
+                      <History className={`h-4 w-4 mr-2 ${isHistoricalLoading ? 'animate-spin' : ''}`} />
+                      Continue {fetchingMode === 'newer' ? 'Newer' : 'Older'}
+                      {isPossiblyAtEnd && <AlertTriangle className="h-3 w-3 ml-1 text-yellow-400" />}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="center" side="bottom">
-                    <Calendar
-                      mode="range"
-                      defaultMonth={historicalSince?.from}
-                      selected={historicalSince}
-                      onSelect={setHistoricalSince}
-                      disabled={{ before: new Date('2023-01-01') }}
-                      numberOfMonths={2}
-                      pagedNavigation
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={fetchHistoricalTweetsRange}
-                  disabled={isHistoricalModeRangeLoading || !historicalSince?.from || !historicalSince?.to}
-                >
-                  {isHistoricalModeRangeLoading ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Fetching...</> : <><History className="mr-2 h-4 w-4" /> Fetch Tweets in Range</>}
-                </Button>
-                {isHistoricalModeRangeError && (
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                )}
-                {isHistoricalModeRangeComplete && (
-                  <Badge variant="outline">Complete</Badge>
-                )}
-                <div className="text-sm text-muted-foreground">
-                  Status: {historicalModeRangeStatus}
-                </div>
-              </div>
-            )}
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsHistoricalSettingsOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setIsHistoricalSettingsOpen(false)}>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isDownloadModalOpen} onOpenChange={setIsDownloadModalOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Download Tweets</AlertDialogTitle>
-            <AlertDialogDescription>
-              Choose the format for downloading the tweets.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Format</div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={downloadFormat === 'json' ? "default" : "outline"}
-                  onClick={() => setDownloadFormat('json')}
-                >
-                  JSON
-                </Button>
-                <Button
-                  variant={downloadFormat === 'csv' ? "default" : "outline"}
-                  onClick={() => setDownloadFormat('csv')}
-                >
-                  CSV
-                </Button>
-              </div>
+                  </TooltipTrigger>
+                  {isPossiblyAtEnd && (
+                    <TooltipContent className="bg-black/90 border-yellow-500/50 text-white">
+                      <p className="text-xs">You may have reached the end of available tweets, but you can try again if you wish.</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetryFetch}
+              disabled={isLoading}
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+            >
+              <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDownloadModalOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={downloadTweets} disabled={isDownloading}>
-              {isDownloading ? 'Downloading...' : 'Download'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </motion.div>
+        </div>
+        
+        <div className="flex-1 glass-card rounded-2xl p-4 lg:p-6 overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+          <TweetClassifier 
+            tweets={tweetData} 
+            isLoading={isLoading} 
+            isSearching={isSearching} 
+            searchTerm={searchTerm} 
+          />
+        </div>
+      </motion.div>
+    </div>
   );
 };
 
 export default TweetAnalyzer;
-
