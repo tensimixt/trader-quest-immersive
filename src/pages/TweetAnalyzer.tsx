@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Download } from 'lucide-react';
@@ -110,26 +109,15 @@ const TweetAnalyzer: React.FC = () => {
         const classifiedTweets = fetchedTweets.tweets.map(tweet => classifyTweet(tweet));
         setTweets(classifiedTweets);
         setStatus(`Successfully refreshed ${classifiedTweets.length} tweets.`);
-        toast({
-          title: "Tweets refreshed",
-          description: `Successfully refreshed ${classifiedTweets.length} tweets.`,
-        })
+        toast(`Successfully refreshed ${classifiedTweets.length} tweets.`);
       } else {
         setStatus('Failed to refresh tweets: Invalid data format.');
-        toast({
-          variant: "destructive",
-          title: "Refresh failed",
-          description: "Failed to refresh tweets: Invalid data format.",
-        })
+        toast('Failed to refresh tweets: Invalid data format.');
       }
     } catch (error: any) {
       console.error('Error refreshing tweets:', error);
       setStatus(`Error: ${error.message}`);
-      toast({
-        variant: "destructive",
-        title: "Refresh failed",
-        description: error.message,
-      })
+      toast(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -182,32 +170,21 @@ const TweetAnalyzer: React.FC = () => {
       const result = await fetchTweetsByTimestamp({ cursorType: 'newer', maxBatches: 5 });
       if (result.success) {
         setHistoricalModeNewerStatus(`Successfully fetched ${result.tweetsStored} historical tweets (newer).`);
-        toast({
-          title: "Historical tweets fetched (newer)",
-          description: `Successfully fetched ${result.tweetsStored} historical tweets (newer).`,
-        })
+        toast(`Successfully fetched ${result.tweetsStored} historical tweets (newer).`);
         setIsHistoricalModeNewerComplete(true);
         await refreshTweets();
       } else {
         setHistoricalModeNewerStatus(`Error: ${result.error}`);
         setHistoricalModeNewerError(result.error);
         setIsHistoricalModeNewerError(true);
-        toast({
-          variant: "destructive",
-          title: "Historical tweets fetch failed (newer)",
-          description: result.error,
-        })
+        toast(`Historical tweets fetch failed (newer): ${result.error}`);
       }
     } catch (error: any) {
       console.error('Error fetching historical tweets (newer):', error);
       setHistoricalModeNewerStatus(`Error: ${error.message}`);
       setHistoricalModeNewerError(error.message);
       setIsHistoricalModeNewerError(true);
-      toast({
-        variant: "destructive",
-        title: "Historical tweets fetch failed (newer)",
-        description: error.message,
-      })
+      toast(`Error fetching historical tweets (newer): ${error.message}`);
     } finally {
       setIsHistoricalModeNewerLoading(false);
       setIsHistoricalModeNewerRunning(false);
@@ -224,32 +201,21 @@ const TweetAnalyzer: React.FC = () => {
       const result = await fetchTweetsByTimestamp({ cursorType: 'older', maxBatches: 5 });
       if (result.success) {
         setHistoricalModeOlderStatus(`Successfully fetched ${result.tweetsStored} historical tweets (older).`);
-        toast({
-          title: "Historical tweets fetched (older)",
-          description: `Successfully fetched ${result.tweetsStored} historical tweets (older).`,
-        })
+        toast(`Successfully fetched ${result.tweetsStored} historical tweets (older).`);
         setIsHistoricalModeOlderComplete(true);
         await refreshTweets();
       } else {
         setHistoricalModeOlderStatus(`Error: ${result.error}`);
         setHistoricalModeOlderError(result.error);
         setIsHistoricalModeOlderError(true);
-        toast({
-          variant: "destructive",
-          title: "Historical tweets fetch failed (older)",
-          description: result.error,
-        })
+        toast(`Historical tweets fetch failed (older): ${result.error}`);
       }
     } catch (error: any) {
       console.error('Error fetching historical tweets (older):', error);
       setHistoricalModeOlderStatus(`Error: ${error.message}`);
       setHistoricalModeOlderError(error.message);
       setIsHistoricalModeOlderError(true);
-      toast({
-        variant: "destructive",
-        title: "Historical tweets fetch failed (older)",
-        description: error.message,
-      })
+      toast(`Error fetching historical tweets (older): ${error.message}`);
     } finally {
       setIsHistoricalModeOlderLoading(false);
       setIsHistoricalModeOlderRunning(false);
@@ -263,7 +229,6 @@ const TweetAnalyzer: React.FC = () => {
     setHistoricalModeRangeStatus('Fetching historical tweets (range)...');
     try {
       setIsHistoricalModeRangeLoading(true);
-      // Implement range fetching logic here
       setHistoricalModeRangeStatus('Range fetching not implemented yet.');
       toast({
         title: "Historical tweets fetch (range)",
@@ -334,7 +299,6 @@ const TweetAnalyzer: React.FC = () => {
     return csvRows.join('\n');
   };
 
-  // Handler for fetching newer tweets
   const fetchNewerTweets = async () => {
     try {
       setIsLoading(true);
@@ -353,38 +317,23 @@ const TweetAnalyzer: React.FC = () => {
       if (result.success) {
         if (result.tweetsStored > 0) {
           setStatus(`Successfully fetched ${result.tweetsStored} new tweets from ${result.batchesProcessed} pages.`);
-          toast({
-            title: "Tweets fetched successfully",
-            description: `Stored ${result.tweetsStored} new tweets from ${result.batchesProcessed} pages`,
-          });
+          toast(`Stored ${result.tweetsStored} new tweets from ${result.batchesProcessed} pages`);
         } else {
           setStatus('No new tweets found.');
-          toast({
-            title: "No new tweets",
-            description: "No new tweets were found to store.",
-          });
+          toast('No new tweets were found to store.');
         }
         
-        // Refresh tweets list after fetching
         if (result.tweetsStored > 0) {
           await refreshTweets();
         }
       } else {
         setStatus(`Error: ${result.error}`);
-        toast({
-          variant: "destructive",
-          title: "Error fetching tweets",
-          description: result.error,
-        });
+        toast(`Error fetching tweets: ${result.error}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching newer tweets:', error);
       setStatus(`Error: ${error.message}`);
-      toast({
-        variant: "destructive",
-        title: "Error fetching tweets",
-        description: error.message,
-      });
+      toast(`Error fetching tweets: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -398,7 +347,6 @@ const TweetAnalyzer: React.FC = () => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center space-x-2">
           <ArrowLeft className="h-5 w-5 cursor-pointer" onClick={() => window.history.back()} />
@@ -436,9 +384,7 @@ const TweetAnalyzer: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex flex-col md:flex-row h-full p-4 space-y-4 md:space-y-0 md:space-x-4">
-        {/* Controls Section */}
         <div className="md:w-1/4 flex flex-col space-y-4">
           <div className="bg-card rounded-md p-4 shadow-sm">
             <h2 className="text-lg font-semibold mb-2">Controls</h2>
@@ -517,7 +463,6 @@ const TweetAnalyzer: React.FC = () => {
           </div>
         </div>
 
-        {/* Tweets Display Section */}
         <div className="md:w-3/4 bg-card rounded-md p-4 shadow-sm flex flex-col">
           <h2 className="text-lg font-semibold mb-2">
             Tweets
@@ -560,7 +505,6 @@ const TweetAnalyzer: React.FC = () => {
         </div>
       </div>
 
-      {/* Settings Modal */}
       <AlertDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -606,7 +550,6 @@ const TweetAnalyzer: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* About Modal */}
       <AlertDialog open={isAboutOpen} onOpenChange={setIsAboutOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -644,7 +587,6 @@ const TweetAnalyzer: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Historical Settings Modal */}
       <AlertDialog open={isHistoricalSettingsOpen} onOpenChange={setIsHistoricalSettingsOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -799,7 +741,6 @@ const TweetAnalyzer: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Download Modal */}
       <AlertDialog open={isDownloadModalOpen} onOpenChange={setIsDownloadModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -840,3 +781,4 @@ const TweetAnalyzer: React.FC = () => {
 };
 
 export default TweetAnalyzer;
+
