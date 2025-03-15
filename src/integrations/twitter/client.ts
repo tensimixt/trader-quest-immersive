@@ -1,3 +1,4 @@
+
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -116,6 +117,7 @@ interface FetchTweetsByTimestampOptions {
   tweetsPerRequest?: number;
   cursorType?: string;
   startNew?: boolean;
+  cutoffDate?: string;
 }
 
 // Function to fetch tweets using cursor-based pagination, similar to "Continue Older" but for newer tweets
@@ -125,10 +127,39 @@ export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOpti
     const { supabase } = window as any;
     console.log('Fetching tweets with cursor pagination:', options);
     
+    // Use our new dedicated function for fetching newer tweets
+    if (options.cursorType === 'newer' || !options.cursorType) {
+      console.log('Using fetch-newer-tweets edge function for newer tweets');
+      const result = await supabase.functions.invoke('fetch-newer-tweets', {
+        body: {
+          maxBatches: options.maxBatches || 5,
+          cutoffDate: options.cutoffDate || '2025-03-09T13:25:14.763946+00:00'
+        }
+      });
+      
+      if (result.error) {
+        console.error('Supabase function error:', result.error);
+        throw new Error(`Function error: ${result.error.message}`);
+      }
+      
+      console.log('fetch-newer-tweets response:', result.data);
+      
+      return {
+        success: true,
+        tweetsStored: result.data?.totalStored || 0,
+        batchesProcessed: result.data?.pagesProcessed || 0,
+        isComplete: result.data?.reachedCutoff || false,
+        lastCursor: null,
+        message: result.data?.message || 'Completed tweet fetch operation',
+        error: null
+      };
+    }
+    
+    // Use the existing twitter-historical function for older tweets
     const payload = {
       batchSize: options.maxBatches || 3,
       startNew: options.startNew || false,
-      mode: options.cursorType || 'newer'
+      mode: options.cursorType || 'older'
     };
     
     console.log('Sending payload to twitter-historical supabase function:', payload);
