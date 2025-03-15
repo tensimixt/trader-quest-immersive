@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Download } from 'lucide-react';
@@ -828,4 +829,14 @@ const TweetAnalyzer: React.FC = () => {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsDownloadModalOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick
+            <AlertDialogAction onClick={downloadTweets} disabled={isDownloading}>
+              {isDownloading ? 'Downloading...' : 'Download'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
+  );
+};
+
+export default TweetAnalyzer;
