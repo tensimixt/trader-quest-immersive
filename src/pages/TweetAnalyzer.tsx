@@ -9,7 +9,7 @@ import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchAndStoreNewerTweets } from '@/integrations/twitter/client';
+import { fetchTweetsByTimestamp } from '@/integrations/twitter/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
 import {
   Popover,
@@ -368,12 +368,13 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const fetchTweetsByTimestamp = async () => {
+  const fetchLocalTweetsByTimestamp = async () => {
     if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
       toast.warning('Please wait a moment before fetching again');
       return {
         success: false,
-        tweetsStored: 0
+        tweetsStored: 0,
+        error: 'Too many requests'
       };
     }
     
@@ -428,17 +429,18 @@ const TweetAnalyzer = () => {
       toast.error('Failed to load tweets from API, using sample data');
       return {
         success: false,
-        tweetsStored: 0
+        tweetsStored: 0,
+        error: error.message
       };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
-    while (retries < maxRetries) {
+    for (let i = 0; i < maxRetries; i++) {
       try {
         return await fn();
       } catch (error) {
@@ -449,6 +451,8 @@ const TweetAnalyzer = () => {
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
+    
+    throw new Error("Max retries exceeded");
   };
 
   const toggleFetchingMode = () => {
@@ -504,7 +508,7 @@ const TweetAnalyzer = () => {
     
     setIsNewTweetsLoading(true);
     try {
-      const result = await fetchTweetsByTimestamp();
+      const result = await fetchLocalTweetsByTimestamp();
       
       if (result.success) {
         if (result.tweetsStored > 0) {

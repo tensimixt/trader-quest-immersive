@@ -1,4 +1,3 @@
-
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -135,7 +134,8 @@ export const fetchTweetsByTimestamp = async () => {
     if (!responseText || responseText.trim() === '') {
       return {
         success: false,
-        error: 'Empty response from server'
+        error: 'Empty response from server',
+        tweetsStored: 0
       };
     }
     
@@ -153,7 +153,8 @@ export const fetchTweetsByTimestamp = async () => {
     console.error('Error fetching tweets by timestamp:', error);
     return {
       success: false,
-      error: error.message
+      error: error.message,
+      tweetsStored: 0
     };
   }
 };
