@@ -1,3 +1,4 @@
+
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -114,6 +115,7 @@ interface FetchTweetsByTimestampOptions {
   maxBatches?: number;
   targetDate?: string;
   tweetsPerRequest?: number;
+  cursorType?: string;
 }
 
 // Function to fetch tweets using cursor-based pagination
@@ -131,7 +133,8 @@ export const fetchTweetsByTimestamp = async (options: FetchTweetsByTimestampOpti
       },
       body: JSON.stringify({
         ...options,
-        maxBatches: options.maxBatches || 10  // Default to 10 batches max
+        maxBatches: options.maxBatches || 10,  // Default to 10 batches max
+        cursorType: options.cursorType || 'newer'  // Default to 'newer' cursor type
       })
     });
     
