@@ -14,15 +14,15 @@ import TweetAnalyzer from "./pages/TweetAnalyzer";
 const queryClient = new QueryClient();
 
 const Navigation = () => (
-  <div className="fixed top-0 left-0 right-0 bg-gray-900/80 backdrop-blur-md p-3 flex justify-center space-x-4 z-50">
+  <div className="fixed top-0 left-0 right-0 bg-gray-900/80 backdrop-blur-md p-2 flex justify-center space-x-3 z-50">
     <Link to="/">
-      <Button variant="navlink" size="sm">Dashboard</Button>
+      <Button variant="navlink" size="xs" className="font-medium">Dashboard</Button>
     </Link>
     <Link to="/tweet-analyzer">
-      <Button variant="navlink" size="sm">Tweet Analyzer</Button>
+      <Button variant="navlink" size="xs" className="font-medium">Tweet Analyzer</Button>
     </Link>
     <Link to="/admin">
-      <Button variant="navlink" size="sm">Admin</Button>
+      <Button variant="navlink" size="xs" className="font-medium">Admin</Button>
     </Link>
   </div>
 );

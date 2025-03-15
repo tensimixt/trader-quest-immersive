@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_audio_responses: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          id: string
+          speaker: number | null
+          text: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          speaker?: number | null
+          text: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          speaker?: number | null
+          text?: string
+        }
+        Relationships: []
+      }
       audio_files: {
         Row: {
           content_type: string | null
@@ -122,6 +146,33 @@ export type Database = {
           is_restricted?: boolean
           published_at?: string
           title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cached_rounds: {
+        Row: {
+          bears_data: Json
+          bulls_data: Json
+          created_at: string
+          epoch: number
+          round_data: Json
+          updated_at: string
+        }
+        Insert: {
+          bears_data?: Json
+          bulls_data?: Json
+          created_at?: string
+          epoch: number
+          round_data: Json
+          updated_at?: string
+        }
+        Update: {
+          bears_data?: Json
+          bulls_data?: Json
+          created_at?: string
+          epoch?: number
+          round_data?: Json
           updated_at?: string
         }
         Relationships: []

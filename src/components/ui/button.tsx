@@ -21,14 +21,14 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         crypto: "bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-500",
         autofetch: "bg-amber-600 text-white hover:bg-amber-700 border border-amber-500",
-        navlink: "bg-purple-600 text-white hover:bg-purple-700 border border-purple-500",
+        navlink: "bg-purple-600/90 text-white hover:bg-purple-700 border border-purple-500/80 shadow-sm backdrop-blur-sm",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
-        xs: "h-7 rounded-md px-2 text-xs",
+        xs: "h-7 rounded-md px-2.5 text-xs",
       },
     },
     defaultVariants: {
