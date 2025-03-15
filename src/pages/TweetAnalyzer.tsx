@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAndStoreNewerTweets } from '@/integrations/twitter/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
 import {
   Popover,
@@ -49,6 +49,7 @@ const TweetAnalyzer = () => {
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
+  const [isNewTweetsLoading, setIsNewTweetsLoading] = useState(false);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -94,10 +95,8 @@ const TweetAnalyzer = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Auto-click "Continue Older" button after successful fetch
   useEffect(() => {
     return () => {
-      // Clean up timeout on component unmount
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
@@ -106,12 +105,10 @@ const TweetAnalyzer = () => {
 
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
-      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
-      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -339,7 +336,6 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
-        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -436,6 +432,31 @@ const TweetAnalyzer = () => {
     }
   };
 
+  const fetchNewerTweets = async () => {
+    if (isNewTweetsLoading) return;
+    
+    setIsNewTweetsLoading(true);
+    try {
+      const result = await fetchAndStoreNewerTweets();
+      
+      if (result.success) {
+        if (result.tweetsStored > 0) {
+          toast.success(`Successfully fetched and stored ${result.tweetsStored} new tweets`);
+          fetchTweets();
+        } else {
+          toast.info('No new tweets found');
+        }
+      } else {
+        toast.error('Failed to fetch newer tweets');
+      }
+    } catch (error) {
+      console.error('Error fetching newer tweets:', error);
+      toast.error('Error fetching newer tweets');
+    } finally {
+      setIsNewTweetsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen overflow-hidden">
       <motion.div
@@ -471,6 +492,17 @@ const TweetAnalyzer = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchNewerTweets}
+                disabled={isNewTweetsLoading}
+                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+              >
+                <Download className={`h-4 w-4 mr-2 ${isNewTweetsLoading ? 'animate-spin' : ''}`} />
+                Fetch New Tweets
+              </Button>
+              
               <Button
                 variant="outline"
                 size="sm"

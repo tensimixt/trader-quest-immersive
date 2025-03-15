@@ -40,6 +40,24 @@ export const fetchTweets = async () => {
   }
 };
 
+// Function to fetch and store newer tweets since the latest cursor
+export const fetchAndStoreNewerTweets = async () => {
+  try {
+    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-and-store`;
+    
+    const response = await fetch(EDGE_FUNCTION_URL);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`API error: ${errorData.error || response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching and storing newer tweets:', error);
+    throw error;
+  }
+};
+
 // Basic tweet classification using heuristics
 export const classifyTweet = (tweet: any) => {
   // Extract relevant info from tweet
