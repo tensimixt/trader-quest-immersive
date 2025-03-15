@@ -110,13 +110,13 @@ export const fetchAndStoreNewerTweets = async () => {
   }
 };
 
-// Function to fetch tweets by timestamp rather than cursor
-export const fetchTweetsByTimestamp = async (targetDate?: string) => {
+// Function to fetch tweets using cursor-based pagination
+export const fetchTweetsByTimestamp = async (options = {}) => {
   try {
-    // Use specific mode to indicate we want to fetch by timestamp
-    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-by-timestamp`;
+    // Use mode to indicate we want cursor-based pagination
+    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=cursor-pagination`;
     
-    console.log('Fetching tweets by timestamp:', EDGE_FUNCTION_URL);
+    console.log('Fetching tweets with cursor pagination:', EDGE_FUNCTION_URL);
     
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
@@ -124,7 +124,8 @@ export const fetchTweetsByTimestamp = async (targetDate?: string) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        targetDate: targetDate || '2025-03-09 13:23:54+00'  // Use the provided target date or default
+        ...options,
+        maxBatches: options.maxBatches || 10  // Default to 10 batches max
       })
     });
     
@@ -153,12 +154,12 @@ export const fetchTweetsByTimestamp = async (targetDate?: string) => {
       tweetsStored: result.tweetsStored || 0,
       batchesProcessed: result.batchesProcessed || 0,
       isComplete: result.isComplete || false,
-      latestTweetDate: result.latestTweetDate || null,
-      message: result.message || 'Completed tweet fetch operation by timestamp',
+      lastCursor: result.lastCursor || null,
+      message: result.message || 'Completed tweet fetch operation with cursor pagination',
       error: null
     };
   } catch (error) {
-    console.error('Error fetching tweets by timestamp:', error);
+    console.error('Error fetching tweets with cursor pagination:', error);
     return {
       success: false,
       error: error.message,

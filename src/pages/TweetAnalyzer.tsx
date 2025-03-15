@@ -510,22 +510,29 @@ const TweetAnalyzer = () => {
     
     setIsNewTweetsLoading(true);
     try {
-      toast.info('Fetching new tweets from Twitter API...');
+      toast.info('Fetching new tweets using cursor pagination...');
       
-      const targetDate = '2025-03-09 13:23:54+00';
-      console.log('Calling Twitter API client fetchTweetsByTimestamp with target date:', targetDate);
+      console.log('Calling Twitter API client fetchTweetsByTimestamp with cursor pagination');
       
-      const result = await fetchTweetsByTimestamp(targetDate);
+      const result = await fetchTweetsByTimestamp({
+        maxBatches: 5
+      });
       
       if (result.success) {
         if (result.tweetsStored > 0) {
-          toast.success(`Successfully fetched and stored ${result.tweetsStored} new tweets`);
-          fetchTweets(); // Refresh the tweet display
+          toast.success(`Successfully fetched and stored ${result.tweetsStored} tweets in ${result.batchesProcessed} batches`);
+          fetchTweets();
         } else {
           toast.info('No new tweets found');
         }
+        
+        if (result.isComplete) {
+          toast.info('Reached the end of available tweets');
+        } else {
+          toast.info('More tweets may be available. Click again to fetch more.');
+        }
       } else {
-        toast.error(`Failed to fetch newer tweets: ${result.error || 'Unknown error'}`);
+        toast.error(`Failed to fetch tweets: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error fetching newer tweets:', error);

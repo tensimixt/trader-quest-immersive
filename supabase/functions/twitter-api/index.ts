@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -23,6 +24,170 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Added new mode for cursor-based pagination
+    if (mode === 'cursor-pagination') {
+      console.log('Starting cursor-based pagination');
+      
+      // Get options from request body
+      let options = {};
+      let maxBatches = 10; // Default
+      
+      if (req.method === 'POST') {
+        try {
+          const body = await req.json();
+          options = body;
+          maxBatches = body.maxBatches || 10;
+          console.log('Received options:', options);
+        } catch (e) {
+          console.error('Error parsing request body:', e);
+        }
+      }
+      
+      // First, try to get the stored cursor if available
+      let currentCursor = null;
+      const { data: storedCursor, error: cursorError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'pagination')
+        .single();
+      
+      if (!cursorError && storedCursor) {
+        currentCursor = storedCursor.cursor_value;
+        console.log('Using stored cursor:', currentCursor);
+      } else {
+        console.log('No stored cursor found, starting fresh.');
+      }
+      
+      let batchesProcessed = 0;
+      let totalTweetsStored = 0;
+      let isComplete = false;
+      let lastCursor = currentCursor;
+      
+      while (!isComplete && batchesProcessed < maxBatches) {
+        console.log(`Processing batch #${batchesProcessed + 1}, cursor: ${currentCursor || 'INITIAL'}`);
+        
+        // Fetch tweets from Twitter API
+        const apiUrl = new URL('https://api.twitterapi.io/twitter/list/tweets');
+        apiUrl.searchParams.append('listId', '1674940005557387266');
+        if (currentCursor) {
+          apiUrl.searchParams.append('cursor', currentCursor);
+        }
+        
+        const response = await fetch(apiUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'X-API-Key': TWITTER_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Error fetching batch #${batchesProcessed + 1}:`, errorText);
+          break;
+        }
+        
+        const data = await response.json();
+        const tweets = data.tweets || [];
+        const nextCursor = data.next_cursor;
+        
+        batchesProcessed++;
+        
+        if (tweets.length === 0) {
+          console.log('No tweets in this batch, reached end of available tweets');
+          isComplete = true;
+          break;
+        }
+        
+        // Process tweets
+        const processedTweets = tweets.map((tweet: any) => {
+          const tweetCreatedAt = new Date(tweet.createdAt);
+          return {
+            id: tweet.id,
+            text: tweet.text,
+            created_at: tweetCreatedAt,
+            author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+            author_name: tweet.author?.name || tweet.user?.name,
+            author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+            is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+            is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+            in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+            quoted_tweet_id: tweet.quoted_tweet?.id,
+            quoted_tweet_text: tweet.quoted_tweet?.text,
+            quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                            (tweet.quoted_tweet?.user?.screen_name),
+            entities: tweet.entities || {},
+            extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+            fetched_at: new Date()
+          };
+        });
+        
+        // Store new tweets
+        const { error: insertError, count } = await supabase
+          .from('historical_tweets')
+          .upsert(processedTweets, { 
+            onConflict: 'id',
+            count: 'exact'
+          });
+        
+        if (insertError) {
+          console.error('Error storing tweets:', insertError);
+          break;
+        }
+        
+        totalTweetsStored += count || 0;
+        console.log(`Stored ${count} new tweets from batch #${batchesProcessed}`);
+        
+        // Update cursor for next iteration if provided
+        if (nextCursor) {
+          currentCursor = nextCursor;
+          lastCursor = nextCursor;
+          
+          // Store the updated cursor
+          const { error: updateError } = await supabase
+            .from('twitter_cursors')
+            .upsert(
+              { 
+                cursor_type: 'pagination', 
+                cursor_value: nextCursor,
+                updated_at: new Date().toISOString()
+              },
+              { onConflict: 'cursor_type' }
+            );
+          
+          if (updateError) {
+            console.error('Error updating cursor:', updateError);
+          }
+        } else {
+          console.log('No next cursor, reached end of available tweets');
+          isComplete = true;
+          break;
+        }
+        
+        // Small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`Cursor-based pagination complete. Stored ${totalTweetsStored} tweets in ${batchesProcessed} batches`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tweetsStored: totalTweetsStored,
+          batchesProcessed,
+          isComplete,
+          lastCursor,
+          message: `Processed ${batchesProcessed} batches and stored ${totalTweetsStored} new tweets`
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
     
     // Get Latest Cursor Mode - Fetch latest tweets and their cursor
     if (mode === 'get-cursor') {
