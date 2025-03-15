@@ -1,3 +1,4 @@
+
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -112,7 +113,10 @@ export const fetchAndStoreNewerTweets = async () => {
 // Function to fetch tweets by timestamp rather than cursor
 export const fetchTweetsByTimestamp = async () => {
   try {
+    // Use specific mode to indicate we want to fetch by timestamp
     const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-by-timestamp`;
+    
+    console.log('Fetching tweets by timestamp:', EDGE_FUNCTION_URL);
     
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',

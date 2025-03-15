@@ -381,9 +381,11 @@ const TweetAnalyzer = () => {
     setLastFetchAttempt(new Date());
     setIsLoading(true);
     try {
+      console.log('Calling Supabase function for tweets by timestamp');
       const { data, error } = await supabase.functions.invoke('twitter-feed-by-timestamp');
       
       if (error) {
+        console.error('Supabase function error:', error);
         throw new Error(`Function error: ${error.message}`);
       }
       
@@ -508,17 +510,26 @@ const TweetAnalyzer = () => {
     
     setIsNewTweetsLoading(true);
     try {
-      const result = await fetchLocalTweetsByTimestamp();
+      toast.info('Fetching new tweets from database...');
+      const localResult = await fetchLocalTweetsByTimestamp();
       
-      if (result.success) {
-        if (result.tweetsStored > 0) {
-          toast.success(`Successfully fetched and stored ${result.tweetsStored} new tweets`);
-          fetchTweets();
-        } else {
-          toast.info('No new tweets found');
-        }
+      if (localResult.success && localResult.tweetsStored > 0) {
+        toast.success(`Successfully loaded ${localResult.tweetsStored} tweets from database`);
       } else {
-        toast.error(`Failed to fetch newer tweets: ${result.error || 'Unknown error'}`);
+        toast.info('Fetching new tweets from API...');
+        console.log('Calling Twitter API client fetchTweetsByTimestamp');
+        const result = await fetchTweetsByTimestamp();
+        
+        if (result.success) {
+          if (result.tweetsStored > 0) {
+            toast.success(`Successfully fetched and stored ${result.tweetsStored} new tweets`);
+            fetchTweets(); // Refresh the tweet display
+          } else {
+            toast.info('No new tweets found');
+          }
+        } else {
+          toast.error(`Failed to fetch newer tweets: ${result.error || 'Unknown error'}`);
+        }
       }
     } catch (error) {
       console.error('Error fetching newer tweets:', error);
