@@ -81,6 +81,170 @@ Deno.serve(async (req) => {
         }
       );
     }
+    // Fetch by Timestamp Mode - Fetch tweets until we reach the timestamp of the most recent stored tweet
+    else if (mode === 'fetch-by-timestamp') {
+      console.log('Starting timestamp-based tweet fetch operation');
+      
+      // First, get the timestamp of the most recent tweet in our database
+      const { data: latestTweet, error: latestTweetError } = await supabase
+        .from('historical_tweets')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (latestTweetError) {
+        console.error('Error fetching latest tweet timestamp:', latestTweetError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Error fetching latest tweet timestamp',
+            details: latestTweetError.message,
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+      
+      const latestTweetDate = latestTweet && latestTweet.length > 0 ? new Date(latestTweet[0].created_at) : null;
+      console.log('Latest tweet date in database:', latestTweetDate ? latestTweetDate.toISOString() : 'No tweets found');
+      
+      if (!latestTweetDate) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'No tweets found in database',
+          }),
+          {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+      
+      let batchesProcessed = 0;
+      let totalTweetsStored = 0;
+      let isComplete = false;
+      let currentCursor = null;
+      const MAX_BATCHES = 10;
+      
+      while (!isComplete && batchesProcessed < MAX_BATCHES) {
+        console.log(`Processing batch #${batchesProcessed + 1}, current cursor: ${currentCursor}`);
+        
+        // Fetch tweets from Twitter API
+        const apiUrl = new URL('https://api.twitterapi.io/twitter/list/tweets');
+        apiUrl.searchParams.append('listId', '1674940005557387266');
+        if (currentCursor) {
+          apiUrl.searchParams.append('cursor', currentCursor);
+        }
+        
+        const response = await fetch(apiUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'X-API-Key': TWITTER_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Error fetching batch #${batchesProcessed + 1}:`, errorText);
+          break;
+        }
+        
+        const data = await response.json();
+        const tweets = data.tweets || [];
+        currentCursor = data.next_cursor;
+        
+        batchesProcessed++;
+        
+        if (tweets.length === 0) {
+          console.log('No tweets in this batch, reached end of available tweets');
+          isComplete = true;
+          break;
+        }
+        
+        // Process tweets and check timestamps
+        const processedTweets = tweets.map((tweet: any) => ({
+          id: tweet.id,
+          text: tweet.text,
+          created_at: new Date(tweet.createdAt),
+          author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+          author_name: tweet.author?.name || tweet.user?.name,
+          author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+          is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+          is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+          in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+          quoted_tweet_id: tweet.quoted_tweet?.id,
+          quoted_tweet_text: tweet.quoted_tweet?.text,
+          quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                            (tweet.quoted_tweet?.user?.screen_name),
+          entities: tweet.entities || {},
+          extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+          fetched_at: new Date()
+        }));
+        
+        // Check if we've reached tweets older than our latest stored tweet
+        const oldestTweetInBatch = new Date(Math.min(...processedTweets.map(t => t.created_at.getTime())));
+        console.log('Oldest tweet in batch:', oldestTweetInBatch.toISOString());
+        console.log('Latest tweet in DB:', latestTweetDate.toISOString());
+        
+        if (oldestTweetInBatch <= latestTweetDate) {
+          console.log('Reached tweets older than or equal to our latest stored tweet, stopping');
+          isComplete = true;
+        }
+        
+        // Store new tweets
+        const { error: insertError, count } = await supabase
+          .from('historical_tweets')
+          .upsert(processedTweets, { 
+            onConflict: 'id',
+            count: 'exact'
+          });
+        
+        if (insertError) {
+          console.error('Error storing tweets:', insertError);
+          break;
+        }
+        
+        totalTweetsStored += count || 0;
+        console.log(`Stored ${count} new tweets from batch #${batchesProcessed}`);
+        
+        if (!currentCursor) {
+          console.log('No next cursor, reached end of available tweets');
+          isComplete = true;
+          break;
+        }
+        
+        // Small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`Timestamp-based fetch complete. Stored ${totalTweetsStored} new tweets in ${batchesProcessed} batches`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tweetsStored: totalTweetsStored,
+          batchesProcessed,
+          isComplete,
+          latestTweetDate: latestTweetDate.toISOString(),
+          message: `Processed ${batchesProcessed} batches and stored ${totalTweetsStored} new tweets up to ${latestTweetDate.toISOString()}`
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
     // Smart Newer Tweets Mode - Fetch newer tweets with duplicate detection
     else if (mode === 'fetch-newer-smart') {
       console.log('Starting smart newer tweet fetch operation');
@@ -599,4 +763,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-

@@ -1,3 +1,4 @@
+
 // Twitter API client for the application
 
 // Default Twitter API key - stored here for demonstration purposes only
@@ -86,6 +87,42 @@ export const fetchAndStoreNewerTweets = async () => {
     };
   } catch (error) {
     console.error('Error fetching and storing newer tweets:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// Function to fetch tweets by timestamp rather than cursor
+export const fetchTweetsByTimestamp = async () => {
+  try {
+    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?mode=fetch-by-timestamp`;
+    
+    const response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`API error: ${errorData.error || response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    return {
+      success: true,
+      tweetsStored: result.tweetsStored || 0,
+      batchesProcessed: result.batchesProcessed || 0,
+      isComplete: result.isComplete || false,
+      latestTweetDate: result.latestTweetDate || null,
+      message: result.message || 'Completed tweet fetch operation by timestamp'
+    };
+  } catch (error) {
+    console.error('Error fetching tweets by timestamp:', error);
     return {
       success: false,
       error: error.message
