@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -29,21 +30,25 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cursor, batchSize = 10, cutoffDate } = await req.json();
+    const { cursor, batchSize = 10 } = await req.json();
     
-    if (!cutoffDate) {
-      throw new Error('Missing required parameter: cutoffDate');
+    // Get the latest date from the database instead of using a fixed cutoff date
+    const { data: latestData, error: latestError } = await supabase
+      .from('twitter_cursors')
+      .select('cursor_value')
+      .eq('cursor_type', 'latest_date')
+      .single();
+    
+    if (latestError) {
+      console.log('No latest date found in database, will fetch all tweets');
     }
-
-    const cutoffTimestamp = new Date(cutoffDate).getTime();
-    if (isNaN(cutoffTimestamp)) {
-      throw new Error('Invalid cutoff date format');
-    }
-
+    
+    const cutoffDate = latestData?.cursor_value || '2025-03-16 00:41:00+00';
+    
     console.log(`Starting fetch operation with parameters:
       - Cursor: ${cursor || 'None (starting fresh)'}
       - Batch Size: ${batchSize}
-      - Cutoff Date: ${cutoffDate} (${cutoffTimestamp})
+      - Cutoff Date: ${cutoffDate}
     `);
 
     // Initialize tracking variables
@@ -104,6 +109,7 @@ Deno.serve(async (req) => {
       for (const tweet of data.tweets) {
         const tweetDate = new Date(tweet.createdAt);
         const tweetTimestamp = tweetDate.getTime();
+        const cutoffTimestamp = new Date(cutoffDate).getTime();
         
         if (tweetTimestamp <= cutoffTimestamp) {
           console.log(`Found tweet (${tweet.id}) from ${tweetDate.toISOString()} which is at or before cutoff date`);
