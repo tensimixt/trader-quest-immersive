@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { History, AlertTriangle, RefreshCcw, Download } from 'lucide-react';
+import { History, AlertTriangle, RefreshCcw, Download, Clock } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -9,6 +9,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import StartNewDialog from './StartNewDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface TweetFetchActionsProps {
   isPossiblyAtEnd: boolean;
@@ -36,6 +38,7 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
   isFetchingNew
 }) => {
   const [isStartNewDialogOpen, setIsStartNewDialogOpen] = useState(false);
+  const [isSettingUpCron, setIsSettingUpCron] = useState(false);
 
   const handleStartNewClick = () => {
     setIsStartNewDialogOpen(true);
@@ -44,6 +47,32 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
   const confirmStartNew = () => {
     handleStartNewHistorical();
     setIsStartNewDialogOpen(false);
+  };
+
+  const setupCronJob = async () => {
+    setIsSettingUpCron(true);
+    
+    try {
+      toast.info("Setting up automated tweet fetching (every minute)...");
+      
+      const { data, error } = await supabase.functions.invoke('setup-tweet-cron');
+      
+      if (error) {
+        throw new Error(`Error calling setup-tweet-cron: ${error.message}`);
+      }
+      
+      if (data?.success) {
+        toast.success("Successfully set up automated tweet fetching!");
+      } else {
+        throw new Error(data?.message || "Unknown error setting up cron job");
+      }
+      
+    } catch (error) {
+      console.error("Error setting up cron job:", error);
+      toast.error(`Failed to set up automated fetching: ${error.message}`);
+    } finally {
+      setIsSettingUpCron(false);
+    }
   };
 
   return (
@@ -104,6 +133,26 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
         <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
         Refresh
       </Button>
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={setupCronJob}
+              disabled={isSettingUpCron}
+              className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+            >
+              <Clock className={`h-4 w-4 mr-2 ${isSettingUpCron ? 'animate-spin' : ''}`} />
+              Setup Auto-Fetch
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="bg-black/90 text-white">
+            <p className="text-xs">Set up a scheduled task that will automatically fetch new tweets every minute.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <StartNewDialog 
         isOpen={isStartNewDialogOpen} 
