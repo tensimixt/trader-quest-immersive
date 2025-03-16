@@ -55,14 +55,17 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
     try {
       toast.info("Setting up automated tweet fetching (every minute)...");
       
-      const { data, error } = await supabase.functions.invoke('setup-tweet-cron');
+      const response = await supabase.functions.invoke('setup-tweet-cron');
       
-      if (error) {
-        throw new Error(`Error calling setup-tweet-cron: ${error.message}`);
+      if (response.error) {
+        throw new Error(`Error: ${response.error.message || response.error}`);
       }
+      
+      const data = response.data;
       
       if (data?.success) {
         toast.success("Successfully set up automated tweet fetching!");
+        console.log("Cron job setup details:", data.details);
       } else {
         throw new Error(data?.message || "Unknown error setting up cron job");
       }

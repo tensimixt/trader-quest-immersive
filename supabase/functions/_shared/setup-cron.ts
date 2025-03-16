@@ -18,7 +18,7 @@ export async function setupCronJob() {
     // Create the pg_cron and pg_net extensions if they don't exist
     await supabase.rpc('create_pg_extensions');
     
-    // Call our new database function to setup the cron job
+    // Call our database function to setup the cron job
     const { data, error } = await supabase.rpc('setup_tweet_fetch_cron');
     
     if (error) {
