@@ -38,7 +38,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Define cutoff date constant
 const CUTOFF_DATE = "2025-03-16 00:41:00+00";
 
 interface FetchHistoricalResult {
@@ -476,7 +475,7 @@ const TweetAnalyzer = () => {
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
-      await fetchTweets();
+      fetchTweets();
       
     } catch (error) {
       console.error('Error in fetchTweetsUntilCutoff:', error);
@@ -487,19 +486,31 @@ const TweetAnalyzer = () => {
   };
 
   const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
-    let retries = 0;
-    
-    while (retries < maxRetries) {
-      try {
-        return await fn();
-      } catch (error) {
-        retries++;
-        if (retries >= maxRetries) throw error;
-        console.log(`Retry ${retries}/${maxRetries} after error:`, error);
-        toast.info(`Retry attempt ${retries}/${maxRetries}...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
-      }
-    }
+    return new Promise(async (resolve, reject) => {
+      let retries = 0;
+      
+      const attempt = async () => {
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          retries++;
+          if (retries >= maxRetries) {
+            reject(error);
+            return;
+          }
+          
+          console.log(`Retry ${retries}/${maxRetries} after error:`, error);
+          toast.info(`Retry attempt ${retries}/${maxRetries}...`);
+          
+          setTimeout(() => {
+            attempt();
+          }, 1000 * Math.pow(2, retries));
+        }
+      };
+      
+      attempt();
+    });
   };
 
   const toggleFetchingMode = () => {
