@@ -40,6 +40,48 @@ export const fetchTweets = async () => {
   }
 };
 
+// Function to fetch tweets with a cursor
+export const fetchTweetsWithCursor = async (cursor: string) => {
+  try {
+    // Use the Supabase edge function with cursor parameter
+    const EDGE_FUNCTION_URL = `${window.location.origin}/api/twitter-api?cursor=${encodeURIComponent(cursor)}`;
+    
+    const response = await fetch(EDGE_FUNCTION_URL);
+    if (!response.ok) {
+      throw new Error(`Twitter API error: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching tweets with cursor:', error);
+    throw error;
+  }
+};
+
+// Function to fetch tweets until a specific cutoff date
+export const fetchTweetsUntilDate = async (cursor: string | null, cutoffDate: string) => {
+  try {
+    // Use the Supabase edge function with cursor and cutoffDate parameters
+    let url = `${window.location.origin}/api/twitter-api?mode=until`;
+    
+    if (cursor) {
+      url += `&cursor=${encodeURIComponent(cursor)}`;
+    }
+    
+    url += `&cutoffDate=${encodeURIComponent(cutoffDate)}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Twitter API error: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching tweets until date:', error);
+    throw error;
+  }
+};
+
 // Basic tweet classification using heuristics
 export const classifyTweet = (tweet: any) => {
   // Extract relevant info from tweet

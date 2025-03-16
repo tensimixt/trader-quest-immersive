@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+// Define cutoff date constant
+const CUTOFF_DATE = "2025-03-09 13:25:14.763946+00";
 
 interface FetchHistoricalResult {
   success: boolean;
@@ -38,6 +52,7 @@ const TweetAnalyzer = () => {
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoricalLoading, setIsHistoricalLoading] = useState(false);
+  const [isFetchingUntilCutoff, setIsFetchingUntilCutoff] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tweetData, setTweetData] = useState<any[]>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
@@ -49,6 +64,7 @@ const TweetAnalyzer = () => {
   const [isPossiblyAtEnd, setIsPossiblyAtEnd] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
+  const [isUntilCutoffDialogOpen, setIsUntilCutoffDialogOpen] = useState(false);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -235,10 +251,7 @@ const TweetAnalyzer = () => {
       setApiErrorCount(prev => prev + 1);
       
       if (apiErrorCount > 2) {
-        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.', {
-          duration: 5000,
-          icon: <AlertTriangle className="text-red-500" />
-        });
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.');
       }
       
       if (!searchTerm) {
@@ -323,8 +336,7 @@ const TweetAnalyzer = () => {
         if (data.isAtEnd) {
           setIsPossiblyAtEnd(true);
           toast.info(
-            `Only ${data.totalFetched} tweets retrieved despite ${data.pagesProcessed} requests. You may have reached the end of available data.`, 
-            { duration: 5000 }
+            `Only ${data.totalFetched} tweets retrieved despite ${data.pagesProcessed} requests. You may have reached the end of available data.`
           );
         }
         
@@ -356,10 +368,7 @@ const TweetAnalyzer = () => {
       setApiErrorCount(prev => prev + 1);
       
       if (apiErrorCount > 2) {
-        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.', {
-          duration: 5000,
-          icon: <AlertTriangle className="text-red-500" />
-        });
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.');
       }
       
       return {
@@ -369,6 +378,97 @@ const TweetAnalyzer = () => {
       };
     } finally {
       setIsHistoricalLoading(false);
+    }
+  };
+
+  const fetchTweetsUntilCutoff = async () => {
+    setIsFetchingUntilCutoff(true);
+    setIsUntilCutoffDialogOpen(false);
+    
+    try {
+      toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
+      
+      // Set the mode to newer for this operation
+      const originalMode = fetchingMode;
+      setFetchingMode('newer');
+      
+      let currentBatch = 1;
+      let keepFetching = true;
+      let cursor = null;
+      let totalTweets = 0;
+      
+      while (keepFetching) {
+        toast.info(`Fetching batch ${currentBatch}...`);
+        
+        // Fetch a batch of tweets
+        const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
+          body: { 
+            cursor: cursor,
+            batchSize: batchSize,
+            startNew: cursor === null,
+            mode: 'newer',
+            tweetsPerRequest: tweetsPerRequest,
+            cutoffDate: CUTOFF_DATE
+          }
+        });
+        
+        if (result.error) {
+          throw new Error(`Function error: ${result.error.message}`);
+        }
+        
+        const data = result.data;
+        console.log(`Batch ${currentBatch} response:`, data);
+        
+        if (!data?.success) {
+          throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
+        }
+        
+        // Update cursor for next iteration
+        cursor = data.nextCursor;
+        
+        // Update stats
+        totalTweets += data.totalFetched || 0;
+        
+        // Check if we should stop
+        if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
+          keepFetching = false;
+          
+          if (data.reachedCutoff) {
+            toast.success(`Reached cutoff date (${CUTOFF_DATE})! Operation complete.`);
+          } else if (data.isAtEnd) {
+            toast.info(`Reached the end of available tweets.`);
+          } else if (!data.nextCursor) {
+            toast.info(`No pagination cursor returned. Cannot fetch more tweets.`);
+          } else {
+            toast.info(`No new tweets found in the latest batch.`);
+          }
+        }
+        
+        currentBatch++;
+        
+        // Prevent infinite loops with a reasonable limit
+        if (currentBatch > 50) {
+          toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
+          keepFetching = false;
+        }
+        
+        // Small delay between batches to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Restore original mode
+      setFetchingMode(originalMode);
+      
+      toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
+      
+      // Refresh the tweets display
+      await fetchTweets();
+      
+    } catch (error) {
+      console.error('Error in fetchTweetsUntilCutoff:', error);
+      toast.error(`Failed to complete operation: ${error.message}`);
+    } finally {
+      setIsFetchingUntilCutoff(false);
     }
   };
 
@@ -576,6 +676,41 @@ const TweetAnalyzer = () => {
                   )}
                 </Tooltip>
               </TooltipProvider>
+              
+              <AlertDialog open={isUntilCutoffDialogOpen} onOpenChange={setIsUntilCutoffDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm" 
+                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                    disabled={isFetchingUntilCutoff}
+                  >
+                    <Calendar className={`h-4 w-4 mr-2 ${isFetchingUntilCutoff ? 'animate-spin' : ''}`} />
+                    Fetch Until Cutoff
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-black/80 border-blue-500/40">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-blue-400">Fetch Until Cutoff Date</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will continuously fetch tweets until reaching the cutoff date:
+                      <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
+                        {CUTOFF_DATE}
+                      </div>
+                      <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-transparent border-gray-600 text-gray-300 hover:bg-gray-800">Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={fetchTweetsUntilCutoff} 
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Continue
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             <Button
               variant="outline"

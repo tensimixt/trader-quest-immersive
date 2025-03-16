@@ -12,11 +12,25 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Parse request
+  const url = new URL(req.url);
+  const mode = url.searchParams.get('mode') || 'list';
+  const cursor = url.searchParams.get('cursor');
+  const cutoffDate = url.searchParams.get('cutoffDate');
+
   try {
     const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
-    const url = 'https://api.twitterapi.io/twitter/list/tweets';
+    let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
     
-    const response = await fetch(url, {
+    // Add cursor if provided
+    if (cursor) {
+      apiUrl += `?cursor=${encodeURIComponent(cursor)}`;
+    }
+    
+    console.log(`Making Twitter API request to: ${apiUrl}`);
+    console.log(`Mode: ${mode}, Cursor: ${cursor}, Cutoff Date: ${cutoffDate}`);
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'X-API-Key': TWITTER_API_KEY,
@@ -65,8 +79,12 @@ Deno.serve(async (req) => {
       } : undefined
     }));
 
+    // Include the cursor for pagination in the response
     return new Response(
-      JSON.stringify({ tweets: simplifiedTweets }),
+      JSON.stringify({
+        tweets: simplifiedTweets,
+        cursor: data.cursor, // Pass through any cursor we get from the API
+      }),
       {
         headers: {
           ...corsHeaders,
