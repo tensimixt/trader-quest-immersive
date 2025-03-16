@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Calendar } from 'lucide-react';
@@ -39,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Define cutoff date constant
-const CUTOFF_DATE = "2025-03-09 13:25:14.763946+00";
+const CUTOFF_DATE = "2025-03-16 00:41:00+00";
 
 interface FetchHistoricalResult {
   success: boolean;

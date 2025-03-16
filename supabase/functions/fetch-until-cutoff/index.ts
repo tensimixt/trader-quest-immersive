@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -112,7 +111,7 @@ Deno.serve(async (req) => {
           break;
         }
       }
-
+      
       // Process and store tweets
       const normalizedTweets = data.tweets.map((tweet: any) => ({
         id: tweet.id,
