@@ -90,6 +90,7 @@ export interface HistoricalTweetBatch {
   cursorMode: 'newer' | 'older';
   isAtEnd?: boolean;
   error?: string;
+  reachedCutoff?: boolean;
 }
 
 export interface HistoricalTweetResponse {
