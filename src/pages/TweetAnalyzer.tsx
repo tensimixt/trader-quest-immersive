@@ -10,7 +10,6 @@ import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
-import { formatJapanTime, formatDateTime } from '@/utils/dateUtils';
 import {
   Popover,
   PopoverContent,
@@ -38,6 +37,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// Define cutoff date constant
+const CUTOFF_DATE = "2025-03-16 00:41:00+00";
+
 interface FetchHistoricalResult {
   success: boolean;
   isAtEnd: boolean;
@@ -62,7 +64,6 @@ const TweetAnalyzer = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
   const [isUntilCutoffDialogOpen, setIsUntilCutoffDialogOpen] = useState(false);
-  const [cutoffDate, setCutoffDate] = useState<string>("2025-03-16 00:41:00+00");
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -96,7 +97,6 @@ const TweetAnalyzer = () => {
     fetchTweets();
     
     checkStoredCursors();
-    fetchLatestCutoffDate();
   }, []);
 
   useEffect(() => {
@@ -109,45 +109,24 @@ const TweetAnalyzer = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
+  // Auto-click "Continue Older" button after successful fetch
   useEffect(() => {
     return () => {
+      // Clean up timeout on component unmount
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
     };
   }, []);
 
-  const fetchLatestCutoffDate = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('historical_tweets')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data && data.length > 0 && data[0].created_at) {
-        const formattedDate = formatDateTime(data[0].created_at);
-        console.log('Latest tweet date from DB:', formattedDate);
-        setCutoffDate(formattedDate);
-      } else {
-        console.log('No tweets found in database, using default cutoff');
-      }
-    } catch (error) {
-      console.error('Error fetching latest tweet date:', error);
-      toast.error('Failed to fetch latest tweet date');
-    }
-  };
-
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
+      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
+      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -371,6 +350,7 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
+        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -405,8 +385,9 @@ const TweetAnalyzer = () => {
     setIsUntilCutoffDialogOpen(false);
     
     try {
-      toast.info(`Starting fetch until cutoff date: ${cutoffDate}`);
+      toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
       
+      // Set the mode to newer for this operation
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
@@ -418,6 +399,7 @@ const TweetAnalyzer = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
+        // Fetch a batch of tweets
         const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
           body: { 
             cursor: cursor,
@@ -425,7 +407,7 @@ const TweetAnalyzer = () => {
             startNew: cursor === null,
             mode: 'newer',
             tweetsPerRequest: tweetsPerRequest,
-            cutoffDate: cutoffDate
+            cutoffDate: CUTOFF_DATE
           }
         });
         
@@ -440,15 +422,18 @@ const TweetAnalyzer = () => {
           throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
         }
         
+        // Update cursor for next iteration
         cursor = data.nextCursor;
         
+        // Update stats
         totalTweets += data.totalFetched || 0;
         
+        // Check if we should stop
         if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
           keepFetching = false;
           
           if (data.reachedCutoff) {
-            toast.success(`Reached cutoff date (${cutoffDate})! Operation complete.`);
+            toast.success(`Reached cutoff date (${CUTOFF_DATE})! Operation complete.`);
           } else if (data.isAtEnd) {
             toast.info(`Reached the end of available tweets.`);
           } else if (!data.nextCursor) {
@@ -460,18 +445,22 @@ const TweetAnalyzer = () => {
         
         currentBatch++;
         
+        // Prevent infinite loops with a reasonable limit
         if (currentBatch > 50) {
           toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
           keepFetching = false;
         }
         
+        // Small delay between batches to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
+      // Restore original mode
       setFetchingMode(originalMode);
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
+      // Refresh the tweets display
       await fetchTweets();
       
     } catch (error) {
@@ -482,7 +471,7 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -705,7 +694,7 @@ const TweetAnalyzer = () => {
                     <AlertDialogDescription>
                       This will continuously fetch tweets until reaching the cutoff date:
                       <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
-                        {cutoffDate} ({formatJapanTime(new Date(cutoffDate))})
+                        {CUTOFF_DATE}
                       </div>
                       <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
                     </AlertDialogDescription>
