@@ -255,7 +255,7 @@ const TweetAnalyzer = () => {
               author: {
                 userName: tweet.quoted_tweet.author?.userName || "unknown",
                 name: tweet.quoted_tweet.author?.name || "Unknown User",
-                profilePicture: tweet.quoted_tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+                profilePicture: "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
               },
               entities: tweet.quoted_tweet.entities || { media: [] },
               extendedEntities: tweet.quoted_tweet.extendedEntities || { media: [] }
@@ -426,13 +426,10 @@ const TweetAnalyzer = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
-        const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
+        const result = await supabase.functions.invoke<HistoricalTweetBatch>('fetch-until-cutoff', {
           body: { 
             cursor: cursor,
             batchSize: batchSize,
-            startNew: cursor === null,
-            mode: 'newer',
-            tweetsPerRequest: tweetsPerRequest,
             cutoffDate: cutoffDate
           }
         });
