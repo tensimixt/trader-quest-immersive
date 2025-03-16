@@ -490,7 +490,7 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -504,6 +504,8 @@ const TweetAnalyzer = () => {
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
       }
     }
+    
+    throw new Error("Maximum retries exceeded");
   };
 
   const toggleFetchingMode = () => {
