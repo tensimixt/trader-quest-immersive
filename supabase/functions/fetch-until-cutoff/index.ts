@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -31,11 +32,29 @@ Deno.serve(async (req) => {
   try {
     const { cursor, batchSize = 10, cutoffDate } = await req.json();
     
-    if (!cutoffDate) {
-      throw new Error('Missing required parameter: cutoffDate');
+    // If no cutoff date is provided, try to get the latest tweet date from the cursor table
+    let effectiveCutoffDate = cutoffDate;
+    
+    if (!effectiveCutoffDate) {
+      // Get the latest tweet date from the cursor table
+      const { data: latestCursor, error: cursorError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'latest_date')
+        .single();
+      
+      if (cursorError) {
+        console.log('No latest date found in cursor table, using default cutoff date');
+        effectiveCutoffDate = "2025-03-16 00:41:00+00"; // Default cutoff
+      } else if (latestCursor && latestCursor.cursor_value) {
+        effectiveCutoffDate = latestCursor.cursor_value;
+        console.log(`Using latest tweet date from cursor table: ${effectiveCutoffDate}`);
+      } else {
+        effectiveCutoffDate = "2025-03-16 00:41:00+00"; // Default cutoff
+      }
     }
-
-    const cutoffTimestamp = new Date(cutoffDate).getTime();
+    
+    const cutoffTimestamp = new Date(effectiveCutoffDate).getTime();
     if (isNaN(cutoffTimestamp)) {
       throw new Error('Invalid cutoff date format');
     }
@@ -43,7 +62,7 @@ Deno.serve(async (req) => {
     console.log(`Starting fetch operation with parameters:
       - Cursor: ${cursor || 'None (starting fresh)'}
       - Batch Size: ${batchSize}
-      - Cutoff Date: ${cutoffDate} (${cutoffTimestamp})
+      - Cutoff Date: ${effectiveCutoffDate} (${cutoffTimestamp})
     `);
 
     // Initialize tracking variables
