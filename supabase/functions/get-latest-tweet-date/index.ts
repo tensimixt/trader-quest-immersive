@@ -33,11 +33,14 @@ Deno.serve(async (req) => {
       throw new Error('Failed to fetch latest tweet date');
     }
     
-    console.log('Latest tweet date:', data?.created_at);
+    // Format the date nicely for display
+    const latestDate = data?.created_at || null;
+    console.log('Latest tweet date:', latestDate);
     
     return new Response(
       JSON.stringify({
-        latest_date: data?.created_at || null,
+        latest_date: latestDate,
+        formatted_date: latestDate ? new Date(latestDate).toLocaleString() : null,
         success: true
       }),
       {
@@ -54,7 +57,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: false,
         error: error.message,
-        latest_date: null
+        latest_date: null,
+        formatted_date: null
       }),
       {
         status: 500,
