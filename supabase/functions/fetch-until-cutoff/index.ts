@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -22,6 +23,72 @@ interface FetchResponse {
   reachedCutoff: boolean;
 }
 
+// Helper function to normalize tweets for storage
+const normalizeTweet = (tweet: any) => ({
+  id: tweet.id,
+  text: tweet.text,
+  createdAt: tweet.createdAt,
+  author: {
+    userName: tweet.author?.userName || "unknown",
+    name: tweet.author?.name || "Unknown User",
+    profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+  },
+  isReply: tweet.isReply || false,
+  isQuote: tweet.quoted_tweet ? true : false,
+  inReplyToId: tweet.inReplyToId,
+  quoted_tweet: tweet.quoted_tweet ? {
+    text: tweet.quoted_tweet.text,
+    author: tweet.quoted_tweet.author ? {
+      userName: tweet.quoted_tweet.author.userName
+    } : undefined
+  } : undefined,
+  entities: tweet.entities || { media: [] },
+  extendedEntities: tweet.extendedEntities || { media: [] }
+});
+
+// Helper function to store tweets in the database
+const storeTweetsInDatabase = async (tweets: any[], cutoffTimestamp: number) => {
+  // Filter tweets to only include ones newer than the cutoff date
+  const filteredTweets = tweets.filter(tweet => {
+    const tweetDate = new Date(tweet.createdAt);
+    const tweetTimestamp = tweetDate.getTime();
+    return tweetTimestamp > cutoffTimestamp;
+  });
+  
+  if (filteredTweets.length === 0) {
+    console.log('No tweets to store after filtering by cutoff date');
+    return 0;
+  }
+  
+  const normalizedTweets = filteredTweets.map(normalizeTweet);
+  
+  // Store tweets in historical_tweets table using upsert
+  const { data: storedData, error: storageError } = await supabase
+    .from('historical_tweets')
+    .upsert(
+      normalizedTweets.map((tweet: any) => ({
+        id: tweet.id,
+        text: tweet.text,
+        created_at: tweet.createdAt,
+        author: tweet.author,
+        is_reply: tweet.isReply,
+        is_quote: tweet.isQuote,
+        in_reply_to_id: tweet.inReplyToId,
+        quoted_tweet: tweet.quoted_tweet,
+        entities: tweet.entities,
+        extended_entities: tweet.extendedEntities
+      })),
+      { onConflict: 'id' }
+    );
+
+  if (storageError) {
+    console.error('Error storing tweets:', storageError);
+    return 0;
+  }
+  
+  return normalizedTweets.length;
+};
+
 // Handle CORS preflight requests
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -29,7 +96,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cursor, batchSize = 10, cutoffDate } = await req.json();
+    const { cursor, batchSize = 10, cutoffDate, firstBatchOnly = false } = await req.json();
     
     if (!cutoffDate) {
       throw new Error('Missing required parameter: cutoffDate');
@@ -44,6 +111,7 @@ Deno.serve(async (req) => {
       - Cursor: ${cursor || 'None (starting fresh)'}
       - Batch Size: ${batchSize}
       - Cutoff Date: ${cutoffDate} (${cutoffTimestamp})
+      - First Batch Only: ${firstBatchOnly ? 'Yes' : 'No'}
     `);
 
     // Initialize tracking variables
@@ -61,6 +129,12 @@ Deno.serve(async (req) => {
 
     // Process tweets in batches
     for (let batch = 0; batch < batchSize; batch++) {
+      // If firstBatchOnly is true and this is not the first batch, break
+      if (firstBatchOnly && batch > 0) {
+        console.log(`First batch only mode: Stopping after batch 1`);
+        break;
+      }
+      
       let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
       
       if (nextCursor) {
@@ -113,55 +187,10 @@ Deno.serve(async (req) => {
       }
       
       // Process and store tweets
-      const normalizedTweets = data.tweets.map((tweet: any) => ({
-        id: tweet.id,
-        text: tweet.text,
-        createdAt: tweet.createdAt,
-        author: {
-          userName: tweet.author?.userName || "unknown",
-          name: tweet.author?.name || "Unknown User",
-          profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-        },
-        isReply: tweet.isReply || false,
-        isQuote: tweet.quoted_tweet ? true : false,
-        inReplyToId: tweet.inReplyToId,
-        quoted_tweet: tweet.quoted_tweet ? {
-          text: tweet.quoted_tweet.text,
-          author: tweet.quoted_tweet.author ? {
-            userName: tweet.quoted_tweet.author.userName
-          } : undefined
-        } : undefined,
-        entities: tweet.entities || { media: [] },
-        extendedEntities: tweet.extendedEntities || { media: [] }
-      }));
-
-      // Store tweets in historical_tweets table using upsert
-      const { data: storedData, error: storageError } = await supabase
-        .from('historical_tweets')
-        .upsert(
-          normalizedTweets.map((tweet: any) => ({
-            id: tweet.id,
-            text: tweet.text,
-            created_at: tweet.createdAt,
-            author: tweet.author,
-            is_reply: tweet.isReply,
-            is_quote: tweet.isQuote,
-            in_reply_to_id: tweet.inReplyToId,
-            quoted_tweet: tweet.quoted_tweet,
-            entities: tweet.entities,
-            extended_entities: tweet.extendedEntities
-          })),
-          { onConflict: 'id' }
-        );
-
-      if (storageError) {
-        console.error('Error storing tweets:', storageError);
-      } else {
-        console.log(`Stored ${normalizedTweets.length} tweets in batch ${batch + 1}`);
-        totalTweetsStored += normalizedTweets.length;
-      }
-
-      totalTweetsFetched += normalizedTweets.length;
+      const tweetsStoredInBatch = await storeTweetsInDatabase(data.tweets, cutoffTimestamp);
+      console.log(`Stored ${tweetsStoredInBatch} tweets in batch ${batch + 1}`);
+      totalTweetsStored += tweetsStoredInBatch;
+      totalTweetsFetched += data.tweets.length;
       pagesProcessed++;
       
       // Update the cursor in the database
