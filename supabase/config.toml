@@ -28,3 +28,11 @@ enabled = true
 [[functions]]
 name = "twitter-historical"
 verify_jwt = false
+
+[[functions]]
+name = "setup-tweet-cron"
+verify_jwt = false
+
+[[functions]]
+name = "scheduled-tweet-fetch"
+verify_jwt = false

@@ -24,7 +24,8 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({
       success: true,
-      message: 'Tweet fetch cron job has been set up to run every minute'
+      message: 'Tweet fetch cron job has been set up to run every minute',
+      details: result.details
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
