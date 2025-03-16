@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -21,7 +20,6 @@ interface FetchResponse {
   nextCursor?: string;
   isAtEnd: boolean;
   reachedCutoff: boolean;
-  cutoffDate?: string;
 }
 
 // Handle CORS preflight requests
@@ -31,41 +29,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cursor, batchSize = 10, cutoffDate, autoFetchCutoff = false } = await req.json();
+    const { cursor, batchSize = 10, cutoffDate } = await req.json();
     
-    let actualCutoffDate = cutoffDate;
-    
-    // If autoFetchCutoff is true, get the latest tweet date from historical_tweets table
-    if (autoFetchCutoff) {
-      console.log('Auto-fetching latest tweet date from historical_tweets...');
-      
-      const { data: latestTweet, error: latestTweetError } = await supabase
-        .from('historical_tweets')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (latestTweetError) {
-        console.warn('Error fetching latest tweet date:', latestTweetError.message);
-        console.log('Will use provided cutoff date instead');
-      } else if (latestTweet && latestTweet.created_at) {
-        // Format the date to match cutoff date format (yyyy-MM-dd HH:mm:ss+00)
-        actualCutoffDate = new Date(latestTweet.created_at)
-          .toISOString()
-          .replace('T', ' ')
-          .replace('Z', '+00');
-        
-        console.log(`Found latest tweet date: ${latestTweet.created_at}`);
-        console.log(`Using as cutoff date: ${actualCutoffDate}`);
-      }
-    }
-    
-    if (!actualCutoffDate) {
+    if (!cutoffDate) {
       throw new Error('Missing required parameter: cutoffDate');
     }
 
-    const cutoffTimestamp = new Date(actualCutoffDate).getTime();
+    const cutoffTimestamp = new Date(cutoffDate).getTime();
     if (isNaN(cutoffTimestamp)) {
       throw new Error('Invalid cutoff date format');
     }
@@ -73,8 +43,7 @@ Deno.serve(async (req) => {
     console.log(`Starting fetch operation with parameters:
       - Cursor: ${cursor || 'None (starting fresh)'}
       - Batch Size: ${batchSize}
-      - Cutoff Date: ${actualCutoffDate} (${cutoffTimestamp})
-      - Auto Fetch Cutoff: ${autoFetchCutoff}
+      - Cutoff Date: ${cutoffDate} (${cutoffTimestamp})
     `);
 
     // Initialize tracking variables
@@ -85,10 +54,8 @@ Deno.serve(async (req) => {
     let nextCursor = cursor;
     let reachedCutoff = false;
 
-    // Make sure we have the API key
-    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY');
+    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '';
     if (!TWITTER_API_KEY) {
-      console.error('TWITTER_API_KEY is not configured in environment variables');
       throw new Error('TWITTER_API_KEY is not configured');
     }
 
@@ -229,8 +196,7 @@ Deno.serve(async (req) => {
       pagesProcessed,
       nextCursor,
       isAtEnd,
-      reachedCutoff,
-      cutoffDate: actualCutoffDate
+      reachedCutoff
     };
 
     console.log('Operation complete:', result);
