@@ -10,7 +10,7 @@ import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
-import { formatDateTime } from '@/utils/dateUtils';
+import { formatJapanTime, formatDateTime } from '@/utils/dateUtils';
 import {
   Popover,
   PopoverContent,
@@ -38,8 +38,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const DEFAULT_CUTOFF_DATE = "2025-03-16 00:41:00+00";
-
 interface FetchHistoricalResult {
   success: boolean;
   isAtEnd: boolean;
@@ -64,8 +62,7 @@ const TweetAnalyzer = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
   const [isUntilCutoffDialogOpen, setIsUntilCutoffDialogOpen] = useState(false);
-  const [cutoffDate, setCutoffDate] = useState<string>(DEFAULT_CUTOFF_DATE);
-  const [isLoadingCutoffDate, setIsLoadingCutoffDate] = useState(false);
+  const [cutoffDate, setCutoffDate] = useState<string>("2025-03-16 00:41:00+00");
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -102,35 +99,6 @@ const TweetAnalyzer = () => {
     fetchLatestCutoffDate();
   }, []);
 
-  const fetchLatestCutoffDate = async () => {
-    setIsLoadingCutoffDate(true);
-    try {
-      const { data, error } = await supabase
-        .from('historical_tweets')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (error) {
-        throw new Error(`Error fetching latest tweet date: ${error.message}`);
-      }
-      
-      if (data && data.length > 0 && data[0].created_at) {
-        setCutoffDate(data[0].created_at);
-        console.log('Latest tweet date set as cutoff:', data[0].created_at);
-      } else {
-        console.log('No tweets found in database, using default cutoff date');
-        setCutoffDate(DEFAULT_CUTOFF_DATE);
-      }
-    } catch (err) {
-      console.error('Error fetching latest cutoff date:', err);
-      toast.error('Failed to fetch latest tweet date, using default');
-      setCutoffDate(DEFAULT_CUTOFF_DATE);
-    } finally {
-      setIsLoadingCutoffDate(false);
-    }
-  };
-
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (searchTerm.trim()) {
@@ -148,6 +116,31 @@ const TweetAnalyzer = () => {
       }
     };
   }, []);
+
+  const fetchLatestCutoffDate = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('historical_tweets')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.length > 0 && data[0].created_at) {
+        const formattedDate = formatDateTime(data[0].created_at);
+        console.log('Latest tweet date from DB:', formattedDate);
+        setCutoffDate(formattedDate);
+      } else {
+        console.log('No tweets found in database, using default cutoff');
+      }
+    } catch (error) {
+      console.error('Error fetching latest tweet date:', error);
+      toast.error('Failed to fetch latest tweet date');
+    }
+  };
 
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
@@ -339,8 +332,7 @@ const TweetAnalyzer = () => {
           batchSize: batchSize,
           startNew: startNew,
           mode: fetchingMode,
-          tweetsPerRequest: tweetsPerRequest,
-          cutoffDate: cutoffDate
+          tweetsPerRequest: tweetsPerRequest
         }
       });
       
@@ -702,9 +694,6 @@ const TweetAnalyzer = () => {
                     size="sm" 
                     className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                     disabled={isFetchingUntilCutoff}
-                    onClick={() => {
-                      fetchLatestCutoffDate();
-                    }}
                   >
                     <Calendar className={`h-4 w-4 mr-2 ${isFetchingUntilCutoff ? 'animate-spin' : ''}`} />
                     Fetch Until Cutoff
@@ -716,13 +705,8 @@ const TweetAnalyzer = () => {
                     <AlertDialogDescription>
                       This will continuously fetch tweets until reaching the cutoff date:
                       <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
-                        {isLoadingCutoffDate ? 'Loading latest date...' : cutoffDate}
+                        {cutoffDate} ({formatJapanTime(new Date(cutoffDate))})
                       </div>
-                      {!isLoadingCutoffDate && (
-                        <div className="mt-1 text-xs text-blue-300">
-                          Formatted: {formatDateTime(new Date(cutoffDate), 'MMM dd, yyyy HH:mm:ss', 'UTC')}
-                        </div>
-                      )}
                       <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
                     </AlertDialogDescription>
                   </AlertDialogHeader>

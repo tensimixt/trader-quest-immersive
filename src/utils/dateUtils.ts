@@ -5,8 +5,15 @@ export const formatJapanTime = (date: Date) => {
   return format(date, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
 };
 
-// General purpose date formatter that works with any timezone
-export const formatDateTime = (date: Date | string, formatStr = 'yyyy-MM-dd HH:mm:ss', timezone = 'UTC') => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return format(dateObj, formatStr, { timeZone: timezone });
+export const formatDateTime = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return dateString; // Return original string if parsing fails
+    }
+    return date.toISOString().replace('T', ' ').substring(0, 19) + '+00';
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return dateString;
+  }
 };
