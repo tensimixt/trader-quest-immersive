@@ -20,11 +20,11 @@ Deno.serve(async (req) => {
 
   try {
     const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
-    let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
+    let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets?listId=1339275591813943299';
     
     // Add cursor if provided
     if (cursor) {
-      apiUrl += `?cursor=${encodeURIComponent(cursor)}`;
+      apiUrl += `&cursor=${encodeURIComponent(cursor)}`;
     }
     
     console.log(`Making Twitter API request to: ${apiUrl}`);

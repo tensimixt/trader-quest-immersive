@@ -30,10 +30,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
-    let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
+    let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets?listId=1339275591813943299';
 
     if (cursor && !startNew) {
-      apiUrl += `?cursor=${encodeURIComponent(cursor)}`;
+      apiUrl += `&cursor=${encodeURIComponent(cursor)}`;
     }
 
     let totalFetched = 0;
@@ -74,7 +74,7 @@ serve(async (req) => {
       try {
         let currentApiUrl = apiUrl;
         if (currentCursor && !startNew) {
-          currentApiUrl = 'https://api.twitterapi.io/twitter/list/tweets' + `?cursor=${encodeURIComponent(currentCursor)}`;
+          currentApiUrl = 'https://api.twitterapi.io/twitter/list/tweets?listId=1339275591813943299' + `&cursor=${encodeURIComponent(currentCursor)}`;
         }
 
         const tweets = await fetchAndProcessTweets(currentApiUrl);
