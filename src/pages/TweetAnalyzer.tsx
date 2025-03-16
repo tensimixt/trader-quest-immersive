@@ -703,9 +703,7 @@ const TweetAnalyzer = () => {
                     className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                     disabled={isFetchingUntilCutoff}
                     onClick={() => {
-                      if (!isLoadingCutoffDate && cutoffDate === DEFAULT_CUTOFF_DATE) {
-                        fetchLatestCutoffDate();
-                      }
+                      fetchLatestCutoffDate();
                     }}
                   >
                     <Calendar className={`h-4 w-4 mr-2 ${isFetchingUntilCutoff ? 'animate-spin' : ''}`} />
