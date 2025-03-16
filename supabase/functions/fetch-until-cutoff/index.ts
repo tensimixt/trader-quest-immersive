@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -20,6 +21,7 @@ interface FetchResponse {
   nextCursor?: string;
   isAtEnd: boolean;
   reachedCutoff: boolean;
+  cutoffDate?: string;
 }
 
 // Handle CORS preflight requests
@@ -29,13 +31,41 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cursor, batchSize = 10, cutoffDate } = await req.json();
+    const { cursor, batchSize = 10, cutoffDate, autoFetchCutoff = false } = await req.json();
     
-    if (!cutoffDate) {
+    let actualCutoffDate = cutoffDate;
+    
+    // If autoFetchCutoff is true, get the latest tweet date from historical_tweets table
+    if (autoFetchCutoff) {
+      console.log('Auto-fetching latest tweet date from historical_tweets...');
+      
+      const { data: latestTweet, error: latestTweetError } = await supabase
+        .from('historical_tweets')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (latestTweetError) {
+        console.warn('Error fetching latest tweet date:', latestTweetError.message);
+        console.log('Will use provided cutoff date instead');
+      } else if (latestTweet && latestTweet.created_at) {
+        // Format the date to match cutoff date format (yyyy-MM-dd HH:mm:ss+00)
+        actualCutoffDate = new Date(latestTweet.created_at)
+          .toISOString()
+          .replace('T', ' ')
+          .replace('Z', '+00');
+        
+        console.log(`Found latest tweet date: ${latestTweet.created_at}`);
+        console.log(`Using as cutoff date: ${actualCutoffDate}`);
+      }
+    }
+    
+    if (!actualCutoffDate) {
       throw new Error('Missing required parameter: cutoffDate');
     }
 
-    const cutoffTimestamp = new Date(cutoffDate).getTime();
+    const cutoffTimestamp = new Date(actualCutoffDate).getTime();
     if (isNaN(cutoffTimestamp)) {
       throw new Error('Invalid cutoff date format');
     }
@@ -43,7 +73,8 @@ Deno.serve(async (req) => {
     console.log(`Starting fetch operation with parameters:
       - Cursor: ${cursor || 'None (starting fresh)'}
       - Batch Size: ${batchSize}
-      - Cutoff Date: ${cutoffDate} (${cutoffTimestamp})
+      - Cutoff Date: ${actualCutoffDate} (${cutoffTimestamp})
+      - Auto Fetch Cutoff: ${autoFetchCutoff}
     `);
 
     // Initialize tracking variables
@@ -196,7 +227,8 @@ Deno.serve(async (req) => {
       pagesProcessed,
       nextCursor,
       isAtEnd,
-      reachedCutoff
+      reachedCutoff,
+      cutoffDate: actualCutoffDate
     };
 
     console.log('Operation complete:', result);
