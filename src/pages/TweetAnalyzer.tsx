@@ -10,6 +10,7 @@ import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
+import { formatUtcTime } from '@/utils/dateUtils';
 import {
   Popover,
   PopoverContent,
@@ -37,8 +38,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Define cutoff date constant
-const CUTOFF_DATE = "2025-03-16 00:41:00+00";
+// Define initial cutoff date constant (will be updated with latest tweet date)
+const INITIAL_CUTOFF_DATE = "2025-03-16 00:41:00+00";
 
 interface FetchHistoricalResult {
   success: boolean;
@@ -64,6 +65,8 @@ const TweetAnalyzer = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
   const [isUntilCutoffDialogOpen, setIsUntilCutoffDialogOpen] = useState(false);
+  const [cutoffDate, setCutoffDate] = useState(INITIAL_CUTOFF_DATE);
+  const [isLatestDateLoading, setIsLatestDateLoading] = useState(false);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -97,7 +100,44 @@ const TweetAnalyzer = () => {
     fetchTweets();
     
     checkStoredCursors();
+    fetchLatestTweetDate();
   }, []);
+
+  // Fetch latest tweet date from historical_tweets table
+  const fetchLatestTweetDate = async () => {
+    setIsLatestDateLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('historical_tweets')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching latest tweet date:', error);
+        toast.error('Could not fetch latest tweet date. Using default cutoff date.');
+        return;
+      }
+      
+      if (data && data.created_at) {
+        // Format the date in UTC format
+        const latestDate = new Date(data.created_at);
+        const formattedDate = formatUtcTime(latestDate);
+        
+        setCutoffDate(formattedDate);
+        toast.success(`Latest tweet date found: ${formattedDate}`);
+      } else {
+        toast.info('No tweets found in database. Using default cutoff date.');
+      }
+    } catch (error) {
+      console.error('Error in fetchLatestTweetDate:', error);
+      toast.error('Error fetching latest tweet date. Using default cutoff date.');
+    } finally {
+      setIsLatestDateLoading(false);
+    }
+  };
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -385,7 +425,7 @@ const TweetAnalyzer = () => {
     setIsUntilCutoffDialogOpen(false);
     
     try {
-      toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
+      toast.info(`Starting fetch until cutoff date: ${cutoffDate}`);
       
       // Set the mode to newer for this operation
       const originalMode = fetchingMode;
@@ -407,7 +447,7 @@ const TweetAnalyzer = () => {
             startNew: cursor === null,
             mode: 'newer',
             tweetsPerRequest: tweetsPerRequest,
-            cutoffDate: CUTOFF_DATE
+            cutoffDate: cutoffDate
           }
         });
         
@@ -433,7 +473,7 @@ const TweetAnalyzer = () => {
           keepFetching = false;
           
           if (data.reachedCutoff) {
-            toast.success(`Reached cutoff date (${CUTOFF_DATE})! Operation complete.`);
+            toast.success(`Reached cutoff date (${cutoffDate})! Operation complete.`);
           } else if (data.isAtEnd) {
             toast.info(`Reached the end of available tweets.`);
           } else if (!data.nextCursor) {
@@ -462,6 +502,9 @@ const TweetAnalyzer = () => {
       
       // Refresh the tweets display
       await fetchTweets();
+      
+      // Refresh the latest tweet date
+      fetchLatestTweetDate();
       
     } catch (error) {
       console.error('Error in fetchTweetsUntilCutoff:', error);
@@ -636,6 +679,19 @@ const TweetAnalyzer = () => {
                           {isAutoClickEnabled ? "Enabled" : "Disabled"}
                         </Button>
                       </div>
+                      
+                      <div className="flex items-center gap-2 mt-4">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={fetchLatestTweetDate}
+                          disabled={isLatestDateLoading}
+                          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                        >
+                          <RefreshCcw className={`h-3 w-3 mr-1 ${isLatestDateLoading ? 'animate-spin' : ''}`} />
+                          Refresh Latest Date
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </PopoverContent>
@@ -694,8 +750,14 @@ const TweetAnalyzer = () => {
                     <AlertDialogDescription>
                       This will continuously fetch tweets until reaching the cutoff date:
                       <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
-                        {CUTOFF_DATE}
+                        {cutoffDate}
                       </div>
+                      {isLatestDateLoading && (
+                        <div className="mt-2 text-blue-300 flex items-center gap-2">
+                          <RefreshCcw className="w-3 h-3 animate-spin" />
+                          <span>Loading latest date from database...</span>
+                        </div>
+                      )}
                       <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -738,3 +800,4 @@ const TweetAnalyzer = () => {
 };
 
 export default TweetAnalyzer;
+
