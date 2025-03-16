@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -20,6 +21,7 @@ interface FetchResponse {
   nextCursor?: string;
   isAtEnd: boolean;
   reachedCutoff: boolean;
+  cutoffDate?: string;
 }
 
 // Handle CORS preflight requests
@@ -31,11 +33,31 @@ Deno.serve(async (req) => {
   try {
     const { cursor, batchSize = 10, cutoffDate } = await req.json();
     
-    if (!cutoffDate) {
-      throw new Error('Missing required parameter: cutoffDate');
+    // If no cutoff date is provided, try to get it from the twitter_cursors table
+    let effectiveCutoffDate = cutoffDate;
+    if (!effectiveCutoffDate) {
+      console.log('No cutoff date provided, attempting to retrieve from database');
+      
+      const { data: cursorData, error: cursorError } = await supabase
+        .from('twitter_cursors')
+        .select('cursor_value')
+        .eq('cursor_type', 'latest_date')
+        .single();
+      
+      if (cursorError) {
+        console.log('Error fetching latest date from cursors:', cursorError);
+        throw new Error('Could not retrieve latest tweet date. Please provide a cutoff date.');
+      }
+      
+      effectiveCutoffDate = cursorData.cursor_value;
+      console.log(`Using stored latest date as cutoff: ${effectiveCutoffDate}`);
+    }
+    
+    if (!effectiveCutoffDate) {
+      throw new Error('No cutoff date available. Please provide a cutoff date or ensure there are tweets in the database.');
     }
 
-    const cutoffTimestamp = new Date(cutoffDate).getTime();
+    const cutoffTimestamp = new Date(effectiveCutoffDate).getTime();
     if (isNaN(cutoffTimestamp)) {
       throw new Error('Invalid cutoff date format');
     }
@@ -43,7 +65,7 @@ Deno.serve(async (req) => {
     console.log(`Starting fetch operation with parameters:
       - Cursor: ${cursor || 'None (starting fresh)'}
       - Batch Size: ${batchSize}
-      - Cutoff Date: ${cutoffDate} (${cutoffTimestamp})
+      - Cutoff Date: ${effectiveCutoffDate} (${cutoffTimestamp})
     `);
 
     // Initialize tracking variables
@@ -196,7 +218,8 @@ Deno.serve(async (req) => {
       pagesProcessed,
       nextCursor,
       isAtEnd,
-      reachedCutoff
+      reachedCutoff,
+      cutoffDate: effectiveCutoffDate
     };
 
     console.log('Operation complete:', result);
