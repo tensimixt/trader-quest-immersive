@@ -62,11 +62,10 @@ Deno.serve(async (req) => {
 
     // Process tweets in batches
     for (let batch = 0; batch < batchSize; batch++) {
-      // Add the listId parameter to the API URL - this is what was missing!
-      let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets?listId=1339275591813943299';
+      let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
       
       if (nextCursor) {
-        apiUrl += `&cursor=${encodeURIComponent(nextCursor)}`;
+        apiUrl += `?cursor=${encodeURIComponent(nextCursor)}`;
       }
       
       console.log(`Batch ${batch + 1}/${batchSize}: Fetching from ${apiUrl}`);
@@ -87,7 +86,7 @@ Deno.serve(async (req) => {
         if (totalTweetsFetched > 0) {
           break;
         } else {
-          throw new Error(`Twitter API error: ${response.status} ${response.statusText} - ${errorText}`);
+          throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
         }
       }
 
