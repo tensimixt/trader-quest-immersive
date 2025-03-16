@@ -607,14 +607,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_pg_extensions: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      setup_tweet_fetch_cron: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
       credit_transaction_type: "purchase" | "unlock" | "refund"

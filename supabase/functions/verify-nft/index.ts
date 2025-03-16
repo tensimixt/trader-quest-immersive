@@ -1,9 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
-
-// Import only the PublicKey constructor instead of the entire web3.js package
-import { PublicKey } from 'https://esm.sh/@solana/web3.js@1.73.3?dts'
+import { PublicKey } from 'https://esm.sh/@solana/web3.js@1.87.6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
