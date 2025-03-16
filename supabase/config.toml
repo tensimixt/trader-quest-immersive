@@ -24,7 +24,6 @@ enabled = true
 [realtime]
 enabled = true
 
-[functions]
 [functions.twitter-historical]
 verify_jwt = false
 
@@ -32,4 +31,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.scheduled-tweet-fetch]
+verify_jwt = false
+
+[functions.verify-nft]
 verify_jwt = false
