@@ -458,66 +458,37 @@ export const useTweetFetching = () => {
     setIsFetchingNew(true);
     
     try {
-      toast.info(`Starting fetch for newest tweets (limited to 2 batches)`);
+      toast.info(`Starting fetch for newest tweets (one request only)`);
       
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
-      let currentBatch = 1;
-      let keepFetching = true;
-      let cursor = null;
-      let totalTweets = 0;
+      const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
+        body: { 
+          cursor: null,
+          batchSize: 1,
+          startNew: true,
+          mode: 'newer',
+          tweetsPerRequest: tweetsPerRequest
+        }
+      });
       
-      while (keepFetching && currentBatch <= 2) {
-        toast.info(`Fetching batch ${currentBatch}...`);
-        
-        const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
-          body: { 
-            cursor: cursor,
-            batchSize: batchSize,
-            startNew: cursor === null,
-            mode: 'newer',
-            tweetsPerRequest: tweetsPerRequest
-          }
-        });
-        
-        if (result.error) {
-          throw new Error(`Function error: ${result.error.message}`);
-        }
-        
-        const data = result.data;
-        console.log(`Batch ${currentBatch} response:`, data);
-        
-        if (!data?.success) {
-          throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
-        }
-        
-        cursor = data.nextCursor;
-        
-        totalTweets += data.totalFetched || 0;
-        
-        if (data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
-          keepFetching = false;
-          
-          if (data.isAtEnd) {
-            toast.info(`Reached the end of available tweets.`);
-          } else if (!data.nextCursor) {
-            toast.info(`No pagination cursor returned. Cannot fetch more tweets.`);
-          } else {
-            toast.info(`No new tweets found in the latest batch.`);
-          }
-        }
-        
-        currentBatch++;
-        
-        if (currentBatch <= 2 && keepFetching) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+      if (result.error) {
+        throw new Error(`Function error: ${result.error.message}`);
       }
+      
+      const data = result.data;
+      console.log(`Single fetch response:`, data);
+      
+      if (!data?.success) {
+        throw new Error(data?.error || `Failed to fetch new tweets`);
+      }
+      
+      const totalTweets = data.totalFetched || 0;
       
       setFetchingMode(originalMode);
       
-      toast.success(`Fetch complete! Retrieved ${totalTweets} tweets across ${currentBatch - 1} batches.`);
+      toast.success(`Fetch complete! Retrieved ${totalTweets} tweets with a single request.`);
       
       await fetchTweets();
       

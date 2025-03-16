@@ -91,7 +91,7 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
         className="border-green-500/30 text-green-400 hover:bg-green-500/10"
       >
         <Download className={`h-4 w-4 mr-2 ${isFetchingNew ? 'animate-spin' : ''}`} />
-        Fetch New
+        Fetch Latest
       </Button>
       
       <Button
