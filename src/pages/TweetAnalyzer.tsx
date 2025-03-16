@@ -10,6 +10,7 @@ import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
+import { formatJapanTime } from '@/utils/dateUtils';
 import {
   Popover,
   PopoverContent,
@@ -37,7 +38,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Define cutoff date constant
 const CUTOFF_DATE = "2025-03-16 00:41:00+00";
 
 interface FetchHistoricalResult {
@@ -109,10 +109,8 @@ const TweetAnalyzer = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Auto-click "Continue Older" button after successful fetch
   useEffect(() => {
     return () => {
-      // Clean up timeout on component unmount
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
@@ -121,12 +119,10 @@ const TweetAnalyzer = () => {
 
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
-      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
-      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -350,7 +346,6 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
-        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -387,7 +382,6 @@ const TweetAnalyzer = () => {
     try {
       toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
       
-      // Set the mode to newer for this operation
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
@@ -399,7 +393,6 @@ const TweetAnalyzer = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
-        // Fetch a batch of tweets
         const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
           body: { 
             cursor: cursor,
@@ -422,13 +415,10 @@ const TweetAnalyzer = () => {
           throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
         }
         
-        // Update cursor for next iteration
         cursor = data.nextCursor;
         
-        // Update stats
         totalTweets += data.totalFetched || 0;
         
-        // Check if we should stop
         if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
           keepFetching = false;
           
@@ -445,22 +435,18 @@ const TweetAnalyzer = () => {
         
         currentBatch++;
         
-        // Prevent infinite loops with a reasonable limit
         if (currentBatch > 50) {
           toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
           keepFetching = false;
         }
         
-        // Small delay between batches to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Restore original mode
       setFetchingMode(originalMode);
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
-      // Refresh the tweets display
       await fetchTweets();
       
     } catch (error) {
@@ -694,7 +680,7 @@ const TweetAnalyzer = () => {
                     <AlertDialogDescription>
                       This will continuously fetch tweets until reaching the cutoff date:
                       <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
-                        {CUTOFF_DATE}
+                        {CUTOFF_DATE} ({formatJapanTime(new Date(CUTOFF_DATE))})
                       </div>
                       <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
                     </AlertDialogDescription>
