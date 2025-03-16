@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +18,7 @@ export const useTweetFetching = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoricalLoading, setIsHistoricalLoading] = useState(false);
   const [isFetchingUntilCutoff, setIsFetchingUntilCutoff] = useState(false);
+  const [isFetchingNew, setIsFetchingNew] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tweetData, setTweetData] = useState<any[]>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
@@ -69,7 +69,6 @@ export const useTweetFetching = () => {
     fetchLatestTweetDate();
   }, []);
 
-  // Fetch latest tweet date from historical_tweets table
   const fetchLatestTweetDate = async () => {
     setIsLatestDateLoading(true);
     
@@ -88,7 +87,6 @@ export const useTweetFetching = () => {
       }
       
       if (data && data.created_at) {
-        // Format the date in UTC format
         const latestDate = new Date(data.created_at);
         const formattedDate = formatUtcTime(latestDate);
         
@@ -115,24 +113,12 @@ export const useTweetFetching = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Auto-click "Continue Older" button after successful fetch
-  useEffect(() => {
-    return () => {
-      // Clean up timeout on component unmount
-      if (autoClickTimeoutRef.current) {
-        clearTimeout(autoClickTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
-      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
-      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -356,7 +342,6 @@ export const useTweetFetching = () => {
         
         await fetchTweets();
         
-        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -393,7 +378,6 @@ export const useTweetFetching = () => {
     try {
       toast.info(`Starting fetch until cutoff date: ${cutoffDate}`);
       
-      // Set the mode to newer for this operation
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
@@ -405,7 +389,6 @@ export const useTweetFetching = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
-        // Fetch a batch of tweets
         const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
           body: { 
             cursor: cursor,
@@ -428,13 +411,10 @@ export const useTweetFetching = () => {
           throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
         }
         
-        // Update cursor for next iteration
         cursor = data.nextCursor;
         
-        // Update stats
         totalTweets += data.totalFetched || 0;
         
-        // Check if we should stop
         if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
           keepFetching = false;
           
@@ -451,32 +431,101 @@ export const useTweetFetching = () => {
         
         currentBatch++;
         
-        // Prevent infinite loops with a reasonable limit
         if (currentBatch > 50) {
           toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
           keepFetching = false;
         }
         
-        // Small delay between batches to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Restore original mode
       setFetchingMode(originalMode);
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
-      // Refresh the tweets display
       await fetchTweets();
       
-      // Refresh the latest tweet date
       fetchLatestTweetDate();
-      
     } catch (error) {
       console.error('Error in fetchTweetsUntilCutoff:', error);
       toast.error(`Failed to complete operation: ${error.message}`);
     } finally {
       setIsFetchingUntilCutoff(false);
+    }
+  };
+
+  const fetchNewTweets = async () => {
+    setIsFetchingNew(true);
+    
+    try {
+      toast.info(`Starting fetch for newest tweets (limited to 2 batches)`);
+      
+      const originalMode = fetchingMode;
+      setFetchingMode('newer');
+      
+      let currentBatch = 1;
+      let keepFetching = true;
+      let cursor = null;
+      let totalTweets = 0;
+      
+      while (keepFetching && currentBatch <= 2) {
+        toast.info(`Fetching batch ${currentBatch}...`);
+        
+        const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
+          body: { 
+            cursor: cursor,
+            batchSize: batchSize,
+            startNew: cursor === null,
+            mode: 'newer',
+            tweetsPerRequest: tweetsPerRequest
+          }
+        });
+        
+        if (result.error) {
+          throw new Error(`Function error: ${result.error.message}`);
+        }
+        
+        const data = result.data;
+        console.log(`Batch ${currentBatch} response:`, data);
+        
+        if (!data?.success) {
+          throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
+        }
+        
+        cursor = data.nextCursor;
+        
+        totalTweets += data.totalFetched || 0;
+        
+        if (data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
+          keepFetching = false;
+          
+          if (data.isAtEnd) {
+            toast.info(`Reached the end of available tweets.`);
+          } else if (!data.nextCursor) {
+            toast.info(`No pagination cursor returned. Cannot fetch more tweets.`);
+          } else {
+            toast.info(`No new tweets found in the latest batch.`);
+          }
+        }
+        
+        currentBatch++;
+        
+        if (currentBatch <= 2 && keepFetching) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      setFetchingMode(originalMode);
+      
+      toast.success(`Fetch complete! Retrieved ${totalTweets} tweets across ${currentBatch - 1} batches.`);
+      
+      await fetchTweets();
+      
+    } catch (error) {
+      console.error('Error in fetchNewTweets:', error);
+      toast.error(`Failed to fetch new tweets: ${error.message}`);
+    } finally {
+      setIsFetchingNew(false);
     }
   };
 
@@ -549,6 +598,7 @@ export const useTweetFetching = () => {
     isLoading,
     isHistoricalLoading,
     isFetchingUntilCutoff,
+    isFetchingNew,
     searchTerm,
     setSearchTerm,
     fetchingMode,
@@ -571,6 +621,7 @@ export const useTweetFetching = () => {
     handleRetryHistorical,
     handleStartNewHistorical,
     fetchTweetsUntilCutoff,
+    fetchNewTweets,
     fetchLatestTweetDate
   };
 };

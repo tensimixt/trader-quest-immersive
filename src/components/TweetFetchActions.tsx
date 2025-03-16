@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { History, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { History, AlertTriangle, RefreshCcw, Download } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -18,7 +18,9 @@ interface TweetFetchActionsProps {
   handleRetryHistorical: () => void;
   handleStartNewHistorical: () => void;
   handleRetryFetch: () => void;
+  handleFetchNew: () => void;
   isLoading: boolean;
+  isFetchingNew: boolean;
 }
 
 const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
@@ -29,7 +31,9 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
   handleRetryHistorical,
   handleStartNewHistorical,
   handleRetryFetch,
-  isLoading
+  handleFetchNew,
+  isLoading,
+  isFetchingNew
 }) => {
   const [isStartNewDialogOpen, setIsStartNewDialogOpen] = useState(false);
 
@@ -78,6 +82,17 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
           )}
         </Tooltip>
       </TooltipProvider>
+      
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleFetchNew}
+        disabled={isFetchingNew}
+        className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+      >
+        <Download className={`h-4 w-4 mr-2 ${isFetchingNew ? 'animate-spin' : ''}`} />
+        Fetch New
+      </Button>
       
       <Button
         variant="outline"

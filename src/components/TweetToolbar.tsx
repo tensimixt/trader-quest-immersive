@@ -30,7 +30,9 @@ interface TweetToolbarProps {
   setIsUntilCutoffDialogOpen: (value: boolean) => void;
   cutoffDate: string;
   isFetchingUntilCutoff: boolean;
+  isFetchingNew: boolean;
   fetchTweetsUntilCutoff: () => void;
+  fetchNewTweets: () => void;
   handleRetryFetch: () => void;
   isLoading: boolean;
 }
@@ -57,7 +59,9 @@ const TweetToolbar: React.FC<TweetToolbarProps> = ({
   setIsUntilCutoffDialogOpen,
   cutoffDate,
   isFetchingUntilCutoff,
+  isFetchingNew,
   fetchTweetsUntilCutoff,
+  fetchNewTweets,
   handleRetryFetch,
   isLoading
 }) => {
@@ -118,7 +122,9 @@ const TweetToolbar: React.FC<TweetToolbarProps> = ({
             handleRetryHistorical={handleRetryHistorical}
             handleStartNewHistorical={handleStartNewHistorical}
             handleRetryFetch={handleRetryFetch}
+            handleFetchNew={fetchNewTweets}
             isLoading={isLoading}
+            isFetchingNew={isFetchingNew}
           />
           
           <CutoffDateDialog 

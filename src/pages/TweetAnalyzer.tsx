@@ -12,6 +12,7 @@ const TweetAnalyzer = () => {
     isLoading,
     isHistoricalLoading,
     isFetchingUntilCutoff,
+    isFetchingNew,
     searchTerm,
     setSearchTerm,
     fetchingMode,
@@ -34,6 +35,7 @@ const TweetAnalyzer = () => {
     handleRetryHistorical,
     handleStartNewHistorical,
     fetchTweetsUntilCutoff,
+    fetchNewTweets,
     fetchLatestTweetDate
   } = useTweetFetching();
 
@@ -68,7 +70,9 @@ const TweetAnalyzer = () => {
           setIsUntilCutoffDialogOpen={setIsUntilCutoffDialogOpen}
           cutoffDate={cutoffDate}
           isFetchingUntilCutoff={isFetchingUntilCutoff}
+          isFetchingNew={isFetchingNew}
           fetchTweetsUntilCutoff={fetchTweetsUntilCutoff}
+          fetchNewTweets={fetchNewTweets}
           handleRetryFetch={handleRetryFetch}
           isLoading={isLoading}
         />
