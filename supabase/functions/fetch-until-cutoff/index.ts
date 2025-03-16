@@ -1,43 +1,41 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
+import { isOlderThan, formatDatabaseTimestamp } from '../_shared/dateUtils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Create a single Supabase client for interacting with the database
+// Get environment variables
+const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Define interface for the response
-interface FetchResponse {
-  success: boolean;
-  error?: string;
-  totalFetched: number;
-  totalStored: number;
-  pagesProcessed: number;
-  nextCursor?: string;
-  isAtEnd: boolean;
-  reachedCutoff: boolean;
-  cutoffDate?: string;
-}
-
-// Handle CORS preflight requests
-Deno.serve(async (req) => {
+serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { cursor, batchSize = 10, cutoffDate } = await req.json();
+    console.log('Fetch until cutoff function called');
     
-    // If no cutoff date is provided, try to get it from the twitter_cursors table
+    if (!TWITTER_API_KEY) {
+      throw new Error('TWITTER_API_KEY is not configured');
+    }
+    
+    const { cursor, batchSize = 20, cutoffDate } = await req.json();
+    
+    console.log(`Starting fetch until cutoff with parameters:`, { cursor, batchSize, cutoffDate });
+    
+    // Create Supabase client for database operations
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // If no cutoff date is provided, try to get the latest tweet date from twitter_cursors
     let effectiveCutoffDate = cutoffDate;
     if (!effectiveCutoffDate) {
-      console.log('No cutoff date provided, attempting to retrieve from database');
-      
       const { data: cursorData, error: cursorError } = await supabase
         .from('twitter_cursors')
         .select('cursor_value')
@@ -45,214 +43,162 @@ Deno.serve(async (req) => {
         .single();
       
       if (cursorError) {
-        console.log('Error fetching latest date from cursors:', cursorError);
-        throw new Error('Could not retrieve latest tweet date. Please provide a cutoff date.');
+        console.warn('Could not get latest date from cursors:', cursorError);
+      } else if (cursorData?.cursor_value) {
+        effectiveCutoffDate = cursorData.cursor_value;
+        console.log(`Using latest date from cursors: ${effectiveCutoffDate}`);
+      } else {
+        console.warn('No latest date found in cursors table');
       }
-      
-      effectiveCutoffDate = cursorData.cursor_value;
-      console.log(`Using stored latest date as cutoff: ${effectiveCutoffDate}`);
     }
     
     if (!effectiveCutoffDate) {
-      throw new Error('No cutoff date available. Please provide a cutoff date or ensure there are tweets in the database.');
+      throw new Error('No cutoff date provided and none found in database');
     }
-
-    const cutoffTimestamp = new Date(effectiveCutoffDate).getTime();
-    if (isNaN(cutoffTimestamp)) {
-      throw new Error('Invalid cutoff date format');
-    }
-
-    console.log(`Starting fetch operation with parameters:
-      - Cursor: ${cursor || 'None (starting fresh)'}
-      - Batch Size: ${batchSize}
-      - Cutoff Date: ${effectiveCutoffDate} (${cutoffTimestamp})
-    `);
-
-    // Initialize tracking variables
-    let totalTweetsFetched = 0;
-    let totalTweetsStored = 0;
-    let pagesProcessed = 0;
-    let isAtEnd = false;
-    let nextCursor = cursor;
+    
+    console.log(`Using cutoff date: ${effectiveCutoffDate}`);
+    
+    // Set up variables for the fetch operation
+    let currentCursor = cursor;
     let reachedCutoff = false;
-
-    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '';
-    if (!TWITTER_API_KEY) {
-      throw new Error('TWITTER_API_KEY is not configured');
+    let isAtEnd = false;
+    let totalFetched = 0;
+    let totalStored = 0;
+    let pagesProcessed = 0;
+    
+    // Make a single request to the Twitter API
+    console.log(`Making request to Twitter API with cursor: ${currentCursor || 'null'}`);
+    
+    const apiUrl = "https://api.twitterapi.io/twitter/list/tweets";
+    const apiHeaders = {
+      "X-API-Key": TWITTER_API_KEY,
+      "Content-Type": "application/json",
+    };
+    
+    const apiParams = {
+      cursor: currentCursor || undefined,
+      count: 20, // API seems to default to around 20 tweets per request
+      usernames: "poordart,SmokeyHosoda,devchart,inversebrah,I_Am_The_ICT,MuroCrypto,DonAlt,CryptoAdamNFT,BalloonSkies,AlgodTrading,PremiumAnalyst,jtemin,Trader1sz,MiladyMorgana,loomdart,Naiiveclub,cmsholdings,BuckyBTC,yieldyak_,DailyMRI", 
+      excludeLinks: false,
+    };
+    
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: apiHeaders,
+      params: apiParams,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Twitter API error: ${response.statusText}`);
     }
-
-    // Process tweets in batches
-    for (let batch = 0; batch < batchSize; batch++) {
-      let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
+    
+    const data = await response.json();
+    console.log(`Twitter API response received with ${data.tweets?.length || 0} tweets`);
+    
+    pagesProcessed++;
+    
+    if (data.tweets && Array.isArray(data.tweets)) {
+      totalFetched += data.tweets.length;
       
-      if (nextCursor) {
-        apiUrl += `?cursor=${encodeURIComponent(nextCursor)}`;
-      }
+      // Process tweets
+      const batchTweets = [];
       
-      console.log(`Batch ${batch + 1}/${batchSize}: Fetching from ${apiUrl}`);
-      
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'X-API-Key': TWITTER_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API Error (${response.status}): ${errorText}`);
-        
-        // If we've already processed some data, return partial success
-        if (totalTweetsFetched > 0) {
-          break;
-        } else {
-          throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
-        }
-      }
-
-      const data = await response.json();
-      
-      if (!data.tweets || !Array.isArray(data.tweets) || data.tweets.length === 0) {
-        console.log('No tweets returned or empty array');
-        isAtEnd = true;
-        break;
-      }
-
-      // Update the cursor for the next iteration
-      nextCursor = data.cursor;
-      
-      // Check if any tweets are older than the cutoff date
       for (const tweet of data.tweets) {
-        const tweetDate = new Date(tweet.createdAt);
-        const tweetTimestamp = tweetDate.getTime();
+        const tweetDate = new Date(tweet.createdAt).toISOString();
         
-        if (tweetTimestamp <= cutoffTimestamp) {
-          console.log(`Found tweet (${tweet.id}) from ${tweetDate.toISOString()} which is at or before cutoff date`);
+        // Skip tweets that are older than the cutoff date
+        if (effectiveCutoffDate && isOlderThan(tweetDate, effectiveCutoffDate)) {
           reachedCutoff = true;
+          console.log(`Reached cutoff date (${effectiveCutoffDate}) with tweet date ${tweetDate}`);
           break;
+        }
+        
+        // Format the tweet for database storage
+        const formattedTweet = {
+          id: tweet.id,
+          text: tweet.text,
+          created_at: tweetDate,
+          author_username: tweet.author?.userName || "",
+          author_name: tweet.author?.name || "",
+          author_profile_picture: tweet.author?.profilePicture || "",
+          is_reply: tweet.isReply || false,
+          is_quote: tweet.isQuote || false,
+          in_reply_to_id: tweet.inReplyToId || null,
+          quoted_tweet_text: tweet.quoted_tweet?.text || null,
+          quoted_tweet_author: tweet.quoted_tweet?.author?.userName || null,
+          entities: tweet.entities || null,
+          extended_entities: tweet.extendedEntities || null,
+        };
+        
+        batchTweets.push(formattedTweet);
+      }
+      
+      // Store tweets in the database
+      if (batchTweets.length > 0) {
+        console.log(`Storing ${batchTweets.length} tweets in the database`);
+        
+        const { data: insertData, error: insertError } = await supabase
+          .from('historical_tweets')
+          .upsert(batchTweets, { onConflict: 'id' });
+        
+        if (insertError) {
+          console.error('Error storing tweets:', insertError);
+        } else {
+          totalStored += batchTweets.length;
+          console.log(`Successfully stored ${batchTweets.length} tweets`);
         }
       }
       
-      // Process and store tweets
-      const normalizedTweets = data.tweets.map((tweet: any) => ({
-        id: tweet.id,
-        text: tweet.text,
-        createdAt: tweet.createdAt,
-        author: {
-          userName: tweet.author?.userName || "unknown",
-          name: tweet.author?.name || "Unknown User",
-          profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-        },
-        isReply: tweet.isReply || false,
-        isQuote: tweet.quoted_tweet ? true : false,
-        inReplyToId: tweet.inReplyToId,
-        quoted_tweet: tweet.quoted_tweet ? {
-          text: tweet.quoted_tweet.text,
-          author: tweet.quoted_tweet.author ? {
-            userName: tweet.quoted_tweet.author.userName
-          } : undefined
-        } : undefined,
-        entities: tweet.entities || { media: [] },
-        extendedEntities: tweet.extendedEntities || { media: [] }
-      }));
-
-      // Store tweets in historical_tweets table using upsert
-      const { data: storedData, error: storageError } = await supabase
-        .from('historical_tweets')
-        .upsert(
-          normalizedTweets.map((tweet: any) => ({
-            id: tweet.id,
-            text: tweet.text,
-            created_at: tweet.createdAt,
-            author: tweet.author,
-            is_reply: tweet.isReply,
-            is_quote: tweet.isQuote,
-            in_reply_to_id: tweet.inReplyToId,
-            quoted_tweet: tweet.quoted_tweet,
-            entities: tweet.entities,
-            extended_entities: tweet.extendedEntities
-          })),
-          { onConflict: 'id' }
-        );
-
-      if (storageError) {
-        console.error('Error storing tweets:', storageError);
-      } else {
-        console.log(`Stored ${normalizedTweets.length} tweets in batch ${batch + 1}`);
-        totalTweetsStored += normalizedTweets.length;
-      }
-
-      totalTweetsFetched += normalizedTweets.length;
-      pagesProcessed++;
-      
-      // Update the cursor in the database
-      if (nextCursor) {
+      // Update cursor
+      if (data.next && !reachedCutoff) {
+        currentCursor = data.next;
+        
+        // Store the cursor for later use
         const { error: cursorError } = await supabase
           .from('twitter_cursors')
           .upsert(
-            { cursor_type: 'newer', cursor_value: nextCursor },
+            { cursor_type: 'newer', cursor_value: currentCursor },
             { onConflict: 'cursor_type' }
           );
-
+        
         if (cursorError) {
           console.error('Error storing cursor:', cursorError);
-        } else {
-          console.log(`Updated 'newer' cursor to: ${nextCursor}`);
         }
+      } else {
+        isAtEnd = true;
       }
-
-      // Stop if we've reached the cutoff date or there's no more pagination
-      if (reachedCutoff || !nextCursor) {
-        break;
-      }
-      
-      // Add a small delay between API calls to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+    } else {
+      console.log('No tweets in response or invalid response format');
+      isAtEnd = true;
     }
-
-    const result: FetchResponse = {
+    
+    return new Response(JSON.stringify({
       success: true,
-      totalFetched: totalTweetsFetched,
-      totalStored: totalTweetsStored,
+      nextCursor: currentCursor,
+      totalFetched,
+      totalStored,
       pagesProcessed,
-      nextCursor,
       isAtEnd,
       reachedCutoff,
       cutoffDate: effectiveCutoffDate
-    };
-
-    console.log('Operation complete:', result);
-
-    // Return the result
-    return new Response(
-      JSON.stringify(result),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    
   } catch (error) {
-    console.error('Error processing request:', error.message);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        totalFetched: 0,
-        totalStored: 0,
-        pagesProcessed: 0,
-        isAtEnd: false,
-        reachedCutoff: false
-      }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.error('Error in fetch until cutoff function:', error);
+    
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message,
+      totalFetched: 0,
+      totalStored: 0,
+      pagesProcessed: 0,
+      isAtEnd: false,
+      reachedCutoff: false
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

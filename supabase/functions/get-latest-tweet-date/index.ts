@@ -65,11 +65,15 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to store latest date: ${storeError.message}`);
     }
     
+    // Format the date for display
+    const formattedDate = new Date(data.created_at).toLocaleString();
+    
     // Return the result
     return new Response(
       JSON.stringify({
         success: true,
-        latestDate: data.created_at
+        latestDate: data.created_at,
+        formatted_date: formattedDate
       }),
       {
         headers: {
