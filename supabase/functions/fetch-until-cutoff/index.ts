@@ -85,8 +85,10 @@ Deno.serve(async (req) => {
     let nextCursor = cursor;
     let reachedCutoff = false;
 
-    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '';
+    // Make sure we have the API key
+    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY');
     if (!TWITTER_API_KEY) {
+      console.error('TWITTER_API_KEY is not configured in environment variables');
       throw new Error('TWITTER_API_KEY is not configured');
     }
 
