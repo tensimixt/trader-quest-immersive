@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -22,6 +23,55 @@ interface FetchResponse {
   reachedCutoff: boolean;
 }
 
+// Function to format date in UTC format
+function formatUtcTime(date: Date): string {
+  const pad = (num: number) => num.toString().padStart(2, '0');
+  
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hours = pad(date.getUTCHours());
+  const minutes = pad(date.getUTCMinutes());
+  const seconds = pad(date.getUTCSeconds());
+  
+  // Format: "yyyy-MM-dd HH:mm:ss+00:00"
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}+00:00`;
+}
+
+// Function to fetch the latest tweet date from the database
+async function fetchLatestTweetDate(): Promise<string> {
+  console.log('Fetching latest tweet date from database...');
+  
+  try {
+    const { data, error } = await supabase
+      .from('historical_tweets')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching latest tweet date:', error);
+      // Return a default cutoff date (e.g., current date)
+      return formatUtcTime(new Date());
+    }
+    
+    if (data && data.created_at) {
+      const latestDate = new Date(data.created_at);
+      const formattedDate = formatUtcTime(latestDate);
+      console.log('Latest tweet date found:', formattedDate);
+      return formattedDate;
+    } else {
+      console.log('No tweets found in database. Using current date as cutoff.');
+      return formatUtcTime(new Date());
+    }
+  } catch (error) {
+    console.error('Error in fetchLatestTweetDate:', error);
+    // Return current date as fallback
+    return formatUtcTime(new Date());
+  }
+}
+
 // Handle CORS preflight requests
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -29,12 +79,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cursor, batchSize = 10, cutoffDate } = await req.json();
-    
-    if (!cutoffDate) {
-      throw new Error('Missing required parameter: cutoffDate');
+    // Parse request parameters (if any)
+    let params = {};
+    if (req.method === 'POST') {
+      try {
+        params = await req.json();
+      } catch (e) {
+        // If parsing fails, use empty object
+        console.log('Failed to parse request body as JSON, using default parameters');
+      }
     }
-
+    
+    // Extract parameters with defaults
+    const { cursor = null, batchSize = 10 } = params;
+    
+    // Fetch the latest tweet date from the database to use as cutoff
+    const cutoffDate = await fetchLatestTweetDate();
+    console.log(`Using dynamic cutoff date: ${cutoffDate}`);
+    
     const cutoffTimestamp = new Date(cutoffDate).getTime();
     if (isNaN(cutoffTimestamp)) {
       throw new Error('Invalid cutoff date format');
