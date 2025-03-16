@@ -10,6 +10,7 @@ import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
+import { formatDateTime } from '@/utils/dateUtils';
 import {
   Popover,
   PopoverContent,
@@ -37,8 +38,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Define cutoff date constant
-const CUTOFF_DATE = "2025-03-16 00:41:00+00";
+const DEFAULT_CUTOFF_DATE = "2025-03-16 00:41:00+00";
 
 interface FetchHistoricalResult {
   success: boolean;
@@ -64,6 +64,8 @@ const TweetAnalyzer = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
   const [isUntilCutoffDialogOpen, setIsUntilCutoffDialogOpen] = useState(false);
+  const [cutoffDate, setCutoffDate] = useState<string>(DEFAULT_CUTOFF_DATE);
+  const [isLoadingCutoffDate, setIsLoadingCutoffDate] = useState(false);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -97,7 +99,37 @@ const TweetAnalyzer = () => {
     fetchTweets();
     
     checkStoredCursors();
+    fetchLatestCutoffDate();
   }, []);
+
+  const fetchLatestCutoffDate = async () => {
+    setIsLoadingCutoffDate(true);
+    try {
+      const { data, error } = await supabase
+        .from('historical_tweets')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (error) {
+        throw new Error(`Error fetching latest tweet date: ${error.message}`);
+      }
+      
+      if (data && data.length > 0 && data[0].created_at) {
+        setCutoffDate(data[0].created_at);
+        console.log('Latest tweet date set as cutoff:', data[0].created_at);
+      } else {
+        console.log('No tweets found in database, using default cutoff date');
+        setCutoffDate(DEFAULT_CUTOFF_DATE);
+      }
+    } catch (err) {
+      console.error('Error fetching latest cutoff date:', err);
+      toast.error('Failed to fetch latest tweet date, using default');
+      setCutoffDate(DEFAULT_CUTOFF_DATE);
+    } finally {
+      setIsLoadingCutoffDate(false);
+    }
+  };
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -109,10 +141,8 @@ const TweetAnalyzer = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Auto-click "Continue Older" button after successful fetch
   useEffect(() => {
     return () => {
-      // Clean up timeout on component unmount
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
@@ -121,12 +151,10 @@ const TweetAnalyzer = () => {
 
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
-      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
-      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -311,7 +339,8 @@ const TweetAnalyzer = () => {
           batchSize: batchSize,
           startNew: startNew,
           mode: fetchingMode,
-          tweetsPerRequest: tweetsPerRequest
+          tweetsPerRequest: tweetsPerRequest,
+          cutoffDate: cutoffDate
         }
       });
       
@@ -350,7 +379,6 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
-        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -385,9 +413,8 @@ const TweetAnalyzer = () => {
     setIsUntilCutoffDialogOpen(false);
     
     try {
-      toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
+      toast.info(`Starting fetch until cutoff date: ${cutoffDate}`);
       
-      // Set the mode to newer for this operation
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
@@ -399,7 +426,6 @@ const TweetAnalyzer = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
-        // Fetch a batch of tweets
         const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
           body: { 
             cursor: cursor,
@@ -407,7 +433,7 @@ const TweetAnalyzer = () => {
             startNew: cursor === null,
             mode: 'newer',
             tweetsPerRequest: tweetsPerRequest,
-            cutoffDate: CUTOFF_DATE
+            cutoffDate: cutoffDate
           }
         });
         
@@ -422,18 +448,15 @@ const TweetAnalyzer = () => {
           throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
         }
         
-        // Update cursor for next iteration
         cursor = data.nextCursor;
         
-        // Update stats
         totalTweets += data.totalFetched || 0;
         
-        // Check if we should stop
         if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
           keepFetching = false;
           
           if (data.reachedCutoff) {
-            toast.success(`Reached cutoff date (${CUTOFF_DATE})! Operation complete.`);
+            toast.success(`Reached cutoff date (${cutoffDate})! Operation complete.`);
           } else if (data.isAtEnd) {
             toast.info(`Reached the end of available tweets.`);
           } else if (!data.nextCursor) {
@@ -445,22 +468,18 @@ const TweetAnalyzer = () => {
         
         currentBatch++;
         
-        // Prevent infinite loops with a reasonable limit
         if (currentBatch > 50) {
           toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
           keepFetching = false;
         }
         
-        // Small delay between batches to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Restore original mode
       setFetchingMode(originalMode);
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
-      // Refresh the tweets display
       await fetchTweets();
       
     } catch (error) {
@@ -471,7 +490,7 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -683,6 +702,11 @@ const TweetAnalyzer = () => {
                     size="sm" 
                     className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                     disabled={isFetchingUntilCutoff}
+                    onClick={() => {
+                      if (!isLoadingCutoffDate && cutoffDate === DEFAULT_CUTOFF_DATE) {
+                        fetchLatestCutoffDate();
+                      }
+                    }}
                   >
                     <Calendar className={`h-4 w-4 mr-2 ${isFetchingUntilCutoff ? 'animate-spin' : ''}`} />
                     Fetch Until Cutoff
@@ -694,8 +718,13 @@ const TweetAnalyzer = () => {
                     <AlertDialogDescription>
                       This will continuously fetch tweets until reaching the cutoff date:
                       <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
-                        {CUTOFF_DATE}
+                        {isLoadingCutoffDate ? 'Loading latest date...' : cutoffDate}
                       </div>
+                      {!isLoadingCutoffDate && (
+                        <div className="mt-1 text-xs text-blue-300">
+                          Formatted: {formatDateTime(new Date(cutoffDate), 'MMM dd, yyyy HH:mm:ss', 'UTC')}
+                        </div>
+                      )}
                       <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
