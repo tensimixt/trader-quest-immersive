@@ -11,6 +11,41 @@ import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
 import { formatUtcTime } from '@/utils/dateUtils';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Slider
+} from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+// Define initial cutoff date constant (will be updated with latest tweet date)
+const INITIAL_CUTOFF_DATE = "2025-03-16 00:41:00+00";
+
+interface FetchHistoricalResult {
+  success: boolean;
+  isAtEnd: boolean;
+  hasData: boolean;
+}
 
 const TweetAnalyzer = () => {
   const navigate = useNavigate();
@@ -68,6 +103,7 @@ const TweetAnalyzer = () => {
     fetchLatestTweetDate();
   }, []);
 
+  // Fetch latest tweet date from historical_tweets table
   const fetchLatestTweetDate = async () => {
     setIsLatestDateLoading(true);
     
@@ -86,6 +122,7 @@ const TweetAnalyzer = () => {
       }
       
       if (data && data.created_at) {
+        // Format the date in UTC format
         const latestDate = new Date(data.created_at);
         const formattedDate = formatUtcTime(latestDate);
         
@@ -112,8 +149,10 @@ const TweetAnalyzer = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
+  // Auto-click "Continue Older" button after successful fetch
   useEffect(() => {
     return () => {
+      // Clean up timeout on component unmount
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
@@ -122,10 +161,12 @@ const TweetAnalyzer = () => {
 
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
+      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
+      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -349,6 +390,7 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
+        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -385,6 +427,7 @@ const TweetAnalyzer = () => {
     try {
       toast.info(`Starting fetch until cutoff date: ${cutoffDate}`);
       
+      // Set the mode to newer for this operation
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
@@ -396,6 +439,7 @@ const TweetAnalyzer = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
+        // Fetch a batch of tweets
         const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
           body: { 
             cursor: cursor,
@@ -418,10 +462,13 @@ const TweetAnalyzer = () => {
           throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
         }
         
+        // Update cursor for next iteration
         cursor = data.nextCursor;
         
+        // Update stats
         totalTweets += data.totalFetched || 0;
         
+        // Check if we should stop
         if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
           keepFetching = false;
           
@@ -438,21 +485,27 @@ const TweetAnalyzer = () => {
         
         currentBatch++;
         
-        if (currentBatch > 2) {
-          toast.warning(`Reached maximum batch limit (2). Stopping operation.`);
+        // Prevent infinite loops with a reasonable limit
+        if (currentBatch > 50) {
+          toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
           keepFetching = false;
         }
         
+        // Small delay between batches to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
+      // Restore original mode
       setFetchingMode(originalMode);
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
+      // Refresh the tweets display
       await fetchTweets();
       
+      // Refresh the latest tweet date
       fetchLatestTweetDate();
+      
     } catch (error) {
       console.error('Error in fetchTweetsUntilCutoff:', error);
       toast.error(`Failed to complete operation: ${error.message}`);
@@ -747,3 +800,4 @@ const TweetAnalyzer = () => {
 };
 
 export default TweetAnalyzer;
+
