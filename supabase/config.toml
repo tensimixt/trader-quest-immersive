@@ -17,7 +17,6 @@ port = 54324
 
 [auth]
 enabled = true
-port = 54325
 
 [storage]
 enabled = true
@@ -25,14 +24,12 @@ enabled = true
 [realtime]
 enabled = true
 
-[[functions]]
-name = "twitter-historical"
+[functions]
+[functions.twitter-historical]
 verify_jwt = false
 
-[[functions]]
-name = "setup-tweet-cron"
+[functions.setup-tweet-cron]
 verify_jwt = false
 
-[[functions]]
-name = "scheduled-tweet-fetch"
+[functions.scheduled-tweet-fetch]
 verify_jwt = false
