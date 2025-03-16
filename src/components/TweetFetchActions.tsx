@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { History, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import StartNewDialog from './StartNewDialog';
 
 interface TweetFetchActionsProps {
   isPossiblyAtEnd: boolean;
@@ -30,12 +31,23 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
   handleRetryFetch,
   isLoading
 }) => {
+  const [isStartNewDialogOpen, setIsStartNewDialogOpen] = useState(false);
+
+  const handleStartNewClick = () => {
+    setIsStartNewDialogOpen(true);
+  };
+
+  const confirmStartNew = () => {
+    handleStartNewHistorical();
+    setIsStartNewDialogOpen(false);
+  };
+
   return (
     <div className="flex items-center gap-2">
       <Button
         variant="outline"
         size="sm"
-        onClick={handleStartNewHistorical}
+        onClick={handleStartNewClick}
         disabled={isHistoricalLoading}
         className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
       >
@@ -77,6 +89,13 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
         <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
         Refresh
       </Button>
+
+      <StartNewDialog 
+        isOpen={isStartNewDialogOpen} 
+        setIsOpen={setIsStartNewDialogOpen} 
+        onConfirm={confirmStartNew}
+        fetchingMode={fetchingMode}
+      />
     </div>
   );
 };
