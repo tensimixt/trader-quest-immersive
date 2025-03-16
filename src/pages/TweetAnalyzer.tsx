@@ -1,18 +1,16 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppHeader } from '@/components/AppHeader';
 import TweetClassifier from '@/components/TweetClassifier';
 import { marketIntelligence } from '@/data/marketIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { HistoricalTweetBatch } from '@/types/tweetTypes';
-import { formatUtcTime, parseDate } from '@/utils/dateUtils';
+import { formatUtcTime } from '@/utils/dateUtils';
 import {
   Popover,
   PopoverContent,
@@ -27,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -448,7 +447,7 @@ const TweetAnalyzer = () => {
             startNew: cursor === null,
             mode: 'newer',
             tweetsPerRequest: tweetsPerRequest,
-            cutoffDate: cutoffDate  // Pass the cutoff date to the edge function
+            cutoffDate: cutoffDate
           }
         });
         
@@ -801,3 +800,4 @@ const TweetAnalyzer = () => {
 };
 
 export default TweetAnalyzer;
+
