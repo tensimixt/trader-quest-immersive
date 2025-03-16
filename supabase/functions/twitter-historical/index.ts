@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -18,6 +17,37 @@ const corsHeaders = {
 // Create a Supabase client with the X-Client-Info headers
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Helper function to parse dates and handle different formats
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  
+  try {
+    // If it already has T or Z, it's likely ISO format
+    if (dateStr.includes('T') || dateStr.includes('Z')) {
+      return new Date(dateStr);
+    }
+    
+    // Otherwise assume "yyyy-MM-dd HH:mm:ssXXX" format
+    const isoFormat = dateStr.replace(' ', 'T');
+    return new Date(isoFormat);
+  } catch (e) {
+    console.error('Error parsing date:', dateStr, e);
+    return null;
+  }
+}
+
+// Helper function to compare dates
+function isDateAfterCutoff(tweetDate, cutoffDate) {
+  if (!cutoffDate) return false;
+  
+  const tweetDateObj = parseDate(tweetDate);
+  const cutoffDateObj = parseDate(cutoffDate);
+  
+  if (!tweetDateObj || !cutoffDateObj) return false;
+  
+  return tweetDateObj > cutoffDateObj;
+}
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
   try {
@@ -103,11 +133,11 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older' } = await req.json();
+    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older', cutoffDate = null } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}, cutoffDate: ${cutoffDate || 'none'}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -129,10 +159,17 @@ serve(async (req) => {
     let emptyResultCount = 0; // Track empty results to handle API inconsistency
     let lowTweetCountPages = 0; // Track pages with very few tweets
     let duplicateCursorCount = 0; // Track how many times we get the same cursor
+    let reachedCutoff = false; // Flag to track if we've reached the cutoff date
     const expectedTweetsPerPage = 20; // Twitter typically returns around 20 tweets per page
     const seenCursors = new Set(); // Keep track of seen cursors to detect loops
     
-    for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
+    // Parse the cutoff date if provided
+    const cutoffDateObj = cutoffDate ? parseDate(cutoffDate) : null;
+    if (cutoffDateObj) {
+      console.log(`Using cutoff date: ${cutoffDateObj.toISOString()}`);
+    }
+    
+    for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS && !reachedCutoff; i++) {
       // Construct URL with pagination parameters
       let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
       if (nextCursor) {
@@ -275,23 +312,40 @@ serve(async (req) => {
       }
       
       // Process tweets for storage - filter out tweets that already exist in the database
-      const processedTweets = data.tweets.map(tweet => ({
-        id: tweet.id,
-        text: tweet.text,
-        created_at: new Date(tweet.createdAt),
-        author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
-        author_name: tweet.author?.name || tweet.user?.name,
-        author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
-        is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
-        is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
-        in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
-        quoted_tweet_id: tweet.quoted_tweet?.id,
-        quoted_tweet_text: tweet.quoted_tweet?.text,
-        quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
-                             (tweet.quoted_tweet?.user?.screen_name),
-        entities: tweet.entities || {},
-        extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
-      }));
+      const processedTweets = data.tweets.map(tweet => {
+        // Parse tweet date
+        const tweetDate = new Date(tweet.createdAt);
+        
+        // Check if we've reached the cutoff date when fetching newer tweets
+        if (cutoffDateObj && mode === 'newer' && tweetDate <= cutoffDateObj) {
+          console.log(`Found tweet created at ${tweetDate.toISOString()} which is before/at cutoff date ${cutoffDateObj.toISOString()}`);
+          reachedCutoff = true;
+        }
+        
+        return {
+          id: tweet.id,
+          text: tweet.text,
+          created_at: tweetDate,
+          author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
+          author_name: tweet.author?.name || tweet.user?.name,
+          author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
+          is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
+          is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
+          in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
+          quoted_tweet_id: tweet.quoted_tweet?.id,
+          quoted_tweet_text: tweet.quoted_tweet?.text,
+          quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
+                               (tweet.quoted_tweet?.user?.screen_name),
+          entities: tweet.entities || {},
+          extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
+        };
+      });
+      
+      // If we've reached the cutoff date, stop fetching more pages
+      if (reachedCutoff) {
+        console.log(`Reached cutoff date (${cutoffDate}), stopping further requests`);
+        break;
+      }
       
       // Store tweets in the database
       if (processedTweets.length > 0) {
@@ -382,7 +436,8 @@ serve(async (req) => {
       message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`,
       cursorMode: mode,
       isAtEnd: emptyResultCount >= 1.5 || lowTweetCountPages >= 3 || duplicateCursorCount >= 1,
-      cursorLoopDetected: seenCursors.size > 0 && seenCursors.size < pagesProcessed
+      cursorLoopDetected: seenCursors.size > 0 && seenCursors.size < pagesProcessed,
+      reachedCutoff: reachedCutoff
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
