@@ -1,98 +1,10 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
-
-const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
-// Twitter crypto list ID
-const TWITTER_LIST_ID = '1674940005557387266';
-const MAX_REQUESTS = 1000; // Maximum number of pages to fetch
-const MAX_RETRIES = 3; // Maximum number of retries for API requests
-const RETRY_DELAY = 1000; // Delay between retries in milliseconds
-const DEFAULT_BATCH_SIZE = 20; // Default batch size set to 20
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Create a Supabase client with the X-Client-Info headers
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-
-async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
-  try {
-    const response = await fetch(url, options);
-    
-    // If we get a 502 Bad Gateway or other 5xx error
-    if ((response.status >= 500 && response.status < 600) && retries > 0) {
-      console.log(`Received ${response.status} error, retrying... (${retries} retries left)`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1))); // Exponential backoff
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    
-    if (!response.ok && retries > 0) {
-      console.log(`Request failed with status ${response.status}, retrying... (${retries} retries left)`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1))); // Exponential backoff
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    
-    return response;
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`Request failed with error: ${error.message}, retrying... (${retries} retries left)`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1))); // Exponential backoff
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    throw error;
-  }
-}
-
-// Function to get stored cursor from the database
-async function getStoredCursor(supabase, mode) {
-  try {
-    const { data, error } = await supabase
-      .from('twitter_cursors')
-      .select('cursor_value')
-      .eq('cursor_type', mode)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching stored cursor:', error);
-      return null;
-    }
-    
-    return data?.cursor_value || null;
-  } catch (error) {
-    console.error('Exception when fetching cursor:', error);
-    return null;
-  }
-}
-
-// Function to store cursor in the database
-async function storeCursor(supabase, mode, cursorValue) {
-  if (!cursorValue) return;
-  
-  try {
-    const { error } = await supabase
-      .from('twitter_cursors')
-      .upsert(
-        { 
-          cursor_type: mode, 
-          cursor_value: cursorValue,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'cursor_type' }
-      );
-    
-    if (error) {
-      console.error('Error storing cursor:', error);
-    } else {
-      console.log(`Successfully stored cursor for mode: ${mode}`);
-    }
-  } catch (error) {
-    console.error('Exception when storing cursor:', error);
-  }
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -101,301 +13,233 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Historical tweets function called');
-    
-    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older' } = await req.json();
-    // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
-    const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
-    
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
-    
-    // Create Supabase client for database operations
+    const {
+      cursor,
+      batchSize = 20,
+      startNew = false,
+      mode = 'older',
+      tweetsPerRequest = 20,
+      cutoffDate = null
+    } = await req.json();
+
+    console.log(`Params: cursor=${cursor}, batchSize=${batchSize}, startNew=${startNew}, mode=${mode}, tweetsPerRequest=${tweetsPerRequest}, cutoffDate=${cutoffDate}`);
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://zzbftruhrjfmynhamypk.supabase.co';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Determine which cursor to use
-    let nextCursor = cursor;
-    
-    // If no cursor provided but not starting new, get stored cursor from database
-    if (!cursor && !startNew) {
-      nextCursor = await getStoredCursor(supabase, mode);
-      console.log(`Retrieved stored cursor for mode ${mode}: ${nextCursor || 'none found'}`);
+
+    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4';
+    let apiUrl = 'https://api.twitterapi.io/twitter/list/tweets';
+
+    if (cursor && !startNew) {
+      apiUrl += `?cursor=${encodeURIComponent(cursor)}`;
     }
-    
+
     let totalFetched = 0;
-    let totalStored = 0;
-    let lastCursor = null;
     let pagesProcessed = 0;
-    let consecutiveErrors = 0;
-    let emptyResultCount = 0; // Track empty results to handle API inconsistency
-    let lowTweetCountPages = 0; // Track pages with very few tweets
-    let duplicateCursorCount = 0; // Track how many times we get the same cursor
-    const expectedTweetsPerPage = 20; // Twitter typically returns around 20 tweets per page
-    const seenCursors = new Set(); // Keep track of seen cursors to detect loops
-    
-    for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
-      // Construct URL with pagination parameters
-      let url = `https://api.twitterapi.io/twitter/list/tweets?listId=${TWITTER_LIST_ID}`;
-      if (nextCursor) {
-        url += `&cursor=${nextCursor}`;
+    let reachedCutoff = false;
+
+    const fetchAndProcessTweets = async (apiUrl: string) => {
+      console.log(`Making Twitter API request to: ${apiUrl}`);
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'X-API-Key': TWITTER_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Twitter API error:', errorText);
+        throw new Error(`Twitter API error: ${response.status} - ${errorText}`);
       }
-      
-      console.log(`Request ${i+1}/${actualBatchSize}, URL: ${url}`);
-      
-      let response;
+
+      const data = await response.json();
+
+      if (!data.tweets || !Array.isArray(data.tweets)) {
+        console.warn('No tweets returned or invalid format');
+        return [];
+      }
+
+      return data.tweets;
+    };
+
+    let allTweets: any[] = [];
+    let currentCursor = cursor;
+
+    while (totalFetched < batchSize && !reachedCutoff) {
       try {
-        response = await fetchWithRetry(url, {
-          method: 'GET',
-          headers: {
-            'X-API-Key': TWITTER_API_KEY,
-            'Content-Type': 'application/json',
-          },
-        });
+        let currentApiUrl = apiUrl;
+        if (currentCursor && !startNew) {
+          currentApiUrl = 'https://api.twitterapi.io/twitter/list/tweets' + `?cursor=${encodeURIComponent(currentCursor)}`;
+        }
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Twitter API error on request ${i+1}:`, errorText, 'Status:', response.status);
-          
-          // If we've hit multiple consecutive errors, we should break the loop
-          consecutiveErrors++;
-          if (consecutiveErrors >= 3) {
-            console.error(`Hit ${consecutiveErrors} consecutive errors, stopping batch processing`);
+        const tweets = await fetchAndProcessTweets(currentApiUrl);
+
+        if (tweets.length === 0) {
+          console.log('No more tweets available.');
+          break;
+        }
+
+        totalFetched += tweets.length;
+        pagesProcessed++;
+        allTweets = allTweets.concat(tweets);
+        currentCursor = (tweets.length > 0) ? (tweets[tweets.length - 1].cursor || data.cursor) : null;
+
+        if (cutoffDate) {
+          const tweetDate = new Date(tweets[0].createdAt);
+          const cutoffDateTime = new Date(cutoffDate);
+
+          if ((mode === 'newer' && tweetDate <= cutoffDateTime) ||
+            (mode === 'older' && tweetDate >= cutoffDateTime)) {
+            console.log(`Reached cutoff date (${cutoffDate}). Stopping.`);
+            reachedCutoff = true;
             break;
           }
-          
-          // Wait longer between requests if we're getting errors
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          continue; // Skip to the next iteration
         }
-        
-        // Reset consecutive errors on success
-        consecutiveErrors = 0;
-      } catch (error) {
-        console.error(`Failed to fetch tweets after retries: ${error.message}`);
-        // If we've already processed some tweets, don't fail the entire request
-        if (pagesProcessed > 0) {
-          break;
-        }
-        throw error;
-      }
 
-      // Check if the response has the correct content type
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await response.text();
-        console.error('Non-JSON response from Twitter API:', responseText);
-        
-        consecutiveErrors++;
-        if (consecutiveErrors >= 3) {
-          console.error(`Hit ${consecutiveErrors} consecutive non-JSON responses, stopping batch processing`);
+        if (tweets.length < tweetsPerRequest) {
+          console.log('Fewer tweets than requested, may be at end.');
           break;
         }
-        
-        // Wait longer between requests if we're getting errors
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        continue; // Skip to the next iteration
-      }
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        console.error('Error parsing JSON response:', e);
-        consecutiveErrors++;
-        if (consecutiveErrors >= 3) {
-          console.error(`Hit ${consecutiveErrors} consecutive JSON parsing errors, stopping batch processing`);
+        if (!currentCursor) {
+          console.log('No cursor returned, may be at end.');
           break;
         }
-        continue;
-      }
-      
-      pagesProcessed++;
-      
-      // Check if we have tweets in the response
-      if (!data.tweets || !Array.isArray(data.tweets) || data.tweets.length === 0) {
-        console.log(`No tweets returned in request ${i+1}`);
-        emptyResultCount++;
-        
-        // If we've received 2 consecutive empty results, assume we've reached the end
-        if (emptyResultCount >= 2) {
-          console.log(`Received ${emptyResultCount} consecutive empty results, assuming end of data`);
-          break;
-        }
-        
-        // If there's a next cursor but no tweets, we'll try one more time
-        if (data.next_cursor) {
-          // Check if we're seeing the same cursor repeatedly
-          if (nextCursor === data.next_cursor) {
-            duplicateCursorCount++;
-            if (duplicateCursorCount >= 2) {
-              console.log(`Received the same cursor ${duplicateCursorCount} times, likely at the end of data`);
-              break;
-            }
-          } else {
-            duplicateCursorCount = 0;
-          }
-          
-          // Check if we've seen this cursor before (loop detection)
-          if (seenCursors.has(data.next_cursor)) {
-            console.log(`Detected cursor loop with cursor: ${data.next_cursor}, stopping`);
-            break;
-          }
-          
-          seenCursors.add(data.next_cursor);
-          nextCursor = data.next_cursor;
-          lastCursor = nextCursor;
-          continue;
-        } else {
-          break;
-        }
-      }
-      
-      // Reset empty result count if we got tweets
-      emptyResultCount = 0;
-      
-      // Track if we're getting significantly fewer tweets than expected
-      if (data.tweets.length < expectedTweetsPerPage / 2) {
-        lowTweetCountPages++;
-        console.log(`Warning: Only received ${data.tweets.length} tweets, which is less than half of expected ${expectedTweetsPerPage}`);
-        
-        // If we get 3 consecutive pages with very few tweets, we might be approaching the end
-        if (lowTweetCountPages >= 3) {
-          console.log(`Multiple pages with very few tweets, might be approaching end of available data`);
-        }
-      } else {
-        // Reset the counter if we get a normal page
-        lowTweetCountPages = 0;
-      }
-      
-      console.log(`Fetched ${data.tweets.length} tweets in this page (expected around ${expectedTweetsPerPage})`);
-      totalFetched += data.tweets.length;
-      
-      // Log if we have has_next_page value and what it is
-      if (data.has_next_page !== undefined) {
-        console.log(`API reports has_next_page: ${data.has_next_page}`);
-      }
-      
-      // Process tweets for storage - filter out tweets that already exist in the database
-      const processedTweets = data.tweets.map(tweet => ({
-        id: tweet.id,
-        text: tweet.text,
-        created_at: new Date(tweet.createdAt),
-        author_username: tweet.author?.userName || tweet.user?.screen_name || "unknown",
-        author_name: tweet.author?.name || tweet.user?.name,
-        author_profile_picture: tweet.author?.profilePicture || tweet.user?.profile_image_url_https,
-        is_reply: !!tweet.isReply || !!tweet.in_reply_to_status_id,
-        is_quote: !!tweet.quoted_tweet || !!tweet.is_quote_status,
-        in_reply_to_id: tweet.inReplyToId || tweet.in_reply_to_status_id,
-        quoted_tweet_id: tweet.quoted_tweet?.id,
-        quoted_tweet_text: tweet.quoted_tweet?.text,
-        quoted_tweet_author: tweet.quoted_tweet?.author?.userName || 
-                             (tweet.quoted_tweet?.user?.screen_name),
-        entities: tweet.entities || {},
-        extended_entities: tweet.extendedEntities || tweet.extended_entities || {},
-      }));
-      
-      // Store tweets in the database
-      if (processedTweets.length > 0) {
-        const { error, count } = await supabase
-          .from('historical_tweets')
-          .upsert(processedTweets, { 
-            onConflict: 'id',
-            count: 'exact' // Get the count of affected rows
-          });
-        
-        if (error) {
-          console.error('Error storing tweets in database:', error);
-          // Continue with the next batch even if there's an error
-        } else {
-          console.log(`Successfully stored ${count} tweets in the database`);
-          totalStored += count || 0;
-        }
-      }
-      
-      // Update cursor for next page if available
-      if (data.next_cursor) {
-        // Check if we're seeing the same cursor repeatedly
-        if (nextCursor === data.next_cursor) {
-          duplicateCursorCount++;
-          if (duplicateCursorCount >= 2) {
-            console.log(`Received the same cursor ${duplicateCursorCount} times, likely at the end of data`);
-            break;
-          }
-        } else {
-          duplicateCursorCount = 0;
-        }
-        
-        // Check if we've seen this cursor before (loop detection)
-        if (seenCursors.has(data.next_cursor)) {
-          console.log(`Detected cursor loop with cursor: ${data.next_cursor}, stopping`);
-          break;
-        }
-        
-        seenCursors.add(data.next_cursor);
-        nextCursor = data.next_cursor;
-        lastCursor = nextCursor;
-      } else {
-        console.log(`No next cursor available, ending pagination at request ${i+1}`);
-        break;
-      }
-      
-      // Handle Twitter API inconsistency: If we have a next_cursor but very few tweets
-      // or a page with no new tweets (totalStored didn't increase), we might be at the end
-      if ((data.tweets.length < 5 || (processedTweets.length > 0 && totalStored === 0)) && i > 2) {
-        console.log(`Warning: Only ${data.tweets.length} tweets returned, or no new tweets stored. Might be approaching end of data`);
-        emptyResultCount += 0.5; // Count low tweet counts as "half empty"
-        
-        if (emptyResultCount >= 2) {
-          console.log(`Multiple requests with few or no tweets, assuming we're at the end`);
-          break;
-        }
-      }
-      
-      // Check if we've hit our global page limit
-      if (pagesProcessed >= MAX_REQUESTS) {
-        console.log(`Reached maximum page limit of ${MAX_REQUESTS}. Stopping further requests.`);
-        break;
-      }
-      
-      // Adaptively adjust the delay between requests based on the number of tweets received
-      // If we got fewer tweets than expected, the API might be rate limiting us
-      const delayMultiplier = data.tweets.length < (expectedTweetsPerPage / 2) ? 1.5 : 1; 
-      const baseDelay = 1000; // 1 second base delay
-      const delay = Math.round(baseDelay * delayMultiplier);
-      
-      if (i < actualBatchSize - 1) {
-        console.log(`Waiting ${delay}ms before next request...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+
+      } catch (apiError) {
+        console.error('API Fetch Error:', apiError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `API Fetch Error: ${apiError.message}`,
+            totalFetched,
+            totalStored: 0,
+            nextCursor: cursor,
+            pagesProcessed,
+            message: `Error processing page ${pagesProcessed}`,
+            cursorMode: mode,
+            isAtEnd: true,
+            reachedCutoff
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
-    // Store the latest cursor for future use, only if we had a successful fetch
-    if (lastCursor) {
-      await storeCursor(supabase, mode, lastCursor);
+    const normalizedTweets = allTweets.map((tweet: any) => ({
+      id: tweet.id,
+      text: tweet.text,
+      createdAt: tweet.createdAt,
+      author: {
+        userName: tweet.author?.userName || "unknown",
+        name: tweet.author?.name || "Unknown User",
+        profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
+      },
+      isReply: tweet.isReply || false,
+      isQuote: tweet.quoted_tweet ? true : false,
+      inReplyToId: tweet.inReplyToId,
+      quoted_tweet: tweet.quoted_tweet ? {
+        text: tweet.quoted_tweet.text,
+        author: tweet.quoted_tweet.author ? {
+          userName: tweet.quoted_tweet.author.userName
+        } : undefined
+      } : undefined,
+      entities: tweet.entities || { media: [] },
+      extendedEntities: tweet.extendedEntities || { media: [] }
+    }));
+
+    const { data, error, count } = await supabase
+      .from('historical_tweets')
+      .upsert(
+        normalizedTweets.map((tweet: any) => ({
+          id: tweet.id,
+          text: tweet.text,
+          created_at: tweet.createdAt,
+          author_username: tweet.author.userName,
+          author_name: tweet.author.name,
+          author_profile_picture: tweet.author.profilePicture,
+          is_reply: tweet.isReply,
+          is_quote: tweet.isQuote,
+          in_reply_to_id: tweet.inReplyToId,
+          quoted_tweet_text: tweet.quoted_tweet?.text,
+          quoted_tweet_author: tweet.quoted_tweet?.author?.userName,
+          entities: tweet.entities,
+          extended_entities: tweet.extendedEntities
+        })),
+        { onConflict: 'id' }
+      )
+      .select('*', { count: 'exact' });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Supabase error: ${error.message}`,
+          totalFetched,
+          totalStored: 0,
+          nextCursor: cursor,
+          pagesProcessed,
+          message: `Error storing tweets: ${error.message}`,
+          cursorMode: mode,
+          isAtEnd: true,
+          reachedCutoff
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      totalFetched,
-      totalStored,
-      nextCursor: lastCursor,
-      pagesProcessed,
-      message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`,
-      cursorMode: mode,
-      isAtEnd: emptyResultCount >= 1.5 || lowTweetCountPages >= 3 || duplicateCursorCount >= 1,
-      cursorLoopDetected: seenCursors.size > 0 && seenCursors.size < pagesProcessed
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if (currentCursor) {
+      const { error: cursorError } = await supabase
+        .from('twitter_cursors')
+        .upsert(
+          { cursor_type: mode, cursor_value: currentCursor },
+          { onConflict: 'cursor_type' }
+        );
+
+      if (cursorError) {
+        console.error('Error storing cursor:', cursorError);
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        totalFetched,
+        totalStored: count || 0,
+        nextCursor: currentCursor,
+        pagesProcessed,
+        message: `Successfully processed ${pagesProcessed} pages, fetched ${totalFetched} tweets, stored ${count || 0} new/updated tweets`,
+        cursorMode: mode,
+        isAtEnd: totalFetched < tweetsPerRequest && pagesProcessed > 0,
+        reachedCutoff
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
   } catch (error) {
-    console.error('Error in historical tweets function:', error);
-    
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: error.message,
-      message: "Error fetching historical tweets"
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Unexpected error:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `Unexpected error: ${error.message}`,
+        totalFetched: 0,
+        totalStored: 0,
+        nextCursor: null,
+        pagesProcessed: 0,
+        message: `Unexpected error: ${error.message}`,
+        cursorMode: 'older',
+        isAtEnd: true,
+        reachedCutoff: false
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });

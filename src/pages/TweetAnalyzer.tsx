@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Calendar } from 'lucide-react';
@@ -38,8 +37,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Define cutoff date constant
-const CUTOFF_DATE = "2025-03-09 13:25:14.763946+00";
+// Default cutoff date constant (will be overridden by most recent tweet date)
+const DEFAULT_CUTOFF_DATE = "2025-03-09 13:25:14.763946+00";
 
 interface FetchHistoricalResult {
   success: boolean;
@@ -65,6 +64,7 @@ const TweetAnalyzer = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAutoClickEnabled, setIsAutoClickEnabled] = useState(true);
   const [isUntilCutoffDialogOpen, setIsUntilCutoffDialogOpen] = useState(false);
+  const [cutoffDate, setCutoffDate] = useState<string>(DEFAULT_CUTOFF_DATE);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const autoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -386,7 +386,10 @@ const TweetAnalyzer = () => {
     setIsUntilCutoffDialogOpen(false);
     
     try {
-      toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
+      // Refresh the latest tweet date before starting
+      await getLatestTweetDate();
+      
+      toast.info(`Starting fetch until cutoff date: ${cutoffDate}`);
       
       // Set the mode to newer for this operation
       const originalMode = fetchingMode;
@@ -408,7 +411,7 @@ const TweetAnalyzer = () => {
             startNew: cursor === null,
             mode: 'newer',
             tweetsPerRequest: tweetsPerRequest,
-            cutoffDate: CUTOFF_DATE
+            cutoffDate: cutoffDate
           }
         });
         
@@ -434,7 +437,7 @@ const TweetAnalyzer = () => {
           keepFetching = false;
           
           if (data.reachedCutoff) {
-            toast.success(`Reached cutoff date (${CUTOFF_DATE})! Operation complete.`);
+            toast.success(`Reached cutoff date (${new Date(cutoffDate).toLocaleString()})! Operation complete.`);
           } else if (data.isAtEnd) {
             toast.info(`Reached the end of available tweets.`);
           } else if (!data.nextCursor) {
@@ -533,6 +536,29 @@ const TweetAnalyzer = () => {
       });
     } catch (err) {
       toast.error(`Failed to start new fetch: ${err.message}`);
+    }
+  };
+
+  const getLatestTweetDate = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-latest-tweet-date');
+      
+      if (error) {
+        console.error('Error fetching latest tweet date:', error);
+        return;
+      }
+      
+      if (data?.success && data?.latest_date) {
+        console.log('Setting cutoff date to latest tweet date:', data.latest_date);
+        setCutoffDate(data.latest_date);
+        toast.info(`Using most recent tweet date as cutoff: ${new Date(data.latest_date).toLocaleString()}`);
+      } else {
+        console.log('No latest tweet date found, using default');
+        setCutoffDate(DEFAULT_CUTOFF_DATE);
+      }
+    } catch (error) {
+      console.error('Error in getLatestTweetDate:', error);
+      toast.error('Failed to get latest tweet date, using default');
     }
   };
 
@@ -686,18 +712,22 @@ const TweetAnalyzer = () => {
                     disabled={isFetchingUntilCutoff}
                   >
                     <Calendar className={`h-4 w-4 mr-2 ${isFetchingUntilCutoff ? 'animate-spin' : ''}`} />
-                    Fetch Until Cutoff
+                    Fetch Until Latest
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="bg-black/80 border-blue-500/40">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-blue-400">Fetch Until Cutoff Date</AlertDialogTitle>
+                    <AlertDialogTitle className="text-blue-400">Fetch Until Latest Tweet Date</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will continuously fetch tweets until reaching the cutoff date:
+                      This will continuously fetch tweets until reaching the most recent tweet date in your database:
                       <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/20 rounded text-white font-mono">
-                        {CUTOFF_DATE}
+                        {cutoffDate}
                       </div>
                       <p className="mt-2">This operation may take a while and make many API requests. Are you sure you want to proceed?</p>
+                      <p className="mt-2 text-xs text-blue-400">
+                        <Info className="inline-block h-3 w-3 mr-1" />
+                        This uses the most recent tweet date from your database to avoid duplicates
+                      </p>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -711,7 +741,7 @@ const TweetAnalyzer = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </div>
+            
             <Button
               variant="outline"
               size="sm"
