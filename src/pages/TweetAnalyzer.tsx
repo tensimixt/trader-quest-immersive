@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Calendar } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, History, AlertTriangle, Settings, Info, Calendar, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ const TweetAnalyzer = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoricalLoading, setIsHistoricalLoading] = useState(false);
   const [isFetchingUntilCutoff, setIsFetchingUntilCutoff] = useState(false);
+  const [isFetchingNew, setIsFetchingNew] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tweetData, setTweetData] = useState<any[]>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
@@ -109,10 +110,8 @@ const TweetAnalyzer = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Auto-click "Continue Older" button after successful fetch
   useEffect(() => {
     return () => {
-      // Clean up timeout on component unmount
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
@@ -121,12 +120,10 @@ const TweetAnalyzer = () => {
 
   const setupAutoClick = () => {
     if (isAutoClickEnabled && !isPossiblyAtEnd && !isHistoricalLoading && fetchingMode === 'older') {
-      // Clear any existing timeout
       if (autoClickTimeoutRef.current) {
         clearTimeout(autoClickTimeoutRef.current);
       }
       
-      // Set new timeout to click the button after 5 seconds
       autoClickTimeoutRef.current = setTimeout(() => {
         if (continueButtonRef.current && !isHistoricalLoading && !isPossiblyAtEnd) {
           toast.info("Auto-clicking Continue Older...");
@@ -350,7 +347,6 @@ const TweetAnalyzer = () => {
         
         await fetchTweets();
         
-        // Schedule auto-click after successful fetch
         setupAutoClick();
         
         return {
@@ -387,7 +383,6 @@ const TweetAnalyzer = () => {
     try {
       toast.info(`Starting fetch until cutoff date: ${CUTOFF_DATE}`);
       
-      // Set the mode to newer for this operation
       const originalMode = fetchingMode;
       setFetchingMode('newer');
       
@@ -399,7 +394,6 @@ const TweetAnalyzer = () => {
       while (keepFetching) {
         toast.info(`Fetching batch ${currentBatch}...`);
         
-        // Fetch a batch of tweets
         const result = await supabase.functions.invoke<HistoricalTweetBatch>('twitter-historical', {
           body: { 
             cursor: cursor,
@@ -422,13 +416,10 @@ const TweetAnalyzer = () => {
           throw new Error(data?.error || `Failed to fetch batch ${currentBatch}`);
         }
         
-        // Update cursor for next iteration
         cursor = data.nextCursor;
         
-        // Update stats
         totalTweets += data.totalFetched || 0;
         
-        // Check if we should stop
         if (data.reachedCutoff || data.isAtEnd || !data.nextCursor || data.totalFetched === 0) {
           keepFetching = false;
           
@@ -445,22 +436,18 @@ const TweetAnalyzer = () => {
         
         currentBatch++;
         
-        // Prevent infinite loops with a reasonable limit
         if (currentBatch > 50) {
           toast.warning(`Reached maximum batch limit (50). Stopping operation.`);
           keepFetching = false;
         }
         
-        // Small delay between batches to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Restore original mode
       setFetchingMode(originalMode);
       
       toast.success(`Operation complete! Fetched ${totalTweets} tweets across ${currentBatch - 1} batches.`);
       
-      // Refresh the tweets display
       await fetchTweets();
       
     } catch (error) {
@@ -471,7 +458,50 @@ const TweetAnalyzer = () => {
     }
   };
 
-  const retryWithBackoff = async <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+  const fetchNewTweets = async () => {
+    if (lastFetchAttempt && (new Date().getTime() - lastFetchAttempt.getTime() < 3000)) {
+      toast.warning('Please wait a moment before fetching again');
+      return;
+    }
+    
+    setLastFetchAttempt(new Date());
+    setIsFetchingNew(true);
+    
+    try {
+      toast.info('Fetching new tweets...');
+      
+      const result = await supabase.functions.invoke('fetch-new');
+      
+      if (result.error) {
+        throw new Error(`Function error: ${result.error.message}`);
+      }
+      
+      const data = result.data;
+      console.log('Fetch new tweets response:', data);
+      
+      if (data?.success) {
+        toast.success(`Fetched ${data.totalFetched} new tweets (stored ${data.totalStored} new/updated tweets)`);
+        
+        await fetchTweets();
+        
+        setApiErrorCount(0);
+      } else {
+        throw new Error(data?.error || 'Failed to fetch new tweets');
+      }
+    } catch (error) {
+      console.error('Error fetching new tweets:', error);
+      toast.error('Failed to fetch new tweets');
+      setApiErrorCount(prev => prev + 1);
+      
+      if (apiErrorCount > 2) {
+        toast.error('Multiple API errors detected. The Twitter API may be experiencing issues.');
+      }
+    } finally {
+      setIsFetchingNew(false);
+    }
+  };
+
+  const retryWithBackoff = <T,>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -675,6 +705,17 @@ const TweetAnalyzer = () => {
                   )}
                 </Tooltip>
               </TooltipProvider>
+              
+              <Button
+                variant="outline"
+                size="sm" 
+                onClick={fetchNewTweets}
+                disabled={isFetchingNew}
+                className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+              >
+                <Plus className={`h-4 w-4 mr-2 ${isFetchingNew ? 'animate-spin' : ''}`} />
+                Fetch New
+              </Button>
               
               <AlertDialog open={isUntilCutoffDialogOpen} onOpenChange={setIsUntilCutoffDialogOpen}>
                 <AlertDialogTrigger asChild>
