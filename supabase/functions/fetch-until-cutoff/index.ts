@@ -72,6 +72,50 @@ async function fetchLatestTweetDate(): Promise<string> {
   }
 }
 
+// Helper function to store tweets in the database
+async function storeTweetsInDatabase(tweets) {
+  if (!tweets || tweets.length === 0) {
+    console.log('No tweets to store');
+    return { count: 0, error: null };
+  }
+  
+  console.log(`Attempting to store ${tweets.length} tweets in the database`);
+  
+  // Normalize the tweets for storage
+  const normalizedTweets = tweets.map(tweet => ({
+    id: tweet.id,
+    text: tweet.text,
+    created_at: new Date(tweet.createdAt),
+    author_username: tweet.author?.userName || "unknown",
+    author_name: tweet.author?.name || "Unknown User",
+    author_profile_picture: tweet.author?.profilePicture || null,
+    is_reply: !!tweet.isReply,
+    is_quote: !!tweet.isQuote,
+    in_reply_to_id: tweet.inReplyToId,
+    quoted_tweet_id: tweet.quoted_tweet?.id,
+    quoted_tweet_text: tweet.quoted_tweet?.text,
+    quoted_tweet_author: tweet.quoted_tweet?.author?.userName,
+    entities: tweet.entities || {},
+    extended_entities: tweet.extendedEntities || {}
+  }));
+  
+  // Store the tweets using upsert to avoid duplicates
+  const { error, count } = await supabase
+    .from('historical_tweets')
+    .upsert(normalizedTweets, { 
+      onConflict: 'id',
+      count: 'exact' // Get the exact count of affected rows
+    });
+  
+  if (error) {
+    console.error('Error storing tweets in database:', error);
+  } else {
+    console.log(`Successfully stored/updated ${count} tweets in the database`);
+  }
+  
+  return { count: count || 0, error };
+}
+
 // Handle CORS preflight requests
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -163,67 +207,37 @@ Deno.serve(async (req) => {
       nextCursor = data.cursor;
       
       // Check if any tweets are older than the cutoff date
+      let tweetsToProcess = [];
+      let foundCutoff = false;
+      
       for (const tweet of data.tweets) {
         const tweetDate = new Date(tweet.createdAt);
         const tweetTimestamp = tweetDate.getTime();
         
-        if (tweetTimestamp <= cutoffTimestamp) {
+        // Only include tweets newer than the cutoff date
+        if (tweetTimestamp > cutoffTimestamp) {
+          tweetsToProcess.push(tweet);
+        } else {
           console.log(`Found tweet (${tweet.id}) from ${tweetDate.toISOString()} which is at or before cutoff date`);
+          foundCutoff = true;
           reachedCutoff = true;
-          break;
+          // We don't break here, to ensure we process all newer tweets from this batch
         }
       }
       
-      // Process and store tweets
-      const normalizedTweets = data.tweets.map((tweet: any) => ({
-        id: tweet.id,
-        text: tweet.text,
-        createdAt: tweet.createdAt,
-        author: {
-          userName: tweet.author?.userName || "unknown",
-          name: tweet.author?.name || "Unknown User",
-          profilePicture: tweet.author?.profilePicture || "https://pbs.twimg.com/profile_images/1608560432897314823/ErsxYIuW_normal.jpg"
-        },
-        isReply: tweet.isReply || false,
-        isQuote: tweet.quoted_tweet ? true : false,
-        inReplyToId: tweet.inReplyToId,
-        quoted_tweet: tweet.quoted_tweet ? {
-          text: tweet.quoted_tweet.text,
-          author: tweet.quoted_tweet.author ? {
-            userName: tweet.quoted_tweet.author.userName
-          } : undefined
-        } : undefined,
-        entities: tweet.entities || { media: [] },
-        extendedEntities: tweet.extendedEntities || { media: [] }
-      }));
-
-      // Store tweets in historical_tweets table using upsert
-      const { data: storedData, error: storageError } = await supabase
-        .from('historical_tweets')
-        .upsert(
-          normalizedTweets.map((tweet: any) => ({
-            id: tweet.id,
-            text: tweet.text,
-            created_at: tweet.createdAt,
-            author: tweet.author,
-            is_reply: tweet.isReply,
-            is_quote: tweet.isQuote,
-            in_reply_to_id: tweet.inReplyToId,
-            quoted_tweet: tweet.quoted_tweet,
-            entities: tweet.entities,
-            extended_entities: tweet.extendedEntities
-          })),
-          { onConflict: 'id' }
-        );
-
-      if (storageError) {
-        console.error('Error storing tweets:', storageError);
+      // Process and store tweets that are newer than the cutoff
+      if (tweetsToProcess.length > 0) {
+        const { count, error } = await storeTweetsInDatabase(tweetsToProcess);
+        
+        if (!error) {
+          console.log(`Stored ${count} tweets in batch ${batch + 1}`);
+          totalTweetsStored += count;
+        }
       } else {
-        console.log(`Stored ${normalizedTweets.length} tweets in batch ${batch + 1}`);
-        totalTweetsStored += normalizedTweets.length;
+        console.log(`No tweets newer than cutoff date in batch ${batch + 1}`);
       }
-
-      totalTweetsFetched += normalizedTweets.length;
+      
+      totalTweetsFetched += data.tweets.length;
       pagesProcessed++;
       
       // Update the cursor in the database
@@ -243,7 +257,12 @@ Deno.serve(async (req) => {
       }
 
       // Stop if we've reached the cutoff date or there's no more pagination
-      if (reachedCutoff || !nextCursor) {
+      if (foundCutoff || !nextCursor) {
+        if (foundCutoff) {
+          console.log('Reached cutoff date, stopping further requests');
+        } else {
+          console.log('No pagination cursor returned, stopping');
+        }
         break;
       }
       
