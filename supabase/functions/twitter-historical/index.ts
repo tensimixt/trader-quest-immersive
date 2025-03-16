@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -94,6 +93,21 @@ async function storeCursor(supabase, mode, cursorValue) {
   }
 }
 
+// Function to check if a tweet is older than the cutoff date
+function isTweetOlderThanCutoff(tweetCreatedAt: string, cutoffDate: string): boolean {
+  if (!cutoffDate || !tweetCreatedAt) return false;
+  
+  try {
+    const tweetDate = new Date(tweetCreatedAt);
+    const cutoffTimestamp = new Date(cutoffDate);
+    
+    return tweetDate <= cutoffTimestamp;
+  } catch (error) {
+    console.error('Error comparing dates:', error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -103,11 +117,11 @@ serve(async (req) => {
   try {
     console.log('Historical tweets function called');
     
-    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older' } = await req.json();
+    const { cursor, batchSize = DEFAULT_BATCH_SIZE, startNew = false, mode = 'older', tweetsPerRequest = 20, cutoffDate } = await req.json();
     // Ensure batchSize doesn't exceed our MAX_REQUESTS limit
     const actualBatchSize = Math.min(parseInt(batchSize), MAX_REQUESTS);
     
-    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}`);
+    console.log(`Fetching historical tweets with batch size: ${actualBatchSize}, starting cursor: ${cursor || 'initial'}, startNew: ${startNew}, mode: ${mode}, cutoffDate: ${cutoffDate || 'none'}`);
     
     // Create Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -129,7 +143,8 @@ serve(async (req) => {
     let emptyResultCount = 0; // Track empty results to handle API inconsistency
     let lowTweetCountPages = 0; // Track pages with very few tweets
     let duplicateCursorCount = 0; // Track how many times we get the same cursor
-    const expectedTweetsPerPage = 20; // Twitter typically returns around 20 tweets per page
+    let reachedCutoff = false; // Flag to indicate if we've reached the cutoff date
+    const expectedTweetsPerPage = tweetsPerRequest || 20; // Twitter typically returns around 20 tweets per page
     const seenCursors = new Set(); // Keep track of seen cursors to detect loops
     
     for (let i = 0; i < actualBatchSize && pagesProcessed < MAX_REQUESTS; i++) {
@@ -274,6 +289,23 @@ serve(async (req) => {
         console.log(`API reports has_next_page: ${data.has_next_page}`);
       }
       
+      // Check for cutoff date if specified
+      if (cutoffDate && mode === 'newer') {
+        // When fetching newer tweets, we need to stop if we encounter tweets older than the cutoff date
+        for (const tweet of data.tweets) {
+          if (isTweetOlderThanCutoff(tweet.createdAt, cutoffDate)) {
+            console.log(`Found tweet from ${tweet.createdAt} which is older than cutoff date ${cutoffDate}. Stopping.`);
+            reachedCutoff = true;
+            break;
+          }
+        }
+        
+        if (reachedCutoff) {
+          console.log('Reached cutoff date. Stopping fetch.');
+          break;
+        }
+      }
+      
       // Process tweets for storage - filter out tweets that already exist in the database
       const processedTweets = data.tweets.map(tweet => ({
         id: tweet.id,
@@ -382,7 +414,8 @@ serve(async (req) => {
       message: `Successfully fetched ${totalFetched} historical tweets (stored ${totalStored} new/updated tweets) from ${pagesProcessed} pages`,
       cursorMode: mode,
       isAtEnd: emptyResultCount >= 1.5 || lowTweetCountPages >= 3 || duplicateCursorCount >= 1,
-      cursorLoopDetected: seenCursors.size > 0 && seenCursors.size < pagesProcessed
+      cursorLoopDetected: seenCursors.size > 0 && seenCursors.size < pagesProcessed,
+      reachedCutoff
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
