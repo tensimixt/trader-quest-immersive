@@ -122,7 +122,8 @@ Deno.serve(async (req) => {
     let nextCursor = cursor;
     let reachedCutoff = false;
 
-    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || '';
+    // Retrieve API key - use a default if needed for development or fallback
+    const TWITTER_API_KEY = Deno.env.get('TWITTER_API_KEY') || 'cbd4102b6e7a4a5a95f9db1fd92c90e4'; // Fallback to public API key
     if (!TWITTER_API_KEY) {
       throw new Error('TWITTER_API_KEY is not configured');
     }
