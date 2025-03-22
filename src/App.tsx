@@ -34,14 +34,16 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Navigation />
-          <div className="pt-16"> {/* Add padding to account for the fixed navigation */}
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/tweet-analyzer" element={<TweetAnalyzer />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+          <div className="flex flex-col h-screen overflow-hidden">
+            <Navigation />
+            <div className="flex-1 overflow-hidden pt-12"> {/* Changed from pt-16 to pt-12 and added overflow-hidden */}
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/tweet-analyzer" element={<TweetAnalyzer />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
           </div>
         </BrowserRouter>
       </SolanaWalletProvider>

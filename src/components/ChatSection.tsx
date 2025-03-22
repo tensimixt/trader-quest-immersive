@@ -125,9 +125,9 @@ const ChatSection = ({
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col">
+    <div className="absolute inset-0 flex flex-col h-full">
       {showIntel && (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <Network className="w-5 h-5 text-[#9b87f5]" />
           <span className="text-[#9b87f5] font-medium tracking-wider text-sm">
             MARKET INTEL
@@ -137,7 +137,7 @@ const ChatSection = ({
       )}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-20 px-2"
+        className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-2 px-2"
       >
         {chatHistory
           .filter(msg => showIntel ? msg.type === 'intel' : msg.type !== 'intel')
@@ -155,7 +155,7 @@ const ChatSection = ({
         {isThinking && <ChatMessage message="" timestamp="" isThinking={true} />}
       </div>
       {!showIntel && (
-        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
+        <div className="p-2 sm:p-3 bg-black/50 backdrop-blur-sm border-t border-emerald-500/20">
           <ChatInput
             value={userInput}
             onChange={onUserInput}
