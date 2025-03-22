@@ -15,8 +15,21 @@ import TweetAnalyzer from "./pages/TweetAnalyzer";
 
 const queryClient = new QueryClient();
 
+// Define the type for our insight data to match AdaptiveInsight's expected props
+type InsightType = "price_spike" | "market_event" | "trader_call" | "info";
+type SeverityType = "low" | "medium" | "high";
+
+interface InsightData {
+  title: string;
+  description: string;
+  type: InsightType;
+  symbol?: string;
+  change?: number;
+  severity?: SeverityType;
+}
+
 // Sample insights for demonstration purposes
-const sampleInsights = [
+const sampleInsights: InsightData[] = [
   {
     title: "BTC Price Spike Detected",
     description: "Bitcoin just jumped 3.5% in the last 15 minutes. Unusual volume detected.",
@@ -36,7 +49,7 @@ const sampleInsights = [
   {
     title: "Whale Alert: ETH",
     description: "Large ETH transfer detected. 5000 ETH moved to exchange.",
-    type: "whale_alert",
+    type: "trader_call",  // Changed from "whale_alert" to a valid type
     symbol: "ETH",
     change: -1.2,
     severity: "high"
@@ -58,14 +71,7 @@ const Navigation = () => (
 );
 
 const App = () => {
-  const [insight, setInsight] = useState<null | {
-    title: string;
-    description: string;
-    type: string;
-    symbol: string;
-    change: number;
-    severity: string;
-  }>(null);
+  const [insight, setInsight] = useState<InsightData | null>(null);
 
   useEffect(() => {
     // For demonstration purposes, randomly show an insight after a short delay
@@ -105,8 +111,9 @@ const App = () => {
               {/* Adaptive Insight Component */}
               {insight && (
                 <AdaptiveInsight
+                  isVisible={insight !== null}
+                  onClose={() => setInsight(null)}
                   insight={insight}
-                  onDismiss={() => setInsight(null)}
                 />
               )}
             </div>
