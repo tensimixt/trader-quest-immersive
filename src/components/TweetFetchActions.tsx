@@ -24,6 +24,19 @@ interface TweetFetchActionsProps {
   isFetchingNew: boolean;
 }
 
+// Define the insight type to match what AdaptiveInsight expects
+type InsightType = 'price_spike' | 'trader_call' | 'market_event' | 'info';
+type SeverityType = 'low' | 'medium' | 'high';
+
+interface InsightData {
+  title: string;
+  description: string;
+  type: InsightType;
+  symbol?: string;
+  change?: number;
+  severity?: SeverityType;
+}
+
 const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
   isPossiblyAtEnd,
   isHistoricalLoading,
@@ -38,45 +51,45 @@ const TweetFetchActions: React.FC<TweetFetchActionsProps> = ({
 }) => {
   const [isStartNewDialogOpen, setIsStartNewDialogOpen] = useState(false);
   
-  // Add state for adaptive insight
+  // Update the state initialization to use the new interface
   const [showInsight, setShowInsight] = useState(false);
-  const [currentInsight, setCurrentInsight] = useState({
+  const [currentInsight, setCurrentInsight] = useState<InsightData>({
     title: "",
     description: "",
-    type: "info" as const,
+    type: "info",
     symbol: "",
     change: 0,
-    severity: "medium" as const
+    severity: "medium"
   });
 
   // Simulate detecting a price spike or other event with a timer
   useEffect(() => {
     // This would normally be triggered by real market data or user behavior
     const simulateEvent = () => {
-      const events = [
+      const events: InsightData[] = [
         {
           title: "BTC Price Spike Detected",
           description: "Bitcoin has surged 4.8% in the last hour. This coincides with increased whale activity and positive sentiment from top traders.",
-          type: "price_spike" as const,
+          type: "price_spike",
           symbol: "BTC",
           change: 4.8,
-          severity: "medium" as const
+          severity: "medium"
         },
         {
           title: "ETH Trading Volume Alert",
           description: "Ethereum trading volume has increased by 35% compared to the 24-hour average. This could indicate increased market interest.",
-          type: "market_event" as const,
+          type: "market_event",
           symbol: "ETH",
           change: 2.1,
-          severity: "low" as const
+          severity: "low"
         },
         {
           title: "New Hsaka Trading Call",
           description: "Trader Hsaka has just posted a new bullish call on SOL with 85% confidence based on technical indicators and market sentiment.",
-          type: "trader_call" as const,
+          type: "trader_call",
           symbol: "SOL",
           change: 1.2,
-          severity: "high" as const
+          severity: "high"
         }
       ];
       

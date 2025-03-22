@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, TrendingUp, TrendingDown, Info, BarChart2 } from 'lucide-react';
@@ -24,7 +23,6 @@ const AdaptiveInsight: React.FC<AdaptiveInsightProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   
-  // Auto-close after 15 seconds if not expanded
   useEffect(() => {
     if (isVisible && !expanded) {
       const timer = setTimeout(() => {
@@ -139,7 +137,6 @@ const AdaptiveInsight: React.FC<AdaptiveInsightProps> = ({
                     className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                     onClick={() => {
                       onClose();
-                      // Here we could navigate to relevant section or open a detailed view
                       console.log('Action button clicked for insight:', insight);
                     }}
                   >
